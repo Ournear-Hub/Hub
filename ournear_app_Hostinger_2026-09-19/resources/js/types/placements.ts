@@ -42,6 +42,15 @@ export type PlacementListItem = {
             original_placement_business_id?: string | null;
         } | null;
     } | null;
+    invoice?: {
+        id: number;
+        business_id: string | null;
+        status: string;
+        currency: string;
+        total_amount: string;
+        outstanding_amount: string;
+        is_overdue: boolean;
+    } | null;
 };
 
 export type PlacementOffer = {
@@ -108,5 +117,14 @@ export type EmployeeListItem = {
             original_employee_id: number | null;
             original_employee_name?: string | null;
         } | null;
+    } | null;
+    invoice?: {
+        id: number;
+        business_id: string | null;
+        status: string;
+        currency: string;
+        total_amount: string;
+        outstanding_amount: string;
+        is_overdue: boolean;
     } | null;
 };

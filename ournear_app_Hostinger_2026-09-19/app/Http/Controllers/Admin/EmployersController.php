@@ -5,15 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\EmployerProfile;
 use App\Models\Industry;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\RecruitmentActivity;
 use App\Support\EmployerQuery;
+use App\Support\FinanceQuery;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EmployersController extends Controller
 {
-    public function index(Request $request, EmployerQuery $employers): Response
+    public function index(Request $request, EmployerQuery $employers, FinanceQuery $finance): Response
     {
         $this->authorize('viewAny', EmployerProfile::class);
 
@@ -32,6 +35,9 @@ class EmployersController extends Controller
             'submissions' => $selected ? $this->submissions($selected) : [],
             'enquiries' => $selected ? $this->enquiries($selected) : [],
             'activities' => $selected ? $this->activities($selected) : [],
+            'finance' => $selected ? $finance->summary($selected->id) : null,
+            'invoices' => $selected ? $this->invoices($selected) : [],
+            'payments' => $selected ? $this->payments($selected) : [],
             'filters' => [
                 'search' => $request->string('search')->toString(),
                 'industry_id' => $request->string('industry_id')->toString(),
@@ -86,6 +92,36 @@ class EmployersController extends Controller
             ->limit(20)
             ->get()
             ->map(fn ($enquiry) => $enquiry->toAdminArray())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function invoices(EmployerProfile $employer): array
+    {
+        return $employer->invoices()
+            ->with(['job', 'employee.application', 'payments'])
+            ->latest('billed_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (Invoice $invoice) => $invoice->toAdminListArray())
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function payments(EmployerProfile $employer): array
+    {
+        return $employer->payments()
+            ->with(['invoice', 'employer.user', 'recorder:id,name'])
+            ->latest('paid_at')
+            ->limit(20)
+            ->get()
+            ->map(fn (Payment $payment) => $payment->toAdminArray())
             ->values()
             ->all();
     }

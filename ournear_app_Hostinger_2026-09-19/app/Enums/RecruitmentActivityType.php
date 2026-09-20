@@ -28,4 +28,8 @@ enum RecruitmentActivityType: string
     case ReplacementPlacementLinked = 'replacement_placement_linked';
     case ReplacementCompleted = 'replacement_completed';
     case ReplacementCancelled = 'replacement_cancelled';
+    case InvoiceCreated = 'invoice_created';
+    case InvoiceIssued = 'invoice_issued';
+    case InvoiceCancelled = 'invoice_cancelled';
+    case PaymentRecorded = 'payment_recorded';
 }

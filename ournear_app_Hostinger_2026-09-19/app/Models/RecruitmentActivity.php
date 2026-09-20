@@ -19,6 +19,8 @@ class RecruitmentActivity extends Model
         'placement_id',
         'employee_id',
         'replacement_id',
+        'invoice_id',
+        'payment_id',
         'type',
         'body',
         'from_status',
@@ -98,6 +100,22 @@ class RecruitmentActivity extends Model
     public function replacement(): BelongsTo
     {
         return $this->belongsTo(Replacement::class);
+    }
+
+    /**
+     * @return BelongsTo<Invoice, $this>
+     */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    /**
+     * @return BelongsTo<Payment, $this>
+     */
+    public function payment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class);
     }
 
     /**

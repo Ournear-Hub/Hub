@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BusinessIdPrefix;
+use App\Enums\InvoiceStatus;
 use App\Enums\PlacementStatus;
 use App\Models\Concerns\HasBusinessId;
 use Illuminate\Database\Eloquent\Model;
@@ -139,6 +140,14 @@ class Placement extends Model
     }
 
     /**
+     * @return HasOne<Invoice, $this>
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class)->where('status', '!=', InvoiceStatus::Cancelled->value);
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     public function replacementContext(): ?array
@@ -173,6 +182,28 @@ class Placement extends Model
                 'original_placement_id' => $resulting->originalPlacement?->id,
                 'original_placement_business_id' => $resulting->originalPlacement?->business_id,
             ] : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function invoiceSummary(): ?array
+    {
+        $this->loadMissing('invoice.payments');
+        $invoice = $this->invoice;
+        if ($invoice === null || $invoice->status === InvoiceStatus::Cancelled) {
+            return null;
+        }
+
+        return [
+            'id' => $invoice->id,
+            'business_id' => $invoice->business_id,
+            'status' => $invoice->status->value,
+            'currency' => $invoice->currency,
+            'total_amount' => (string) $invoice->total_amount,
+            'outstanding_amount' => $invoice->outstandingAmount(),
+            'is_overdue' => $invoice->isOverdue(),
         ];
     }
 
@@ -218,6 +249,7 @@ class Placement extends Model
             'submission',
             'offer',
             'employee',
+            'invoice.payments',
         ]);
 
         $application = $this->application;
@@ -257,6 +289,7 @@ class Placement extends Model
                 'business_id' => $this->employee->business_id,
             ] : null,
             'replacement' => $this->replacementContext(),
+            'invoice' => $this->invoiceSummary(),
         ];
     }
 

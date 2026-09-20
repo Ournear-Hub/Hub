@@ -26,6 +26,7 @@ type EmployeeDetail = EmployeeListItem & {
     actual_joining_date: string | null;
     joining_notes: string | null;
     can_request_replacement?: boolean;
+    can_create_invoice?: boolean;
     activities: Array<{
         id: number;
         type: string;
@@ -66,8 +67,13 @@ function activityTitle(activity: EmployeeDetail['activities'][number]): string {
 export default function EmployeesIndex({ employees, selected, filters, options, replacementReasons }: Props) {
     const [tab, setTab] = useState('overview');
     const [requestOpen, setRequestOpen] = useState(false);
+    const [invoiceOpen, setInvoiceOpen] = useState(false);
     const [reason, setReason] = useState('');
     const [notes, setNotes] = useState('');
+    const [amount, setAmount] = useState('');
+    const [gstRate, setGstRate] = useState('0');
+    const [billedAt, setBilledAt] = useState(new Date().toISOString().slice(0, 10));
+    const [dueAt, setDueAt] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
 
     const visit = (overrides: Record<string, string | undefined> = {}) => {
         const next = { ...filters, ...overrides };
@@ -163,6 +169,7 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                                 { id: 'overview', label: 'Overview' },
                                 { id: 'lineage', label: 'Lineage' },
                                 { id: 'replacement', label: 'Replacement' },
+                                { id: 'finance', label: 'Finance' },
                                 { id: 'timeline', label: 'Timeline' },
                             ]}
                             active={tab}
@@ -286,6 +293,26 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                                 ) : null}
                             </div>
                         ) : null}
+                        {tab === 'finance' ? (
+                            <div className="space-y-3 text-sm">
+                                <p>Recruitment fees are billed after joining. This is not employee salary.</p>
+                                {selected.invoice ? (
+                                    <p>
+                                        Invoice{' '}
+                                        <Link href={`/admin/finance?invoice=${selected.invoice.id}`} className="font-medium text-brand">
+                                            {selected.invoice.business_id}
+                                        </Link>{' '}
+                                        · {selected.invoice.status} · {selected.invoice.currency} {selected.invoice.total_amount}
+                                        {selected.invoice.is_overdue ? ' · Overdue' : ''}
+                                    </p>
+                                ) : (
+                                    <p className="text-muted">No invoice has been created for this joined employee.</p>
+                                )}
+                                <Button disabled={!selected.can_create_invoice} onClick={() => setInvoiceOpen(true)}>
+                                    Create invoice
+                                </Button>
+                            </div>
+                        ) : null}
                         {tab === 'timeline' ? (
                             <Timeline
                                 items={(selected.activities ?? []).map((activity) => ({
@@ -333,6 +360,45 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                             </option>
                         ))}
                     </Select>
+                    <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes (optional)" />
+                </div>
+            </Modal>
+            <Modal
+                open={invoiceOpen}
+                title="Create recruitment invoice"
+                onClose={() => setInvoiceOpen(false)}
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setInvoiceOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={!amount}
+                            onClick={() => {
+                                if (!selected || !amount) {
+                                    return;
+                                }
+                                router.post(`/admin/employees/${selected.id}/invoices`, {
+                                    amount,
+                                    gst_rate: gstRate,
+                                    billed_at: billedAt,
+                                    due_at: dueAt,
+                                    notes,
+                                });
+                                setInvoiceOpen(false);
+                            }}
+                        >
+                            Save draft invoice
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-3 text-left text-sm">
+                    <p>The billed amount is stored on the invoice and will not change if pricing changes later. GST is optional.</p>
+                    <Input value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="Recruitment fee (INR)" />
+                    <Input value={gstRate} onChange={(event) => setGstRate(event.target.value)} placeholder="GST rate % (0 if none)" />
+                    <Input type="date" value={billedAt} onChange={(event) => setBilledAt(event.target.value)} aria-label="Billing date" />
+                    <Input type="date" value={dueAt} onChange={(event) => setDueAt(event.target.value)} aria-label="Due date" />
                     <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes (optional)" />
                 </div>
             </Modal>

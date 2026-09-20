@@ -32,7 +32,7 @@ const sections: NavSection[] = [
     {
         id: 'finance',
         label: 'Finance',
-        items: [{ label: 'Payments', comingSoon: true }],
+        items: [{ label: 'Payments', href: '/admin/finance' }],
     },
     {
         id: 'communication',

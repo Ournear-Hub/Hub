@@ -12,4 +12,6 @@ enum BusinessIdPrefix: string
     case Placement = 'ONT-P';
     case Employee = 'ONT-W';
     case Replacement = 'ONT-R';
+    case Invoice = 'ONT-I';
+    case Payment = 'ONT-M';
 }

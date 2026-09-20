@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\EmployerEnquiry;
 use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
+use App\Models\Invoice;
 use App\Models\Job;
 use App\Models\Placement;
 use App\Models\Replacement;
@@ -19,6 +20,7 @@ use App\Policies\EmployeePolicy;
 use App\Policies\EmployerEnquiryPolicy;
 use App\Policies\EmployerProfilePolicy;
 use App\Policies\EmployerSubmissionPolicy;
+use App\Policies\InvoicePolicy;
 use App\Policies\JobPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PlacementPolicy;
@@ -60,6 +62,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Placement::class, PlacementPolicy::class);
         Gate::policy(Employee::class, EmployeePolicy::class);
         Gate::policy(Replacement::class, ReplacementPolicy::class);
+        Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
         foreach (MasterEntityType::cases() as $type) {

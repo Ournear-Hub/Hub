@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BusinessIdPrefix;
+use App\Enums\InvoiceStatus;
 use App\Enums\PlacementStatus;
 use App\Enums\ReplacementStatus;
 use App\Models\Concerns\HasBusinessId;
@@ -124,6 +125,29 @@ class Employee extends Model
         return $this->hasOne(Replacement::class, 'replacement_employee_id');
     }
 
+    /**
+     * @return HasOne<Invoice, $this>
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class)->where('status', '!=', InvoiceStatus::Cancelled->value);
+    }
+
+    public function canCreateInvoice(): bool
+    {
+        $this->loadMissing(['placement', 'employer', 'job', 'application', 'submission', 'invoice']);
+
+        if ($this->placement === null || $this->placement->status !== PlacementStatus::Joined) {
+            return false;
+        }
+
+        if ($this->employer === null || $this->job === null || $this->application === null || $this->submission === null) {
+            return false;
+        }
+
+        return $this->invoice === null;
+    }
+
     public function canRequestReplacement(): bool
     {
         $this->loadMissing(['placement', 'employer', 'job', 'application', 'submission']);
@@ -180,6 +204,28 @@ class Employee extends Model
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function invoiceSummary(): ?array
+    {
+        $this->loadMissing('invoice.payments');
+        $invoice = $this->invoice;
+        if ($invoice === null) {
+            return null;
+        }
+
+        return [
+            'id' => $invoice->id,
+            'business_id' => $invoice->business_id,
+            'status' => $invoice->status->value,
+            'currency' => $invoice->currency,
+            'total_amount' => (string) $invoice->total_amount,
+            'outstanding_amount' => $invoice->outstandingAmount(),
+            'is_overdue' => $invoice->isOverdue(),
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toAdminListArray(): array
@@ -191,6 +237,7 @@ class Employee extends Model
             'submission',
             'placement',
             'candidateProfile',
+            'invoice.payments',
         ]);
 
         $application = $this->application;
@@ -227,6 +274,7 @@ class Employee extends Model
                 'status' => $this->placement->status->value,
             ] : null,
             'replacement' => $this->replacementSummary(),
+            'invoice' => $this->invoiceSummary(),
         ];
     }
 
@@ -244,6 +292,7 @@ class Employee extends Model
             'candidateProfile',
             'creator:id,name',
             'activities.actor:id,name',
+            'invoice.payments',
         ]);
 
         $payload = $this->toAdminListArray();
@@ -259,7 +308,9 @@ class Employee extends Model
         $payload['joining_notes'] = $this->placement?->joining_notes;
         $payload['activities'] = $this->placement?->timeline() ?? [];
         $payload['can_request_replacement'] = $this->canRequestReplacement();
+        $payload['can_create_invoice'] = $this->canCreateInvoice();
         $payload['replacement'] = $this->replacementSummary();
+        $payload['invoice'] = $this->invoiceSummary();
 
         return $payload;
     }

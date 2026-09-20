@@ -172,6 +172,7 @@ export default function PlacementsIndex({ placements, selected, filters, options
                                 { id: 'joining', label: 'Joining' },
                                 { id: 'employee', label: 'Employee' },
                                 { id: 'replacement', label: 'Replacement' },
+                                { id: 'finance', label: 'Finance' },
                                 { id: 'timeline', label: 'Timeline' },
                             ]}
                             active={tab}
@@ -355,6 +356,23 @@ export default function PlacementsIndex({ placements, selected, filters, options
                                 {!selected.replacement ? (
                                     <p className="text-muted">No replacement case is linked to this placement.</p>
                                 ) : null}
+                            </div>
+                        ) : null}
+                        {tab === 'finance' ? (
+                            <div className="space-y-3 text-sm">
+                                {selected.invoice ? (
+                                    <p>
+                                        Invoice{' '}
+                                        <Link href={`/admin/finance?invoice=${selected.invoice.id}`} className="font-medium text-brand">
+                                            {selected.invoice.business_id}
+                                        </Link>{' '}
+                                        · {selected.invoice.status} · {selected.invoice.currency} {selected.invoice.total_amount}
+                                    </p>
+                                ) : (
+                                    <p className="text-muted">
+                                        Billing starts after joining. Create the invoice from the employee record. Placement is not itself an invoice.
+                                    </p>
+                                )}
                             </div>
                         ) : null}
                         {tab === 'timeline' ? (

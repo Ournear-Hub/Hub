@@ -58,6 +58,34 @@ type EnquiryRow = {
     created_at: string | null;
 };
 
+type FinanceSummary = {
+    currency: string;
+    billed: string;
+    received: string;
+    outstanding: string;
+    overdue: string;
+};
+
+type InvoiceRow = {
+    id: number;
+    business_id: string | null;
+    status: string;
+    currency: string;
+    total_amount: string;
+    outstanding_amount: string;
+    is_overdue: boolean;
+};
+
+type PaymentRow = {
+    id: number;
+    business_id: string | null;
+    amount: string;
+    currency: string;
+    paid_at: string | null;
+    method: string;
+    invoice_business_id: string | null;
+};
+
 type Props = {
     employers: Paginator<EmployerRow>;
     selected: EmployerRow | null;
@@ -65,6 +93,9 @@ type Props = {
     submissions: SubmissionRow[];
     enquiries: EnquiryRow[];
     activities: ActivityItem[];
+    finance: FinanceSummary | null;
+    invoices: InvoiceRow[];
+    payments: PaymentRow[];
     filters: {
         search: string;
         industry_id: string;
@@ -82,6 +113,9 @@ export default function EmployersIndex({
     submissions,
     enquiries,
     activities,
+    finance,
+    invoices,
+    payments,
     filters,
     industries,
 }: Props) {
@@ -175,6 +209,7 @@ export default function EmployersIndex({
                                 { id: 'jobs', label: `Jobs (${selected.jobs_count})` },
                                 { id: 'submissions', label: `Submissions (${selected.submissions_count})` },
                                 { id: 'enquiries', label: `Enquiries (${enquiries.length})` },
+                                { id: 'finance', label: 'Finance' },
                                 { id: 'activity', label: 'Activity' },
                             ]}
                             active={tab}
@@ -256,6 +291,59 @@ export default function EmployersIndex({
                                         ))}
                                     </ul>
                                 )}
+                            </div>
+                        ) : null}
+                        {tab === 'finance' ? (
+                            <div className="space-y-4 text-sm">
+                                {finance ? (
+                                    <dl className="grid gap-2">
+                                        {[
+                                            ['Billed', `${finance.currency} ${finance.billed}`],
+                                            ['Received', `${finance.currency} ${finance.received}`],
+                                            ['Outstanding', `${finance.currency} ${finance.outstanding}`],
+                                            ['Overdue', `${finance.currency} ${finance.overdue}`],
+                                        ].map(([label, value]) => (
+                                            <div key={label} className="grid grid-cols-3 gap-2">
+                                                <dt className="text-muted">{label}</dt>
+                                                <dd className="col-span-2 text-ink">{value}</dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                ) : null}
+                                <div>
+                                    <p className="font-medium text-ink">Invoices</p>
+                                    {invoices.length === 0 ? (
+                                        <p className="mt-1 text-muted">No invoices yet.</p>
+                                    ) : (
+                                        <ul className="mt-2 space-y-2">
+                                            {invoices.map((invoice) => (
+                                                <li key={invoice.id} className="rounded-md bg-surface px-3 py-2">
+                                                    <Link href={`/admin/finance?invoice=${invoice.id}`} className="font-medium text-brand">
+                                                        {invoice.business_id}
+                                                    </Link>
+                                                    <p className="text-muted">
+                                                        {invoice.status} · {invoice.currency} {invoice.total_amount}
+                                                        {invoice.is_overdue ? ' · Overdue' : ''}
+                                                    </p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-ink">Recent payments</p>
+                                    {payments.length === 0 ? (
+                                        <p className="mt-1 text-muted">No payments yet.</p>
+                                    ) : (
+                                        <ul className="mt-2 space-y-2">
+                                            {payments.map((payment) => (
+                                                <li key={payment.id} className="rounded-md bg-surface px-3 py-2">
+                                                    {payment.business_id} · {payment.currency} {payment.amount} · {payment.method}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
                             </div>
                         ) : null}
                         {tab === 'activity' ? (

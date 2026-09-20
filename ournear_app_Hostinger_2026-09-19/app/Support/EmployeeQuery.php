@@ -26,6 +26,7 @@ class EmployeeQuery
                 'candidateProfile',
                 'originatingReplacements',
                 'resultingReplacement.originalEmployee.application',
+                'invoice.payments',
             ])
             ->latest('joined_at');
 
@@ -93,6 +94,7 @@ class EmployeeQuery
                 'creator:id,name',
                 'originatingReplacements',
                 'resultingReplacement.originalEmployee.application',
+                'invoice.payments',
             ])
             ->find($id);
     }
