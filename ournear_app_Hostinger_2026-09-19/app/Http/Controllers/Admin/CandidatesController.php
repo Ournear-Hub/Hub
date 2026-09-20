@@ -84,18 +84,11 @@ class CandidatesController extends Controller
     private function applications(CandidateProfile $profile): array
     {
         return $profile->applications()
-            ->with('job')
+            ->with(['job', 'screening'])
             ->latest()
             ->limit(20)
             ->get()
-            ->map(function ($application) {
-                $payload = $application->toAdminListArray();
-                $payload['business_id'] = $application->business_id;
-                $payload['has_resume'] = filled($application->getAttributes()['resume_path'] ?? null);
-                $payload['resume_url'] = route('admin.applications.resume', $application);
-
-                return $payload;
-            })
+            ->map(fn ($application) => $application->toAdminListArray())
             ->values()
             ->all();
     }

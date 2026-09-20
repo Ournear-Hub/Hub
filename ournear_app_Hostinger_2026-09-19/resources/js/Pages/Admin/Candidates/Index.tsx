@@ -317,8 +317,18 @@ export default function CandidatesIndex({
                                             <li key={application.id} className="rounded-md bg-surface px-3 py-2 text-sm">
                                                 <p className="font-medium text-ink">{application.job?.title ?? 'Application'}</p>
                                                 <p className="text-muted">
-                                                    {application.business_id ?? '—'} · {application.status} · {application.applied_at}
+                                                    {application.business_id ?? '—'} · {application.status}
+                                                    {application.screening_decision_label
+                                                        ? ` · ${application.screening_decision_label}`
+                                                        : ''}
+                                                    {application.applied_at ? ` · ${application.applied_at}` : ''}
                                                 </p>
+                                                <Link
+                                                    href={`/admin/applications?application=${application.id}`}
+                                                    className="mt-1 inline-block font-medium text-brand"
+                                                >
+                                                    Open application
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>

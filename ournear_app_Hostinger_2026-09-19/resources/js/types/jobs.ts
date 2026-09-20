@@ -60,17 +60,26 @@ export type AdminJob = {
 
 export type AdminApplicationListItem = {
     id: number;
+    business_id?: string | null;
     full_name: string;
-    mobile: string;
-    email: string;
-    current_location: string;
+    mobile?: string;
+    email?: string;
+    current_location?: string;
     status: string;
     applied_at: string | null;
+    screening_decision_label?: string;
+    candidate?: {
+        id: number | null;
+        business_id: string | null;
+        name: string;
+    };
     job: {
         id: number;
+        business_id?: string | null;
         title: string;
-        industry: string;
-        location: string;
+        industry?: string | null;
+        location?: string | null;
+        slug?: string;
     } | null;
 };
 
@@ -89,10 +98,16 @@ export type AdminApplication = AdminApplicationListItem & {
     }>;
     job: {
         id: number;
+        business_id?: string | null;
         title: string;
-        slug: string;
-        industry: string;
-        location: string;
+        slug?: string;
+        industry?: string | null;
+        location?: string | null;
+        category?: string | null;
+        employment_type?: string | null;
+        experience?: string | null;
+        status_label?: string;
+        workspace_url?: string | null;
     } | null;
     interview?: {
         id: number;

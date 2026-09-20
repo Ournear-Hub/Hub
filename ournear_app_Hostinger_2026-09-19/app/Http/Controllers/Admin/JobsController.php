@@ -44,7 +44,7 @@ class JobsController extends Controller
             'jobs' => $listings,
             'selected' => $selected?->toAdminArray(),
             'applications' => $selected
-                ? $selected->applications()->latest()->limit(10)->get()->map->toAdminListArray()->values()->all()
+                ? $selected->applications()->with(['job', 'screening'])->latest()->limit(10)->get()->map->toAdminListArray()->values()->all()
                 : [],
             'mode' => $mode,
             'filters' => [

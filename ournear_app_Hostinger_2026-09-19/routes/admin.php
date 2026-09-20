@@ -58,7 +58,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('applications/{application}/status', [ApplicationsController::class, 'updateStatus'])->name('applications.status');
         Route::post('applications/{application}/notes', [ApplicationsController::class, 'storeNote'])->name('applications.notes');
         Route::put('applications/{application}/interview', [ApplicationsController::class, 'saveInterview'])->name('applications.interview');
+        Route::put('applications/{application}/screening', [ApplicationsController::class, 'saveScreening'])->name('applications.screening');
+        Route::post('applications/{application}/shortlist', [ApplicationsController::class, 'shortlist'])->name('applications.shortlist');
         Route::get('applications/{application}/resume', [ApplicationsController::class, 'resume'])->name('applications.resume');
+        Route::get('screening', [ApplicationsController::class, 'screening'])->name('screening.index');
+        Route::get('shortlisted', [ApplicationsController::class, 'shortlisted'])->name('shortlisted.index');
         Route::get('employer-enquiries', [EmployerEnquiriesController::class, 'index'])->name('employer-enquiries.index');
         Route::patch('employer-enquiries/{employerEnquiry}/status', [EmployerEnquiriesController::class, 'updateStatus'])->name('employer-enquiries.status');
         Route::post('employer-enquiries/{employerEnquiry}/notes', [EmployerEnquiriesController::class, 'storeNote'])->name('employer-enquiries.notes');

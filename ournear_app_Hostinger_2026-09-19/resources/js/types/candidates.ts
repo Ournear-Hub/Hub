@@ -24,13 +24,15 @@ export type CandidateApplication = {
     full_name: string;
     status: string;
     applied_at: string | null;
+    updated_at?: string | null;
+    screening_decision_label?: string;
     has_resume?: boolean;
     resume_url?: string;
     job: {
         id: number;
         title: string;
-        industry: string;
-        location: string;
+        industry?: string | null;
+        location?: string | null;
     } | null;
 };
 

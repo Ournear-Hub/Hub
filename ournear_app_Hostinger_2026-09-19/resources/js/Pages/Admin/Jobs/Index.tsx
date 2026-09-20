@@ -330,14 +330,31 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                                         {applications.map((application) => (
                                             <li key={application.id} className="rounded-md bg-surface px-3 py-2 text-sm">
                                                 <p className="font-medium text-ink">{application.full_name}</p>
-                                                <p className="text-muted">{application.status} · {application.applied_at}</p>
+                                                <p className="text-muted">
+                                                    {application.business_id ?? '—'} · {application.status}
+                                                    {application.screening_decision_label
+                                                        ? ` · ${application.screening_decision_label}`
+                                                        : ''}
+                                                    {application.applied_at ? ` · ${application.applied_at}` : ''}
+                                                </p>
+                                                <Link
+                                                    href={`/admin/applications?job_id=${selected.id}&application=${application.id}`}
+                                                    className="mt-1 inline-block font-medium text-brand"
+                                                >
+                                                    Open application
+                                                </Link>
                                             </li>
                                         ))}
                                     </ul>
                                 )}
-                                <Link href={`/admin/applications?job_id=${selected.id}`} className="inline-block text-sm font-medium text-brand">
-                                    Open in Applications
-                                </Link>
+                                <div className="flex flex-wrap gap-3">
+                                    <Link href={`/admin/applications?job_id=${selected.id}`} className="inline-block text-sm font-medium text-brand">
+                                        View Applications
+                                    </Link>
+                                    <Link href={`/admin/screening?job_id=${selected.id}`} className="inline-block text-sm font-medium text-brand">
+                                        Screen applications
+                                    </Link>
+                                </div>
                             </div>
                         )}
                     </div>

@@ -5,11 +5,15 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ApplicationStatus;
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
+use App\Enums\ScreeningDecision;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\SaveApplicationInterviewRequest;
+use App\Http\Requests\Admin\SaveApplicationScreeningRequest;
+use App\Http\Requests\Admin\ShortlistApplicationRequest;
 use App\Http\Requests\Admin\StoreEnquiryNoteRequest;
 use App\Http\Requests\Admin\UpdateApplicationStatusRequest;
 use App\Models\Application;
+use App\Models\RejectionReason;
 use App\Services\ApplicationPipelineService;
 use App\Support\ApplicationQuery;
 use Illuminate\Http\RedirectResponse;
@@ -23,35 +27,17 @@ class ApplicationsController extends Controller
 {
     public function index(Request $request, ApplicationQuery $applications): Response
     {
-        $this->authorize('viewAny', Application::class);
+        return $this->workspace($request, $applications, 'applications', 'Admin/Applications/Index');
+    }
 
-        $page = $applications->adminIndex($request)->through(fn (Application $application) => $application->toAdminListArray());
+    public function screening(Request $request, ApplicationQuery $applications): Response
+    {
+        return $this->workspace($request, $applications, 'screening', 'Admin/Screening/Index');
+    }
 
-        $selected = null;
-        $selectedId = $request->integer('application');
-        if ($selectedId > 0) {
-            $selected = Application::query()->with(['job', 'interview', 'activities.actor'])->find($selectedId);
-        }
-
-        return Inertia::render('Admin/Applications/Index', [
-            'applications' => $page,
-            'selected' => $selected?->toAdminArray(true),
-            'filters' => [
-                'search' => $request->string('search')->toString(),
-                'status' => $request->string('status')->toString(),
-                'job_id' => $request->string('job_id')->toString(),
-                'industry' => $request->string('industry')->toString(),
-                'location' => $request->string('location')->toString(),
-                'experience' => $request->string('experience')->toString(),
-                'date_from' => $request->string('date_from')->toString(),
-                'date_to' => $request->string('date_to')->toString(),
-                'application' => $selectedId > 0 ? (string) $selectedId : '',
-            ],
-            'options' => $applications->adminFilterOptions(),
-            'statuses' => array_map(fn (ApplicationStatus $status) => $status->value, ApplicationStatus::cases()),
-            'interviewModes' => array_map(fn (InterviewMode $mode) => $mode->value, InterviewMode::cases()),
-            'interviewOutcomes' => array_map(fn (InterviewOutcome $outcome) => $outcome->value, InterviewOutcome::cases()),
-        ]);
+    public function shortlisted(Request $request, ApplicationQuery $applications): Response
+    {
+        return $this->workspace($request, $applications, 'shortlisted', 'Admin/Shortlisted/Index');
     }
 
     public function updateStatus(
@@ -99,6 +85,43 @@ class ApplicationsController extends Controller
         return back()->with('success', 'Interview saved.');
     }
 
+    public function saveScreening(
+        SaveApplicationScreeningRequest $request,
+        Application $application,
+        ApplicationPipelineService $pipeline,
+    ): RedirectResponse {
+        $pipeline->saveScreening(
+            $application,
+            $request->enum('decision', ScreeningDecision::class),
+            $request->user(),
+            $request->input('notes'),
+            $request->filled('rejection_reason_id') ? $request->integer('rejection_reason_id') : null,
+        );
+
+        $decision = $request->enum('decision', ScreeningDecision::class);
+
+        return back()->with('success', match ($decision) {
+            ScreeningDecision::Shortlisted => 'Candidate shortlisted.',
+            ScreeningDecision::NotSuitable => 'Candidate marked not suitable.',
+            ScreeningDecision::Suitable => 'Candidate marked suitable.',
+            default => 'Screening updated.',
+        });
+    }
+
+    public function shortlist(
+        ShortlistApplicationRequest $request,
+        Application $application,
+        ApplicationPipelineService $pipeline,
+    ): RedirectResponse {
+        $pipeline->shortlist(
+            $application,
+            $request->user(),
+            $request->input('notes'),
+        );
+
+        return back()->with('success', 'Candidate shortlisted.');
+    }
+
     public function resume(Application $application): StreamedResponse
     {
         $this->authorize('downloadResume', $application);
@@ -110,8 +133,45 @@ class ApplicationsController extends Controller
         }
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $downloadName = 'application-'.$application->id.'.'.$extension;
+        $label = $application->business_id ?: 'application-'.$application->id;
+        $downloadName = $label.'.'.$extension;
 
         return Storage::disk('resumes')->download($path, $downloadName);
+    }
+
+    private function workspace(
+        Request $request,
+        ApplicationQuery $applications,
+        string $view,
+        string $component,
+    ): Response {
+        $this->authorize('viewAny', Application::class);
+
+        $page = $applications->adminIndex($request, $view)
+            ->through(fn (Application $application) => $application->toAdminListArray());
+
+        $selected = $applications->selected($request);
+        if ($selected && $request->user()?->cannot('view', $selected)) {
+            $selected = null;
+        }
+
+        return Inertia::render($component, [
+            'applications' => $page,
+            'selected' => $selected?->toAdminArray(true),
+            'filters' => $applications->filters($request),
+            'options' => $applications->adminFilterOptions(),
+            'statuses' => array_map(fn (ApplicationStatus $status) => $status->value, ApplicationStatus::cases()),
+            'interviewModes' => array_map(fn (InterviewMode $mode) => $mode->value, InterviewMode::cases()),
+            'interviewOutcomes' => array_map(fn (InterviewOutcome $outcome) => $outcome->value, InterviewOutcome::cases()),
+            'rejectionReasons' => RejectionReason::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (RejectionReason $reason) => [
+                    'id' => $reason->id,
+                    'name' => $reason->name,
+                    'selectable' => $reason->isSelectable(),
+                ])
+                ->all(),
+        ]);
     }
 }

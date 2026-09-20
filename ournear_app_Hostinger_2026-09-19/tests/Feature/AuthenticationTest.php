@@ -130,6 +130,8 @@ class AuthenticationTest extends TestCase
         $this->actingAs($candidate)->get(route('admin.dashboard'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.jobs.index'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.applications.index'))->assertForbidden();
+        $this->actingAs($candidate)->get(route('admin.screening.index'))->assertForbidden();
+        $this->actingAs($candidate)->get(route('admin.shortlisted.index'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.settings.edit'))->assertForbidden();
     }
 

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\BusinessIdPrefix;
+use App\Enums\ScreeningDecision;
 use App\Models\Concerns\HasBusinessId;
 use Database\Factories\ApplicationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -115,6 +116,14 @@ class Application extends Model
     }
 
     /**
+     * @return HasOne<ApplicationScreening, $this>
+     */
+    public function screening(): HasOne
+    {
+        return $this->hasOne(ApplicationScreening::class);
+    }
+
+    /**
      * @return HasMany<RecruitmentActivity, $this>
      */
     public function activities(): HasMany
@@ -171,21 +180,47 @@ class Application extends Model
      */
     public function toAdminListArray(): array
     {
-        $this->loadMissing('job');
+        $this->loadMissing([
+            'job.classifiedIndustry',
+            'job.classifiedLocation',
+            'user.candidateProfile',
+            'screening',
+            'classifiedLocation',
+            'classifiedExperienceRange',
+            'classifiedQualification',
+        ]);
+
+        $profile = $this->user?->candidateProfile;
 
         return [
             'id' => $this->id,
+            'business_id' => $this->business_id,
             'full_name' => $this->full_name,
             'mobile' => $this->mobile,
             'email' => $this->email,
-            'current_location' => $this->current_location,
+            'current_location' => $this->displayLocation(),
+            'experience' => $this->displayExperience(),
+            'qualification' => $this->displayQualification(),
             'status' => $this->status->value,
             'applied_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
+            'has_resume' => filled($this->getRawOriginal('resume_path') ?? $this->attributes['resume_path'] ?? null),
+            'resume_url' => route('admin.applications.resume', $this),
+            'screening_decision' => $this->screeningDecision()->value,
+            'screening_decision_label' => $this->screeningDecision()->label(),
+            'shortlisted_at' => $this->screening?->shortlisted_at?->toDateTimeString(),
+            'candidate' => [
+                'id' => $profile?->id,
+                'business_id' => $profile?->business_id,
+                'name' => $this->full_name,
+            ],
             'job' => $this->job ? [
                 'id' => $this->job->id,
+                'business_id' => $this->job->business_id,
                 'title' => $this->job->title,
-                'industry' => $this->job->industry,
-                'location' => $this->job->location,
+                'slug' => $this->job->slug,
+                'industry' => $this->job->displayIndustry(),
+                'location' => $this->job->displayLocation(),
             ] : null,
         ];
     }
@@ -195,35 +230,47 @@ class Application extends Model
      */
     public function toAdminArray(bool $detailed = false): array
     {
-        $this->loadMissing('job');
+        $this->loadMissing([
+            'user.candidateProfile.classifiedLocation',
+            'user.candidateProfile.classifiedExperienceRange',
+            'user.candidateProfile.classifiedQualification',
+        ]);
 
-        $payload = [
-            'id' => $this->id,
-            'full_name' => $this->full_name,
-            'mobile' => $this->mobile,
-            'email' => $this->email,
-            'current_location' => $this->current_location,
-            'experience' => $this->experience,
-            'qualification' => $this->qualification,
-            'additional_information' => $this->additional_information,
-            'consent' => $this->consent,
-            'status' => $this->status->value,
-            'applied_at' => $this->created_at?->toDateTimeString(),
-            'has_resume' => filled($this->getRawOriginal('resume_path') ?? $this->resume_path),
-            'resume_url' => route('admin.applications.resume', $this),
-            'job' => $this->job ? [
-                'id' => $this->job->id,
-                'title' => $this->job->title,
-                'slug' => $this->job->slug,
-                'industry' => $this->job->industry,
-                'location' => $this->job->location,
-            ] : null,
+        $profile = $this->user?->candidateProfile;
+        $payload = $this->toAdminListArray();
+        $payload['additional_information'] = $this->additional_information;
+        $payload['consent'] = $this->consent;
+        $payload['can_shortlist'] = $this->canShortlist();
+        $payload['can_mark_suitable'] = $this->canMarkSuitable();
+        $payload['can_mark_not_suitable'] = $this->canMarkNotSuitable();
+        $payload['candidate'] = [
+            'id' => $profile?->id,
+            'business_id' => $profile?->business_id,
+            'name' => $profile?->user?->name ?: $this->full_name,
+            'mobile' => $profile?->mobile ?: $this->mobile,
+            'email' => $profile?->user?->email ?: $this->email,
+            'location' => $profile?->classifiedLocation?->name ?: ($profile?->location ?: $this->displayLocation()),
+            'experience' => $profile?->classifiedExperienceRange?->name ?: ($profile?->experience ?: $this->displayExperience()),
+            'qualification' => $profile?->classifiedQualification?->name ?: ($profile?->qualification ?: $this->displayQualification()),
+            'workspace_url' => $profile ? route('admin.candidates.index', ['candidate' => $profile->id], false) : null,
         ];
+        $payload['job'] = $this->jobSummary();
 
         if ($detailed) {
-            $this->loadMissing(['interview', 'activities.actor']);
+            $this->loadMissing(['interview', 'activities.actor', 'screening.rejectionReason', 'screening.screener', 'screening.shortlister']);
             $payload['internal_notes'] = $this->notes();
             $payload['interview'] = $this->interview?->toAdminArray();
+            $payload['screening'] = $this->screening?->toAdminArray() ?? [
+                'decision' => ScreeningDecision::Pending->value,
+                'decision_label' => ScreeningDecision::Pending->label(),
+                'notes' => null,
+                'rejection_reason_id' => null,
+                'rejection_reason' => null,
+                'screened_by' => null,
+                'screened_at' => null,
+                'shortlisted_by' => null,
+                'shortlisted_at' => null,
+            ];
             $payload['activities'] = $this->activities
                 ->map(fn (RecruitmentActivity $activity) => $activity->toAdminArray())
                 ->values()
@@ -231,5 +278,87 @@ class Application extends Model
         }
 
         return $payload;
+    }
+
+    public function displayLocation(): string
+    {
+        return $this->classifiedLocation?->name ?: (string) $this->current_location;
+    }
+
+    public function displayExperience(): string
+    {
+        return $this->classifiedExperienceRange?->name ?: (string) $this->experience;
+    }
+
+    public function displayQualification(): string
+    {
+        return $this->classifiedQualification?->name ?: (string) $this->qualification;
+    }
+
+    public function screeningDecision(): ScreeningDecision
+    {
+        return $this->screening?->decision ?? ScreeningDecision::Pending;
+    }
+
+    public function canShortlist(): bool
+    {
+        if ($this->screeningDecision() === ScreeningDecision::Shortlisted) {
+            return false;
+        }
+
+        return in_array($this->status, [
+            ApplicationStatus::New,
+            ApplicationStatus::Reviewing,
+            ApplicationStatus::Shortlisted,
+            ApplicationStatus::Interview,
+        ], true);
+    }
+
+    public function canMarkSuitable(): bool
+    {
+        if ($this->screeningDecision() === ScreeningDecision::Shortlisted) {
+            return false;
+        }
+
+        return in_array($this->status, [
+            ApplicationStatus::New,
+            ApplicationStatus::Reviewing,
+        ], true);
+    }
+
+    public function canMarkNotSuitable(): bool
+    {
+        return in_array($this->status, [
+            ApplicationStatus::New,
+            ApplicationStatus::Reviewing,
+            ApplicationStatus::Shortlisted,
+            ApplicationStatus::Interview,
+        ], true);
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function jobSummary(): ?array
+    {
+        if (! $this->job) {
+            return null;
+        }
+
+        $job = $this->job->toAdminArray();
+
+        return [
+            'id' => $job['id'],
+            'business_id' => $job['business_id'],
+            'title' => $job['title'],
+            'slug' => $job['slug'],
+            'industry' => $job['industry'],
+            'category' => $job['category'],
+            'location' => $job['location'],
+            'employment_type' => $job['employment_type'],
+            'experience' => $job['experience'],
+            'status_label' => $job['status_label'],
+            'workspace_url' => route('admin.jobs.index', ['job' => $this->job->slug], false),
+        ];
     }
 }
