@@ -62,6 +62,22 @@ class EmployerProfile extends Model
     }
 
     /**
+     * @return HasMany<Placement, $this>
+     */
+    public function placements(): HasMany
+    {
+        return $this->hasMany(Placement::class);
+    }
+
+    /**
+     * @return HasMany<Employee, $this>
+     */
+    public function employees(): HasMany
+    {
+        return $this->hasMany(Employee::class);
+    }
+
+    /**
      * @return HasMany<EmployerEnquiry, $this>
      */
     public function enquiries(): HasMany

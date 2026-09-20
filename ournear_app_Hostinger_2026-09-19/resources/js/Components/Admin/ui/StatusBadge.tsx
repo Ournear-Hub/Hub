@@ -27,6 +27,12 @@ const tones: Record<string, string> = {
     Submitted: 'bg-brand/10 text-brand',
     'Under Review': 'bg-warning/15 text-ink',
     'On Hold': 'bg-surface text-muted',
+    Open: 'bg-surface text-ink',
+    Offered: 'bg-brand/10 text-brand',
+    Accepted: 'bg-success/10 text-success',
+    Declined: 'bg-danger/10 text-danger',
+    'Joining Confirmed': 'bg-warning/15 text-ink',
+    Joined: 'bg-success/20 text-success',
 };
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {

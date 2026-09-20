@@ -16,4 +16,11 @@ enum RecruitmentActivityType: string
     case SubmissionStatusChanged = 'submission_status_changed';
     case EmployerSelected = 'employer_selected';
     case EmployerRejected = 'employer_rejected';
+    case PlacementCreated = 'placement_created';
+    case OfferCreated = 'offer_created';
+    case OfferAccepted = 'offer_accepted';
+    case OfferDeclined = 'offer_declined';
+    case OfferWithdrawn = 'offer_withdrawn';
+    case JoiningConfirmed = 'joining_confirmed';
+    case CandidateJoined = 'candidate_joined';
 }

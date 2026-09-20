@@ -9,6 +9,7 @@ use App\Enums\ScreeningDecision;
 use App\Models\Application;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
+use App\Models\Placement;
 use App\Models\RecruitmentActivity;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -142,8 +143,9 @@ class EmployerSubmissionTest extends TestCase
             ->where('employer_submission_id', $submission->id)
             ->where('type', RecruitmentActivityType::EmployerRejected->value)
             ->exists());
-        $this->assertFalse(Schema::hasTable('placements'));
-        $this->assertFalse(Schema::hasTable('employees'));
+        $this->assertSame(0, Placement::query()->count());
+        $this->assertTrue(Schema::hasTable('placements'));
+        $this->assertTrue(Schema::hasTable('employees'));
     }
 
     public function test_guest_application_can_be_submitted_when_shortlisted(): void

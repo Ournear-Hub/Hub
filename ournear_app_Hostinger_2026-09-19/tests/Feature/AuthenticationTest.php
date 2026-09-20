@@ -134,6 +134,8 @@ class AuthenticationTest extends TestCase
         $this->actingAs($candidate)->get(route('admin.shortlisted.index'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.employers.index'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.submissions.index'))->assertForbidden();
+        $this->actingAs($candidate)->get(route('admin.placements.index'))->assertForbidden();
+        $this->actingAs($candidate)->get(route('admin.employees.index'))->assertForbidden();
         $this->actingAs($candidate)->get(route('admin.settings.edit'))->assertForbidden();
     }
 
@@ -145,6 +147,8 @@ class AuthenticationTest extends TestCase
         $this->actingAs($employer)->get(route('admin.employer-enquiries.index'))->assertForbidden();
         $this->actingAs($employer)->get(route('admin.employers.index'))->assertForbidden();
         $this->actingAs($employer)->get(route('admin.submissions.index'))->assertForbidden();
+        $this->actingAs($employer)->get(route('admin.placements.index'))->assertForbidden();
+        $this->actingAs($employer)->get(route('admin.employees.index'))->assertForbidden();
     }
 
     public function test_admin_login_page_renders(): void

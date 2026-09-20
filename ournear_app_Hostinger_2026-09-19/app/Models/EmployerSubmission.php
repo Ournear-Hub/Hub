@@ -8,6 +8,7 @@ use App\Models\Concerns\HasBusinessId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class EmployerSubmission extends Model
 {
@@ -95,6 +96,14 @@ class EmployerSubmission extends Model
     }
 
     /**
+     * @return HasOne<Placement, $this>
+     */
+    public function placement(): HasOne
+    {
+        return $this->hasOne(Placement::class);
+    }
+
+    /**
      * @return HasMany<RecruitmentActivity, $this>
      */
     public function activities(): HasMany
@@ -117,6 +126,11 @@ class EmployerSubmission extends Model
         return ! $this->status->isTerminal();
     }
 
+    public function canCreatePlacement(): bool
+    {
+        return $this->status === EmployerSubmissionStatus::Selected && $this->placement === null;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -126,6 +140,7 @@ class EmployerSubmission extends Model
             'employer.user',
             'job',
             'application.user.candidateProfile',
+            'placement',
         ]);
 
         $application = $this->application;
@@ -153,6 +168,11 @@ class EmployerSubmission extends Model
                 'id' => $application->id,
                 'business_id' => $application->business_id,
             ] : null,
+            'placement' => $this->placement ? [
+                'id' => $this->placement->id,
+                'business_id' => $this->placement->business_id,
+                'status' => $this->placement->status->value,
+            ] : null,
         ];
     }
 
@@ -169,6 +189,7 @@ class EmployerSubmission extends Model
             'rejectionReason',
             'submitter:id,name',
             'decider:id,name',
+            'placement',
             'activities.actor:id,name',
         ]);
 
@@ -182,6 +203,7 @@ class EmployerSubmission extends Model
         $payload['can_select'] = $this->canSelect();
         $payload['can_reject'] = $this->canReject();
         $payload['can_hold'] = $this->canHold();
+        $payload['can_create_placement'] = $this->canCreatePlacement();
         $payload['employer'] = $this->employer?->toAdminArray();
         $payload['job'] = $this->job?->toAdminArray();
         $payload['application'] = $this->application?->toAdminArray(true);

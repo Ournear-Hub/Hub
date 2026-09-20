@@ -5,18 +5,22 @@ namespace App\Providers;
 use App\Enums\MasterEntityType;
 use App\Models\Application;
 use App\Models\CandidateProfile;
+use App\Models\Employee;
 use App\Models\EmployerEnquiry;
 use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
+use App\Models\Placement;
 use App\Models\User;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CandidateProfilePolicy;
+use App\Policies\EmployeePolicy;
 use App\Policies\EmployerEnquiryPolicy;
 use App\Policies\EmployerProfilePolicy;
 use App\Policies\EmployerSubmissionPolicy;
 use App\Policies\JobPolicy;
 use App\Policies\MasterDataPolicy;
+use App\Policies\PlacementPolicy;
 use App\Policies\UserPolicy;
 use App\Services\AnalyticsService;
 use App\Services\PublicSeoService;
@@ -51,6 +55,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CandidateProfile::class, CandidateProfilePolicy::class);
         Gate::policy(EmployerProfile::class, EmployerProfilePolicy::class);
         Gate::policy(EmployerSubmission::class, EmployerSubmissionPolicy::class);
+        Gate::policy(Placement::class, PlacementPolicy::class);
+        Gate::policy(Employee::class, EmployeePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
         foreach (MasterEntityType::cases() as $type) {

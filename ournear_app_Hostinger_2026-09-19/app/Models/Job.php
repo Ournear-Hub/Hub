@@ -119,6 +119,14 @@ class Job extends Model
     }
 
     /**
+     * @return HasMany<Placement, $this>
+     */
+    public function placements(): HasMany
+    {
+        return $this->hasMany(Placement::class);
+    }
+
+    /**
      * @return BelongsTo<Industry, $this>
      */
     public function classifiedIndustry(): BelongsTo

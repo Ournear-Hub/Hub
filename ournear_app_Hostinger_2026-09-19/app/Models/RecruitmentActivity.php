@@ -16,6 +16,8 @@ class RecruitmentActivity extends Model
         'employer_enquiry_id',
         'employer_submission_id',
         'employer_profile_id',
+        'placement_id',
+        'employee_id',
         'type',
         'body',
         'from_status',
@@ -71,6 +73,22 @@ class RecruitmentActivity extends Model
     public function employer(): BelongsTo
     {
         return $this->belongsTo(EmployerProfile::class, 'employer_profile_id');
+    }
+
+    /**
+     * @return BelongsTo<Placement, $this>
+     */
+    public function placement(): BelongsTo
+    {
+        return $this->belongsTo(Placement::class);
+    }
+
+    /**
+     * @return BelongsTo<Employee, $this>
+     */
+    public function employee(): BelongsTo
+    {
+        return $this->belongsTo(Employee::class);
     }
 
     /**

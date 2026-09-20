@@ -132,6 +132,14 @@ class Application extends Model
     }
 
     /**
+     * @return HasMany<Placement, $this>
+     */
+    public function placements(): HasMany
+    {
+        return $this->hasMany(Placement::class);
+    }
+
+    /**
      * @return HasMany<RecruitmentActivity, $this>
      */
     public function activities(): HasMany

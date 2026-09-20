@@ -54,6 +54,8 @@ type SubmissionDetail = SubmissionListItem & {
     can_select: boolean;
     can_reject: boolean;
     can_hold: boolean;
+    can_create_placement?: boolean;
+    placement?: { id: number; business_id: string | null; status: string } | null;
     has_resume: boolean;
     resume_url: string | null;
     job: AdminJob | null;
@@ -101,7 +103,7 @@ function activityTitle(activity: SubmissionDetail['activities'][number]): string
 
 export default function SubmissionsIndex({ submissions, selected, filters, options, statuses, rejectionReasons }: Props) {
     const [tab, setTab] = useState('overview');
-    const [confirm, setConfirm] = useState<'select' | 'hold' | null>(null);
+    const [confirm, setConfirm] = useState<'select' | 'hold' | 'place' | null>(null);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [notes, setNotes] = useState('');
     const [rejectionReasonId, setRejectionReasonId] = useState('');
@@ -311,8 +313,17 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                                     <Button variant="secondary" disabled={!selected.can_hold} onClick={() => setConfirm('hold')}>
                                         On hold
                                     </Button>
+                                    <Button disabled={!selected.can_create_placement} onClick={() => setConfirm('place')}>
+                                        Create placement
+                                    </Button>
                                 </div>
-                                <p className="text-xs text-muted">This does not create a placement or change other applications for this candidate.</p>
+                                {selected.placement ? (
+                                    <Link href={`/admin/placements?placement=${selected.placement.id}`} className="inline-block text-sm font-medium text-brand">
+                                        Open placement {selected.placement.business_id}
+                                    </Link>
+                                ) : (
+                                    <p className="text-xs text-muted">Selection does not create a placement. Create placement only after the employer has selected this submission.</p>
+                                )}
                             </div>
                         ) : null}
                     </div>
@@ -321,18 +332,30 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
 
             <ConfirmDialog
                 open={confirm !== null}
-                title={confirm === 'select' ? 'Record employer selection?' : 'Put this submission on hold?'}
-                description={
-                    confirm === 'select'
-                        ? 'Selection is for this employer and job only. Placement is a later step.'
-                        : 'The employer has not made a final decision.'
+                title={
+                    confirm === 'place'
+                        ? 'Create a placement from this selection?'
+                        : confirm === 'select'
+                          ? 'Record employer selection?'
+                          : 'Put this submission on hold?'
                 }
-                confirmLabel={confirm === 'select' ? 'Select' : 'On hold'}
+                description={
+                    confirm === 'place'
+                        ? 'Placement starts from this employer, job, and application only. It does not globally select the candidate.'
+                        : confirm === 'select'
+                          ? 'Selection is for this employer and job only. Placement is a later step.'
+                          : 'The employer has not made a final decision.'
+                }
+                confirmLabel={confirm === 'place' ? 'Create placement' : confirm === 'select' ? 'Select' : 'On hold'}
                 onConfirm={() => {
                     if (!selected || confirm === null) {
                         return;
                     }
-                    router.post(`/admin/submissions/${selected.id}/${confirm === 'select' ? 'select' : 'hold'}`, { notes });
+                    if (confirm === 'place') {
+                        router.post(`/admin/submissions/${selected.id}/place`, { notes });
+                    } else {
+                        router.post(`/admin/submissions/${selected.id}/${confirm === 'select' ? 'select' : 'hold'}`, { notes });
+                    }
                     setConfirm(null);
                 }}
                 onClose={() => setConfirm(null)}
