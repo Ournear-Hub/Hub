@@ -4,16 +4,16 @@ import BrandMark from '@/Components/BrandMark';
 import type { SharedPageProps } from '@/types/page';
 import type { AdminNavItem, NavSection } from '@/types/layout';
 
-const dashboardItem: AdminNavItem = { label: 'Dashboard', href: '/admin' };
+const dashboardItem: AdminNavItem = { label: 'Dashboard', href: '/admin', core: true };
 
 const sections: NavSection[] = [
     {
         id: 'recruitment',
         label: 'Recruitment',
         items: [
-            { label: 'Jobs', href: '/admin/jobs', permission: 'jobs.view' },
+            { label: 'Jobs', href: '/admin/jobs', permission: 'jobs.view', core: true },
             { label: 'Candidates', href: '/admin/candidates', permission: 'candidates.view' },
-            { label: 'Applications', href: '/admin/applications', permission: 'applications.view' },
+            { label: 'Applications', href: '/admin/applications', permission: 'applications.view', core: true },
             { label: 'Screening', href: '/admin/screening', permission: 'applications.view' },
             { label: 'Shortlisted', href: '/admin/shortlisted', permission: 'applications.view' },
             { label: 'Employer Submissions', href: '/admin/submissions', permission: 'submissions.view' },
@@ -27,7 +27,7 @@ const sections: NavSection[] = [
         label: 'Employers',
         items: [
             { label: 'Employers', href: '/admin/employers', permission: 'employers.view' },
-            { label: 'Employer Enquiries', href: '/admin/employer-enquiries', permission: 'employers.view' },
+            { label: 'Employer Enquiries', href: '/admin/employer-enquiries', permission: 'employers.view', core: true },
         ],
     },
     {
@@ -57,9 +57,9 @@ const sections: NavSection[] = [
         id: 'website',
         label: 'Website',
         items: [
-            { label: 'Content', href: '/admin/website-content', permission: 'website.manage' },
-            { label: 'Media & Social', href: '/admin/media-social', permission: 'website.manage' },
-            { label: 'Settings', href: '/admin/settings' },
+            { label: 'Website Content', href: '/admin/website-content', permission: 'website.manage', core: true },
+            { label: 'Media & Social', href: '/admin/media-social', permission: 'website.manage', core: true },
+            { label: 'Settings', href: '/admin/settings', core: true },
         ],
     },
     {
@@ -87,7 +87,13 @@ function hasPermission(permissions: string[] | undefined, required?: string): bo
 }
 
 function visibleItems(items: AdminNavItem[], permissions: string[] | undefined): AdminNavItem[] {
-    return items.filter((item) => item.comingSoon || hasPermission(permissions, item.permission));
+    return items.filter((item) => {
+        if (item.comingSoon || item.core || !item.permission) {
+            return true;
+        }
+
+        return hasPermission(permissions, item.permission);
+    });
 }
 
 function isActive(url: string, href: string): boolean {
