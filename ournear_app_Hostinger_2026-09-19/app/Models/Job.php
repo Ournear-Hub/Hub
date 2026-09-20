@@ -2,18 +2,21 @@
 
 namespace App\Models;
 
+use App\Enums\BusinessIdPrefix;
 use App\Enums\JobPublishingStatus;
+use App\Models\Concerns\HasBusinessId;
 use Database\Factories\JobFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Job extends Model
 {
     /** @use HasFactory<JobFactory> */
-    use HasFactory;
+    use HasBusinessId, HasFactory;
 
     protected static function newFactory(): JobFactory
     {
@@ -79,12 +82,65 @@ class Job extends Model
         });
     }
 
+    public static function businessIdPrefix(): BusinessIdPrefix
+    {
+        return BusinessIdPrefix::Job;
+    }
+
     /**
      * @return HasMany<Application, $this>
      */
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    /**
+     * @return BelongsTo<Industry, $this>
+     */
+    public function classifiedIndustry(): BelongsTo
+    {
+        return $this->belongsTo(Industry::class, 'industry_id');
+    }
+
+    /**
+     * @return BelongsTo<JobCategory, $this>
+     */
+    public function classifiedCategory(): BelongsTo
+    {
+        return $this->belongsTo(JobCategory::class, 'job_category_id');
+    }
+
+    /**
+     * @return BelongsTo<JobTitle, $this>
+     */
+    public function classifiedTitle(): BelongsTo
+    {
+        return $this->belongsTo(JobTitle::class, 'job_title_id');
+    }
+
+    /**
+     * @return BelongsTo<Location, $this>
+     */
+    public function classifiedLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    /**
+     * @return BelongsTo<EmploymentType, $this>
+     */
+    public function classifiedEmploymentType(): BelongsTo
+    {
+        return $this->belongsTo(EmploymentType::class, 'employment_type_id');
+    }
+
+    /**
+     * @return BelongsTo<ExperienceRange, $this>
+     */
+    public function classifiedExperienceRange(): BelongsTo
+    {
+        return $this->belongsTo(ExperienceRange::class, 'experience_range_id');
     }
 
     /**

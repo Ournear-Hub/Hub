@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\BusinessIdPrefix;
+use App\Models\Concerns\HasBusinessId;
 use Database\Factories\ApplicationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Application extends Model
 {
     /** @use HasFactory<ApplicationFactory> */
-    use HasFactory;
+    use HasBusinessId, HasFactory;
 
     protected static function newFactory(): ApplicationFactory
     {
@@ -59,12 +61,41 @@ class Application extends Model
         ];
     }
 
+    public static function businessIdPrefix(): BusinessIdPrefix
+    {
+        return BusinessIdPrefix::Application;
+    }
+
     /**
      * @return BelongsTo<Job, $this>
      */
     public function job(): BelongsTo
     {
         return $this->belongsTo(Job::class);
+    }
+
+    /**
+     * @return BelongsTo<Location, $this>
+     */
+    public function classifiedLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    /**
+     * @return BelongsTo<ExperienceRange, $this>
+     */
+    public function classifiedExperienceRange(): BelongsTo
+    {
+        return $this->belongsTo(ExperienceRange::class, 'experience_range_id');
+    }
+
+    /**
+     * @return BelongsTo<Qualification, $this>
+     */
+    public function classifiedQualification(): BelongsTo
+    {
+        return $this->belongsTo(Qualification::class, 'qualification_id');
     }
 
     /**

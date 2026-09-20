@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\CandidateProfile;
 use App\Models\EmployerEnquiry;
+use App\Models\Industry;
 use App\Models\Job;
 use App\Models\User;
 use Tests\TestCase;
@@ -27,6 +28,8 @@ class PolicyFoundationTest extends TestCase
         $this->assertTrue($admin->can('update', $enquiry));
         $this->assertTrue($admin->can('viewAny', User::class));
         $this->assertTrue($admin->can('update', $profile));
+        $this->assertTrue($admin->can('viewAny', Industry::class));
+        $this->assertTrue($admin->canManageMasterData());
     }
 
     public function test_candidate_cannot_manage_admin_resources_but_can_access_own_application(): void
@@ -47,6 +50,8 @@ class PolicyFoundationTest extends TestCase
         $this->assertTrue($candidate->can('withdraw', $own));
         $this->assertFalse($candidate->can('view', $other));
         $this->assertFalse($candidate->can('withdraw', $other));
+        $this->assertFalse($candidate->can('viewAny', Industry::class));
+        $this->assertFalse($candidate->canManageMasterData());
     }
 
     public function test_employer_cannot_manage_jobs_or_applications(): void

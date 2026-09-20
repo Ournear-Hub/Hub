@@ -103,6 +103,11 @@ class User extends Authenticatable
         return $this->isAdmin();
     }
 
+    public function canManageMasterData(): bool
+    {
+        return $this->isAdmin();
+    }
+
     /**
      * @return HasOne<CandidateProfile, $this>
      */

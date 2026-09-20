@@ -64,6 +64,22 @@ class EmployerEnquiry extends Model
     }
 
     /**
+     * @return BelongsTo<Industry, $this>
+     */
+    public function classifiedIndustry(): BelongsTo
+    {
+        return $this->belongsTo(Industry::class, 'industry_id');
+    }
+
+    /**
+     * @return BelongsTo<Location, $this>
+     */
+    public function classifiedLocation(): BelongsTo
+    {
+        return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toAccountArray(): array

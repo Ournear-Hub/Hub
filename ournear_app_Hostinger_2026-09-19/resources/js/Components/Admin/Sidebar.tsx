@@ -67,7 +67,7 @@ const sections: NavSection[] = [
         items: [
             { label: 'Admin Users', comingSoon: true },
             { label: 'Roles & Permissions', comingSoon: true },
-            { label: 'Master Data', comingSoon: true },
+            { label: 'Master Data', href: '/admin/master-data' },
         ],
     },
 ];

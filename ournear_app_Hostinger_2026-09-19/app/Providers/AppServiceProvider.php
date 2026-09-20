@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Enums\MasterEntityType;
 use App\Models\Application;
 use App\Models\CandidateProfile;
 use App\Models\EmployerEnquiry;
@@ -11,6 +12,7 @@ use App\Policies\ApplicationPolicy;
 use App\Policies\CandidateProfilePolicy;
 use App\Policies\EmployerEnquiryPolicy;
 use App\Policies\JobPolicy;
+use App\Policies\MasterDataPolicy;
 use App\Policies\UserPolicy;
 use App\Services\AnalyticsService;
 use App\Services\PublicSeoService;
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EmployerEnquiry::class, EmployerEnquiryPolicy::class);
         Gate::policy(CandidateProfile::class, CandidateProfilePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+
+        foreach (MasterEntityType::cases() as $type) {
+            Gate::policy($type->modelClass(), MasterDataPolicy::class);
+        }
 
         RateLimiter::for('admin-login', function (Request $request) {
             return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());

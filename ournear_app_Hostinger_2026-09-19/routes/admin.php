@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployerEnquiriesController;
 use App\Http\Controllers\Admin\JobsController;
+use App\Enums\MasterEntityType;
+use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MediaSocialController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\WebsiteContentController;
@@ -64,6 +66,19 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('media-social/media', [MediaSocialController::class, 'store'])->name('media-social.media.store');
         Route::delete('media-social/media/{media}', [MediaSocialController::class, 'destroy'])->name('media-social.media.destroy');
         Route::put('media-social/social', [MediaSocialController::class, 'updateSocial'])->name('media-social.social.update');
+
+        $masterTypes = implode('|', array_column(MasterEntityType::cases(), 'value'));
+
+        Route::get('master-data', [MasterDataController::class, 'index'])->name('master-data.index');
+        Route::post('master-data/{type}', [MasterDataController::class, 'store'])
+            ->where('type', $masterTypes)
+            ->name('master-data.store');
+        Route::put('master-data/{type}/{id}', [MasterDataController::class, 'update'])
+            ->where('type', $masterTypes)
+            ->name('master-data.update');
+        Route::patch('master-data/{type}/{id}/status', [MasterDataController::class, 'toggleStatus'])
+            ->where('type', $masterTypes)
+            ->name('master-data.status');
 
         Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings/website', [SettingsController::class, 'updateWebsite'])->name('settings.website');
