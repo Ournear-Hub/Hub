@@ -5,11 +5,15 @@ namespace App\Services\MasterData;
 use App\Enums\MasterDataChangeAction;
 use App\Enums\MasterEntityType;
 use App\Models\ApplicationStatusOption;
+use App\Models\EmploymentType;
+use App\Models\ExperienceRange;
 use App\Models\Industry;
 use App\Models\JobCategory;
 use App\Models\JobStatusOption;
 use App\Models\JobTitle;
+use App\Models\Location;
 use App\Models\MasterDataChange;
+use App\Models\Qualification;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -393,6 +397,92 @@ class MasterDataService
         }
 
         return $payload;
+    }
+
+    /**
+     * Selectable lookup rows for job/candidate forms.
+     *
+     * @return array<string, mixed>
+     */
+    public function formOptions(): array
+    {
+        return [
+            'industries' => Industry::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (Industry $industry) => [
+                    'id' => $industry->id,
+                    'name' => $industry->name,
+                    'is_active' => $industry->is_active,
+                    'selectable' => $industry->isSelectable(),
+                ])
+                ->all(),
+            'categories' => JobCategory::query()
+                ->with('industry:id,name,is_active')
+                ->ordered()
+                ->get()
+                ->map(fn (JobCategory $category) => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'industry_id' => $category->industry_id,
+                    'is_active' => $category->is_active,
+                    'selectable' => $category->isSelectable(),
+                ])
+                ->all(),
+            'job_titles' => JobTitle::query()
+                ->with('category:id,industry_id,is_active')
+                ->ordered()
+                ->get()
+                ->map(fn (JobTitle $title) => [
+                    'id' => $title->id,
+                    'name' => $title->name,
+                    'job_category_id' => $title->job_category_id,
+                    'industry_id' => $title->category?->industry_id,
+                    'is_active' => $title->is_active,
+                    'selectable' => $title->isSelectable(),
+                ])
+                ->all(),
+            'locations' => Location::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (Location $location) => [
+                    'id' => $location->id,
+                    'name' => $location->name,
+                    'is_active' => $location->is_active,
+                    'selectable' => $location->isSelectable(),
+                ])
+                ->all(),
+            'employment_types' => EmploymentType::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (EmploymentType $type) => [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'is_active' => $type->is_active,
+                    'selectable' => $type->isSelectable(),
+                ])
+                ->all(),
+            'experience_ranges' => ExperienceRange::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (ExperienceRange $range) => [
+                    'id' => $range->id,
+                    'name' => $range->name,
+                    'is_active' => $range->is_active,
+                    'selectable' => $range->isSelectable(),
+                ])
+                ->all(),
+            'qualifications' => Qualification::query()
+                ->ordered()
+                ->get(['id', 'name', 'is_active'])
+                ->map(fn (Qualification $qualification) => [
+                    'id' => $qualification->id,
+                    'name' => $qualification->name,
+                    'is_active' => $qualification->is_active,
+                    'selectable' => $qualification->isSelectable(),
+                ])
+                ->all(),
+        ];
     }
 
     /**

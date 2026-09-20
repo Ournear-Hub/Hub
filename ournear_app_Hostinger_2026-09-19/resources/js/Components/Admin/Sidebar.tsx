@@ -11,7 +11,7 @@ const sections: NavSection[] = [
         label: 'Recruitment',
         items: [
             { label: 'Jobs', href: '/admin/jobs' },
-            { label: 'Candidates', comingSoon: true },
+            { label: 'Candidates', href: '/admin/candidates' },
             { label: 'Applications', href: '/admin/applications' },
             { label: 'Screening', comingSoon: true },
             { label: 'Shortlisted', comingSoon: true },

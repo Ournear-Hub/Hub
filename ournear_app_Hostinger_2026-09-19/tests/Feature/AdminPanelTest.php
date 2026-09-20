@@ -62,8 +62,9 @@ class AdminPanelTest extends TestCase
         $this->actingAs($admin)->get(route('admin.jobs.show', $job))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Admin/Jobs/Show')
-                ->where('job.title', 'Electrical Engineer'));
+                ->component('Admin/Jobs/Index')
+                ->where('selected.title', 'Electrical Engineer')
+                ->where('filters.job', $job->slug));
     }
 
     public function test_admin_application_drawer_preserves_filters(): void

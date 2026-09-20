@@ -12,6 +12,17 @@ export type MasterOption = {
     industry_id?: number;
     industry_name?: string;
     selectable?: boolean;
+    job_category_id?: number;
+};
+
+export type JobFormLookups = {
+    industries: MasterOption[];
+    categories: MasterOption[];
+    job_titles: MasterOption[];
+    locations: MasterOption[];
+    employment_types: MasterOption[];
+    experience_ranges: MasterOption[];
+    qualifications: MasterOption[];
 };
 
 export type MasterChange = {

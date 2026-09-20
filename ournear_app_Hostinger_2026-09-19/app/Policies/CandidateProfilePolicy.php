@@ -7,6 +7,11 @@ use App\Models\User;
 
 class CandidateProfilePolicy
 {
+    public function viewAny(User $user): bool
+    {
+        return $user->canManageRecruitment();
+    }
+
     public function view(User $user, CandidateProfile $candidateProfile): bool
     {
         if ($user->canManageRecruitment()) {

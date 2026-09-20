@@ -3,12 +3,16 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\JobPublishingStatus;
+use App\Http\Requests\Admin\Concerns\ValidatesJobMasterData;
 use App\Models\Job;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateJobRequest extends FormRequest
 {
+    use ValidatesJobMasterData;
+
     public function authorize(): bool
     {
         $job = $this->route('job');
@@ -24,11 +28,7 @@ class UpdateJobRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'project' => ['required', 'string', 'max:255'],
-            'industry' => ['required', 'string', 'max:255'],
-            'category' => ['required', 'string', 'max:255'],
-            'location' => ['required', 'string', 'max:255'],
-            'employment_type' => ['required', 'string', 'max:255'],
-            'experience' => ['required', 'string', 'max:255'],
+            ...$this->jobMasterRules(false),
             'salary' => ['nullable', 'string', 'max:255'],
             'vacancy' => ['required', 'integer', 'min:1', 'max:9999'],
             'posted_date' => ['required', 'date'],
@@ -41,5 +41,32 @@ class UpdateJobRequest extends FormRequest
             'requirements' => ['nullable', 'string', 'max:20000'],
             'what_we_offer' => ['nullable', 'string', 'max:20000'],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(fn (Validator $validator) => $this->validateJobMasterHierarchy($validator, true));
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        foreach ([
+            'industry_id',
+            'job_category_id',
+            'job_title_id',
+            'location_id',
+            'employment_type_id',
+            'experience_range_id',
+            'closing_date',
+            'salary',
+        ] as $field) {
+            if ($this->input($field) === '') {
+                $merge[$field] = null;
+            }
+        }
+
+        $this->merge($merge);
     }
 }

@@ -9,6 +9,7 @@ type DrawerProps = {
     footer?: ReactNode;
     loading?: boolean;
     closeLabel?: string;
+    size?: 'md' | 'xl';
 };
 
 export default function Drawer({
@@ -19,6 +20,7 @@ export default function Drawer({
     footer,
     loading = false,
     closeLabel = 'Close',
+    size = 'md',
 }: DrawerProps) {
     useEffect(() => {
         if (!open) {
@@ -51,7 +53,9 @@ export default function Drawer({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="admin-drawer-title"
-                className="relative z-10 flex h-full w-full min-w-0 max-w-none flex-col bg-white sm:max-w-lg"
+                className={`relative z-10 flex h-full w-full min-w-0 max-w-none flex-col bg-white ${
+                    size === 'xl' ? 'sm:max-w-3xl' : 'sm:max-w-lg'
+                }`}
             >
                 <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
                     <h2 id="admin-drawer-title" className="text-xl font-semibold text-ink">

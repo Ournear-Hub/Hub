@@ -3,7 +3,11 @@
 namespace App\Support;
 
 use App\Enums\JobPublishingStatus;
+use App\Models\EmploymentType;
+use App\Models\ExperienceRange;
+use App\Models\Industry;
 use App\Models\Job;
+use App\Models\Location;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
 
@@ -45,15 +49,27 @@ class JobListingQuery
      */
     public function adminIndex(Request $request): LengthAwarePaginator
     {
-        $query = Job::query()->withCount('applications')->latest('posted_date');
+        $query = Job::query()
+            ->with([
+                'classifiedIndustry',
+                'classifiedCategory',
+                'classifiedTitle',
+                'classifiedLocation',
+                'classifiedEmploymentType',
+                'classifiedExperienceRange',
+            ])
+            ->withCount('applications')
+            ->latest('updated_at');
 
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
             $query->where(function ($inner) use ($search) {
-                $inner->where('title', 'like', '%'.$search.'%')
+                $inner->where('business_id', 'like', '%'.$search.'%')
+                    ->orWhere('title', 'like', '%'.$search.'%')
                     ->orWhere('project', 'like', '%'.$search.'%')
                     ->orWhere('slug', 'like', '%'.$search.'%')
-                    ->orWhere('location', 'like', '%'.$search.'%');
+                    ->orWhere('location', 'like', '%'.$search.'%')
+                    ->orWhereHas('classifiedLocation', fn ($location) => $location->where('name', 'like', '%'.$search.'%'));
             });
         }
 
@@ -62,11 +78,19 @@ class JobListingQuery
             $query->where('publishing_status', $status);
         }
 
-        foreach (['industry', 'category', 'location'] as $field) {
-            $value = trim((string) $request->query($field, ''));
-            if ($value !== '') {
-                $query->where($field, $value);
-            }
+        $this->applyMasterOrLegacyFilter($query, $request, 'industry_id', 'industry', Industry::class);
+        $this->applyMasterOrLegacyFilter($query, $request, 'location_id', 'location', Location::class);
+        $this->applyMasterOrLegacyFilter($query, $request, 'employment_type_id', 'employment_type', EmploymentType::class);
+        $this->applyMasterOrLegacyFilter($query, $request, 'experience_range_id', 'experience', ExperienceRange::class);
+
+        $categoryId = $request->integer('job_category_id');
+        if ($categoryId > 0) {
+            $query->where('job_category_id', $categoryId);
+        }
+
+        $titleId = $request->integer('job_title_id');
+        if ($titleId > 0) {
+            $query->where('job_title_id', $titleId);
         }
 
         $featured = $request->query('featured');
@@ -112,17 +136,27 @@ class JobListingQuery
     }
 
     /**
-     * @return array<string, list<string>>
+     * @param  \Illuminate\Database\Eloquent\Builder<Job>  $query
+     * @param  class-string  $model
      */
-    public function adminFilterOptions(): array
+    private function applyMasterOrLegacyFilter($query, Request $request, string $idColumn, string $legacyColumn, string $model): void
     {
-        $base = Job::query();
+        $id = $request->integer($idColumn);
+        if ($id <= 0) {
+            return;
+        }
 
-        return [
-            'locations' => $this->distinctValues((clone $base), 'location'),
-            'industries' => $this->distinctValues((clone $base), 'industry'),
-            'categories' => $this->distinctValues((clone $base), 'category'),
-        ];
+        $name = $model::query()->whereKey($id)->value('name');
+
+        $query->where(function ($inner) use ($id, $idColumn, $legacyColumn, $name) {
+            $inner->where($idColumn, $id);
+
+            if (is_string($name) && $name !== '') {
+                $inner->orWhere(function ($legacy) use ($idColumn, $legacyColumn, $name) {
+                    $legacy->whereNull($idColumn)->where($legacyColumn, $name);
+                });
+            }
+        });
     }
 
     /**

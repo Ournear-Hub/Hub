@@ -18,6 +18,9 @@ const tones: Record<string, string> = {
     Closed: 'bg-surface text-muted',
     Active: 'bg-success/10 text-success',
     Inactive: 'bg-surface text-muted',
+    Published: 'bg-success/10 text-success',
+    Draft: 'bg-warning/15 text-ink',
+    Featured: 'bg-brand/10 text-brand',
 };
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {

@@ -22,15 +22,40 @@ export type PublicJobDetail = PublicJobCard & {
     accepts_applications: boolean;
 };
 
-export type AdminJob = PublicJobCard & {
+export type AdminJob = {
     id: number;
+    business_id: string | null;
+    title: string;
+    slug: string;
+    project: string;
+    industry: string;
+    category: string | null;
+    legacy_category: string | null;
+    location: string;
+    employment_type: string;
+    experience: string;
+    classified_title: string | null;
+    industry_id: number | null;
+    job_category_id: number | null;
+    job_title_id: number | null;
+    location_id: number | null;
+    employment_type_id: number | null;
+    experience_range_id: number | null;
+    salary: string | null;
+    vacancy: number;
+    posted_date: string | null;
+    closing_date: string | null;
+    featured: boolean;
+    active: boolean;
+    publishing_status: 'draft' | 'published';
+    status_label: string;
     description: string;
     responsibilities: string | null;
     requirements: string | null;
     what_we_offer: string | null;
-    publishing_status: 'draft' | 'published';
-    active: boolean;
     applications_count: number;
+    created_at: string | null;
+    updated_at: string | null;
 };
 
 export type AdminApplicationListItem = {

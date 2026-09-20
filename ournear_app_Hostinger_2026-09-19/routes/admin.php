@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ApplicationsController;
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\Auth\NewPasswordController;
 use App\Http\Controllers\Admin\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Admin\CandidatesController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployerEnquiriesController;
 use App\Http\Controllers\Admin\JobsController;
@@ -47,6 +48,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('jobs/{job}/publish', [JobsController::class, 'togglePublish'])->name('jobs.publish');
         Route::patch('jobs/{job}/active', [JobsController::class, 'toggleActive'])->name('jobs.active');
         Route::patch('jobs/{job}/featured', [JobsController::class, 'toggleFeatured'])->name('jobs.featured');
+
+        Route::get('candidates', [CandidatesController::class, 'index'])->name('candidates.index');
+        Route::put('candidates/{candidate}', [CandidatesController::class, 'update'])
+            ->whereNumber('candidate')
+            ->name('candidates.update');
 
         Route::get('applications', [ApplicationsController::class, 'index'])->name('applications.index');
         Route::patch('applications/{application}/status', [ApplicationsController::class, 'updateStatus'])->name('applications.status');

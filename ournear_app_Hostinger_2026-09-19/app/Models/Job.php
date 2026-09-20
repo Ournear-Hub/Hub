@@ -40,6 +40,12 @@ class Job extends Model
         'location',
         'employment_type',
         'experience',
+        'industry_id',
+        'job_category_id',
+        'job_title_id',
+        'location_id',
+        'employment_type_id',
+        'experience_range_id',
         'salary',
         'vacancy',
         'posted_date',
@@ -244,16 +250,34 @@ class Job extends Model
      */
     public function toAdminArray(): array
     {
+        $this->loadMissing([
+            'classifiedIndustry',
+            'classifiedCategory',
+            'classifiedTitle',
+            'classifiedLocation',
+            'classifiedEmploymentType',
+            'classifiedExperienceRange',
+        ]);
+
         return [
             'id' => $this->id,
+            'business_id' => $this->business_id,
             'title' => $this->title,
             'slug' => $this->slug,
             'project' => $this->project,
-            'industry' => $this->industry,
-            'category' => $this->category,
-            'location' => $this->location,
-            'employment_type' => $this->employment_type,
-            'experience' => $this->experience,
+            'industry' => $this->displayIndustry(),
+            'category' => $this->displayCategory(),
+            'legacy_category' => $this->job_category_id ? null : $this->category,
+            'location' => $this->displayLocation(),
+            'employment_type' => $this->displayEmploymentType(),
+            'experience' => $this->displayExperience(),
+            'classified_title' => $this->classifiedTitle?->name,
+            'industry_id' => $this->industry_id,
+            'job_category_id' => $this->job_category_id,
+            'job_title_id' => $this->job_title_id,
+            'location_id' => $this->location_id,
+            'employment_type_id' => $this->employment_type_id,
+            'experience_range_id' => $this->experience_range_id,
             'salary' => $this->salary,
             'vacancy' => $this->vacancy,
             'posted_date' => $this->posted_date?->toDateString(),
@@ -261,11 +285,41 @@ class Job extends Model
             'featured' => $this->featured,
             'active' => $this->active,
             'publishing_status' => $this->publishing_status->value,
+            'status_label' => $this->active
+                ? ($this->publishing_status === JobPublishingStatus::Published ? 'Published' : 'Draft')
+                : 'Inactive',
             'description' => $this->description,
             'responsibilities' => $this->responsibilities,
             'requirements' => $this->requirements,
             'what_we_offer' => $this->what_we_offer,
             'applications_count' => $this->applications_count ?? $this->applications()->count(),
+            'created_at' => $this->created_at?->toDateTimeString(),
+            'updated_at' => $this->updated_at?->toDateTimeString(),
         ];
+    }
+
+    public function displayIndustry(): string
+    {
+        return $this->classifiedIndustry?->name ?: (string) $this->industry;
+    }
+
+    public function displayCategory(): ?string
+    {
+        return $this->classifiedCategory?->name;
+    }
+
+    public function displayLocation(): string
+    {
+        return $this->classifiedLocation?->name ?: (string) $this->location;
+    }
+
+    public function displayEmploymentType(): string
+    {
+        return $this->classifiedEmploymentType?->name ?: (string) $this->employment_type;
+    }
+
+    public function displayExperience(): string
+    {
+        return $this->classifiedExperienceRange?->name ?: (string) $this->experience;
     }
 }
