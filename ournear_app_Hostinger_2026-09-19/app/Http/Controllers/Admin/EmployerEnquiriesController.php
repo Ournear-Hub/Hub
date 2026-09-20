@@ -20,6 +20,8 @@ class EmployerEnquiriesController extends Controller
 
     public function index(Request $request, EmployerEnquiryQuery $enquiries): Response
     {
+        $this->authorize('viewAny', EmployerEnquiry::class);
+
         $page = $enquiries->adminIndex($request)->through(fn (EmployerEnquiry $enquiry) => $enquiry->toAdminArray());
 
         $selected = null;

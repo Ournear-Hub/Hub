@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
+use App\Models\Application;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -11,7 +12,10 @@ class SaveApplicationInterviewRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        $application = $this->route('application');
+
+        return $application instanceof Application
+            && $this->user()?->can('update', $application) === true;
     }
 
     /**

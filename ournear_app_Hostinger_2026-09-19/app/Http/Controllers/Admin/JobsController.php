@@ -17,6 +17,8 @@ class JobsController extends Controller
 {
     public function index(Request $request, JobListingQuery $jobs): Response
     {
+        $this->authorize('viewAny', Job::class);
+
         $listings = $jobs->adminIndex($request)->through(fn (Job $job) => $job->toAdminArray());
 
         return Inertia::render('Admin/Jobs/Index', [
@@ -36,6 +38,8 @@ class JobsController extends Controller
 
     public function create(): Response
     {
+        $this->authorize('create', Job::class);
+
         return Inertia::render('Admin/Jobs/Form', [
             'job' => null,
         ]);
@@ -52,6 +56,8 @@ class JobsController extends Controller
 
     public function show(Job $job): Response
     {
+        $this->authorize('view', $job);
+
         $job->loadCount('applications');
 
         return Inertia::render('Admin/Jobs/Show', [
@@ -61,6 +67,8 @@ class JobsController extends Controller
 
     public function edit(Job $job): Response
     {
+        $this->authorize('update', $job);
+
         return Inertia::render('Admin/Jobs/Form', [
             'job' => $job->toAdminArray(),
         ]);
@@ -77,6 +85,8 @@ class JobsController extends Controller
 
     public function destroy(Job $job): RedirectResponse
     {
+        $this->authorize('delete', $job);
+
         if ($job->applications()->exists()) {
             return back()->with('error', 'This job cannot be deleted because applications have been submitted.');
         }
@@ -90,6 +100,8 @@ class JobsController extends Controller
 
     public function togglePublish(Job $job): RedirectResponse
     {
+        $this->authorize('update', $job);
+
         $job->publishing_status = $job->publishing_status === JobPublishingStatus::Published
             ? JobPublishingStatus::Draft
             : JobPublishingStatus::Published;
@@ -102,6 +114,8 @@ class JobsController extends Controller
 
     public function toggleActive(Job $job): RedirectResponse
     {
+        $this->authorize('update', $job);
+
         $job->active = ! $job->active;
         $job->save();
 
@@ -110,6 +124,8 @@ class JobsController extends Controller
 
     public function toggleFeatured(Job $job): RedirectResponse
     {
+        $this->authorize('update', $job);
+
         $job->featured = ! $job->featured;
         $job->save();
 

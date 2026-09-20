@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\JobPublishingStatus;
+use App\Models\Job;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +11,9 @@ class UpdateJobRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        $job = $this->route('job');
+
+        return $job instanceof Job && $this->user()?->can('update', $job) === true;
     }
 
     /**

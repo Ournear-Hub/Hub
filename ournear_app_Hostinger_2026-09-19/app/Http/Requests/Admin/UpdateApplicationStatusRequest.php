@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\ApplicationStatus;
+use App\Models\Application;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +11,10 @@ class UpdateApplicationStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        $application = $this->route('application');
+
+        return $application instanceof Application
+            && $this->user()?->can('update', $application) === true;
     }
 
     /**

@@ -10,3 +10,15 @@ export type NavItem = {
     href: string;
     children?: NavItem[];
 };
+
+export type AdminNavItem = {
+    label: string;
+    href?: string;
+    comingSoon?: boolean;
+};
+
+export type NavSection = {
+    id: string;
+    label: string;
+    items: AdminNavItem[];
+};

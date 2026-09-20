@@ -1,8 +1,20 @@
 import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import {
+    ActivityFeed,
+    Button,
+    DataTable,
+    Drawer,
+    FilterBar,
+    Input,
+    SearchBar,
+    Select,
+    StatusBadge,
+    Textarea,
+} from '@/Components/Admin/ui';
 import type { AdminApplication, AdminApplicationListItem, Paginator } from '@/types/jobs';
 
 type Filters = {
@@ -31,9 +43,6 @@ type Props = {
     interviewModes: string[];
     interviewOutcomes: string[];
 };
-
-const inputClass =
-    'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand';
 
 export default function ApplicationsIndex({
     applications,
@@ -66,13 +75,15 @@ export default function ApplicationsIndex({
         return `/admin/applications?${params.toString()}`;
     };
 
+    const closeDrawer = useCallback(() => {
+        router.get('/admin/applications', { ...filters, application: undefined }, { preserveState: true });
+    }, [filters]);
+
     const filter = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
         router.get('/admin/applications', Object.fromEntries(form.entries()), { preserveState: true });
     };
-
-    const drawer = useMemo(() => selected, [selected]);
 
     useEffect(() => {
         interviewForm.setData({
@@ -88,165 +99,125 @@ export default function ApplicationsIndex({
     return (
         <AdminLayout title="Applications">
             <div
-                className={drawer ? 'pointer-events-none' : undefined}
-                inert={drawer ? true : undefined}
-                aria-hidden={drawer ? true : undefined}
+                className={selected ? 'pointer-events-none' : undefined}
+                inert={selected ? true : undefined}
+                aria-hidden={selected ? true : undefined}
             >
-            <div className="mb-6">
-                <h1 className="text-2xl font-semibold tracking-tight text-ink">Applications</h1>
-                <p className="mt-1 text-sm text-muted">Candidate applications submitted from the public website.</p>
+                <div className="mb-6">
+                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Applications</h1>
+                    <p className="mt-1 text-sm text-muted">Candidate applications submitted from the public website.</p>
+                </div>
+
+                <FilterBar onSubmit={filter}>
+                    <SearchBar defaultValue={filters.search} placeholder="Name, email, mobile, job" />
+                    <Select name="status" defaultValue={filters.status} aria-label="Status">
+                        <option value="">All statuses</option>
+                        {statuses.map((status) => (
+                            <option key={status} value={status}>
+                                {status}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="job_id" defaultValue={filters.job_id} aria-label="Job">
+                        <option value="">All jobs</option>
+                        {options.jobs.map((job) => (
+                            <option key={job.id} value={job.id}>
+                                {job.title}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="industry" defaultValue={filters.industry} aria-label="Industry">
+                        <option value="">All industries</option>
+                        {options.industries.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="location" defaultValue={filters.location} aria-label="Location">
+                        <option value="">All locations</option>
+                        {options.locations.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="experience" defaultValue={filters.experience} aria-label="Experience">
+                        <option value="">All experience</option>
+                        {options.experiences.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </Select>
+                    <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="Applied from" />
+                    <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="Applied to" />
+                    <Button type="submit">Filter</Button>
+                </FilterBar>
+
+                <DataTable
+                    columns={[
+                        {
+                            key: 'candidate',
+                            header: 'Candidate',
+                            className: 'font-medium text-ink',
+                            render: (row) => row.full_name,
+                        },
+                        { key: 'mobile', header: 'Mobile', render: (row) => row.mobile },
+                        { key: 'email', header: 'Email', render: (row) => row.email },
+                        { key: 'location', header: 'Location', render: (row) => row.current_location },
+                        { key: 'job', header: 'Job', render: (row) => row.job?.title ?? '—' },
+                        { key: 'industry', header: 'Industry', render: (row) => row.job?.industry ?? '—' },
+                        { key: 'date', header: 'Date', render: (row) => row.applied_at ?? '—' },
+                        {
+                            key: 'status',
+                            header: 'Status',
+                            render: (row) => <StatusBadge status={row.status} />,
+                        },
+                    ]}
+                    rows={applications.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No applications yet."
+                    selectedKey={selectedId}
+                    onRowClick={(row) => router.get(queryFor(row.id), {}, { preserveState: true })}
+                />
+                <Pagination links={applications.links} />
             </div>
 
-            <form onSubmit={filter} className="mb-6 grid gap-3 rounded-xl border border-line bg-white p-4 md:grid-cols-4">
-                <input name="search" defaultValue={filters.search} placeholder="Name, email, mobile, job" className={inputClass} />
-                <select name="status" defaultValue={filters.status} className={inputClass}>
-                    <option value="">All statuses</option>
-                    {statuses.map((status) => (
-                        <option key={status} value={status}>
-                            {status}
-                        </option>
-                    ))}
-                </select>
-                <select name="job_id" defaultValue={filters.job_id} className={inputClass}>
-                    <option value="">All jobs</option>
-                    {options.jobs.map((job) => (
-                        <option key={job.id} value={job.id}>
-                            {job.title}
-                        </option>
-                    ))}
-                </select>
-                <select name="industry" defaultValue={filters.industry} className={inputClass}>
-                    <option value="">All industries</option>
-                    {options.industries.map((value) => (
-                        <option key={value} value={value}>
-                            {value}
-                        </option>
-                    ))}
-                </select>
-                <select name="location" defaultValue={filters.location} className={inputClass}>
-                    <option value="">All locations</option>
-                    {options.locations.map((value) => (
-                        <option key={value} value={value}>
-                            {value}
-                        </option>
-                    ))}
-                </select>
-                <select name="experience" defaultValue={filters.experience} className={inputClass}>
-                    <option value="">All experience</option>
-                    {options.experiences.map((value) => (
-                        <option key={value} value={value}>
-                            {value}
-                        </option>
-                    ))}
-                </select>
-                <input name="date_from" type="date" defaultValue={filters.date_from} className={inputClass} aria-label="Applied from" />
-                <input name="date_to" type="date" defaultValue={filters.date_to} className={inputClass} aria-label="Applied to" />
-                <button type="submit" className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white">
-                    Filter
-                </button>
-            </form>
-
-            <div className="overflow-x-auto rounded-xl border border-line bg-white">
-                <table className="min-w-full text-left text-sm">
-                    <thead className="border-b border-line bg-surface text-muted">
-                        <tr>
-                            <th className="px-4 py-3 font-medium">Candidate</th>
-                            <th className="px-4 py-3 font-medium">Mobile</th>
-                            <th className="px-4 py-3 font-medium">Email</th>
-                            <th className="px-4 py-3 font-medium">Location</th>
-                            <th className="px-4 py-3 font-medium">Job</th>
-                            <th className="px-4 py-3 font-medium">Industry</th>
-                            <th className="px-4 py-3 font-medium">Date</th>
-                            <th className="px-4 py-3 font-medium">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {applications.data.length === 0 ? (
-                            <tr>
-                                <td colSpan={8} className="px-4 py-8 text-muted">
-                                    No applications yet.
-                                </td>
-                            </tr>
-                        ) : (
-                            applications.data.map((application) => (
-                                <tr
-                                    key={application.id}
-                                    className={`cursor-pointer border-b border-line last:border-0 ${
-                                        selectedId === application.id ? 'bg-surface' : 'hover:bg-surface/60'
-                                    }`}
-                                    onClick={() => router.get(queryFor(application.id), {}, { preserveState: true })}
-                                >
-                                    <td className="px-4 py-3 font-medium text-ink">{application.full_name}</td>
-                                    <td className="px-4 py-3 text-muted">{application.mobile}</td>
-                                    <td className="px-4 py-3 text-muted">{application.email}</td>
-                                    <td className="px-4 py-3 text-muted">{application.current_location}</td>
-                                    <td className="px-4 py-3 text-muted">{application.job?.title ?? '—'}</td>
-                                    <td className="px-4 py-3 text-muted">{application.job?.industry ?? '—'}</td>
-                                    <td className="px-4 py-3 text-muted">{application.applied_at ?? '—'}</td>
-                                    <td className="px-4 py-3 text-muted">{application.status}</td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            <Pagination links={applications.links} />
-            </div>
-
-            {drawer && (
-                <div className="fixed inset-0 z-[60] flex justify-end">
-                    <button
-                        type="button"
-                        className="absolute inset-0 bg-ink/40"
-                        aria-label="Close application detail"
-                        onClick={() => router.get('/admin/applications', { ...filters, application: undefined })}
-                    />
-                    <aside className="relative z-10 h-full w-full max-w-lg min-w-0 overflow-y-auto overflow-x-hidden bg-white p-6 shadow-xl">
-                        <div className="flex items-start justify-between gap-3">
-                            <h2 className="text-xl font-semibold text-ink">{drawer.full_name}</h2>
-                            <button
-                                type="button"
-                                className="text-sm text-muted"
-                                onClick={() => router.get('/admin/applications', { ...filters, application: undefined })}
-                            >
-                                Close
-                            </button>
-                        </div>
-
-                        <section className="mt-6">
+            <Drawer open={selected !== null} title={selected?.full_name ?? 'Application'} onClose={closeDrawer}>
+                {selected && (
+                    <>
+                        <section>
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Personal details</h3>
-                            <p className="mt-2 text-sm text-ink">{drawer.email}</p>
-                            <p className="text-sm text-ink">{drawer.mobile}</p>
-                            <p className="text-sm text-ink">{drawer.current_location}</p>
+                            <p className="mt-2 text-sm text-ink">{selected.email}</p>
+                            <p className="text-sm text-ink">{selected.mobile}</p>
+                            <p className="text-sm text-ink">{selected.current_location}</p>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Professional details</h3>
-                            <p className="mt-2 text-sm text-ink">Experience: {drawer.experience}</p>
-                            <p className="text-sm text-ink">Qualification: {drawer.qualification}</p>
+                            <p className="mt-2 text-sm text-ink">Experience: {selected.experience}</p>
+                            <p className="text-sm text-ink">Qualification: {selected.qualification}</p>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Application details</h3>
-                            <p className="mt-2 text-sm text-ink">{drawer.job?.title ?? '—'}</p>
-                            <p className="text-sm text-ink">Industry: {drawer.job?.industry ?? '—'}</p>
-                            <p className="text-sm text-ink">Applied: {drawer.applied_at ?? '—'}</p>
+                            <p className="mt-2 text-sm text-ink">{selected.job?.title ?? '—'}</p>
+                            <p className="text-sm text-ink">Industry: {selected.job?.industry ?? '—'}</p>
+                            <p className="text-sm text-ink">Applied: {selected.applied_at ?? '—'}</p>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Additional information</h3>
                             <p className="mt-2 whitespace-pre-line text-sm text-muted">
-                                {drawer.additional_information || 'None provided.'}
+                                {selected.additional_information || 'None provided.'}
                             </p>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Resume</h3>
-                            {drawer.has_resume ? (
-                                <a
-                                    href={drawer.resume_url}
-                                    className="mt-2 inline-block text-sm font-medium text-brand"
-                                >
+                            {selected.has_resume ? (
+                                <a href={selected.resume_url} className="mt-2 inline-block text-sm font-medium text-brand">
                                     Download resume
                                 </a>
                             ) : (
@@ -256,11 +227,12 @@ export default function ApplicationsIndex({
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Application status</h3>
-                            <select
-                                className={`${inputClass} mt-2`}
-                                value={drawer.status}
+                            <Select
+                                className="mt-2"
+                                value={selected.status}
+                                aria-label="Application status"
                                 onChange={(event) =>
-                                    router.patch(`/admin/applications/${drawer.id}/status`, {
+                                    router.patch(`/admin/applications/${selected.id}/status`, {
                                         status: event.target.value,
                                     })
                                 }
@@ -270,48 +242,37 @@ export default function ApplicationsIndex({
                                         {status}
                                     </option>
                                 ))}
-                            </select>
+                            </Select>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Internal Notes</h3>
-                            <ul className="mt-2 space-y-2">
-                                {(drawer.internal_notes ?? []).length === 0 ? (
-                                    <li className="text-sm text-muted">No notes yet.</li>
-                                ) : (
-                                    drawer.internal_notes.map((note, index) => (
-                                        <li key={`${note.created_at}-${index}`} className="rounded-md bg-surface px-3 py-2 text-sm">
-                                            <p className="text-ink">{note.body}</p>
-                                            <p className="mt-1 text-xs text-muted">
-                                                {note.author_name} · {note.created_at}
-                                            </p>
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
+                            <ActivityFeed
+                                items={(selected.internal_notes ?? []).map((note, index) => ({
+                                    id: `${note.created_at}-${index}`,
+                                    title: note.body,
+                                    meta: `${note.author_name} · ${note.created_at}`,
+                                }))}
+                                empty="No notes yet."
+                            />
                             <form
                                 onSubmit={(event) => {
                                     event.preventDefault();
-                                    noteForm.post(`/admin/applications/${drawer.id}/notes`, {
+                                    noteForm.post(`/admin/applications/${selected.id}/notes`, {
                                         onSuccess: () => noteForm.reset(),
                                     });
                                 }}
                                 className="mt-3 space-y-2"
                             >
-                                <textarea
-                                    className={`${inputClass} min-h-24`}
+                                <Textarea
                                     value={noteForm.data.note}
                                     onChange={(event) => noteForm.setData('note', event.target.value)}
                                     placeholder="Add an internal note"
                                 />
                                 {noteForm.errors.note && <p className="text-sm text-danger">{noteForm.errors.note}</p>}
-                                <button
-                                    type="submit"
-                                    disabled={noteForm.processing}
-                                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled"
-                                >
+                                <Button type="submit" disabled={noteForm.processing}>
                                     Add note
-                                </button>
+                                </Button>
                             </form>
                         </section>
 
@@ -320,39 +281,37 @@ export default function ApplicationsIndex({
                             <form
                                 onSubmit={(event) => {
                                     event.preventDefault();
-                                    interviewForm.put(`/admin/applications/${drawer.id}/interview`);
+                                    interviewForm.put(`/admin/applications/${selected.id}/interview`);
                                 }}
                                 className="mt-2 space-y-2"
                             >
-                                <input
+                                <Input
                                     type="datetime-local"
-                                    className={inputClass}
                                     value={interviewForm.data.scheduled_at}
                                     onChange={(event) => interviewForm.setData('scheduled_at', event.target.value)}
                                     required
+                                    aria-label="Interview time"
                                 />
                                 {interviewForm.errors.scheduled_at && (
                                     <p className="text-sm text-danger">{interviewForm.errors.scheduled_at}</p>
                                 )}
-                                <select
-                                    className={inputClass}
+                                <Select
                                     value={interviewForm.data.mode}
                                     onChange={(event) => interviewForm.setData('mode', event.target.value)}
+                                    aria-label="Interview mode"
                                 >
                                     {interviewModes.map((mode) => (
                                         <option key={mode} value={mode}>
                                             {mode.replace('_', ' ')}
                                         </option>
                                     ))}
-                                </select>
-                                <input
-                                    className={inputClass}
+                                </Select>
+                                <Input
                                     placeholder="Location or link"
                                     value={interviewForm.data.location_or_link}
                                     onChange={(event) => interviewForm.setData('location_or_link', event.target.value)}
                                 />
-                                <input
-                                    className={inputClass}
+                                <Input
                                     placeholder="Interviewer name"
                                     value={interviewForm.data.interviewer_name}
                                     onChange={(event) => interviewForm.setData('interviewer_name', event.target.value)}
@@ -361,57 +320,45 @@ export default function ApplicationsIndex({
                                 {interviewForm.errors.interviewer_name && (
                                     <p className="text-sm text-danger">{interviewForm.errors.interviewer_name}</p>
                                 )}
-                                <select
-                                    className={inputClass}
+                                <Select
                                     value={interviewForm.data.outcome}
                                     onChange={(event) => interviewForm.setData('outcome', event.target.value)}
+                                    aria-label="Interview outcome"
                                 >
                                     {interviewOutcomes.map((outcome) => (
                                         <option key={outcome} value={outcome}>
                                             {outcome.replace('_', ' ')}
                                         </option>
                                     ))}
-                                </select>
-                                <textarea
-                                    className={`${inputClass} min-h-20`}
+                                </Select>
+                                <Textarea
+                                    className="min-h-20"
                                     placeholder="Internal interview notes"
                                     value={interviewForm.data.notes}
                                     onChange={(event) => interviewForm.setData('notes', event.target.value)}
                                 />
-                                <button
-                                    type="submit"
-                                    disabled={interviewForm.processing}
-                                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled"
-                                >
+                                <Button type="submit" disabled={interviewForm.processing}>
                                     Save interview
-                                </button>
+                                </Button>
                             </form>
                         </section>
 
                         <section className="mt-6">
                             <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Activity</h3>
-                            <ul className="mt-2 space-y-2">
-                                {(drawer.activities ?? []).length === 0 ? (
-                                    <li className="text-sm text-muted">No activity yet.</li>
-                                ) : (
-                                    (drawer.activities ?? []).map((activity) => (
-                                        <li key={activity.id} className="rounded-md bg-surface px-3 py-2 text-sm">
-                                            <p className="text-ink">
-                                                {activity.type === 'status_changed'
-                                                    ? `Status: ${activity.from_status ?? '—'} → ${activity.to_status ?? '—'}`
-                                                    : activity.body || activity.type.replace('_', ' ')}
-                                            </p>
-                                            <p className="mt-1 text-xs text-muted">
-                                                {activity.actor_name} · {activity.created_at}
-                                            </p>
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
+                            <ActivityFeed
+                                items={(selected.activities ?? []).map((activity) => ({
+                                    id: activity.id,
+                                    title:
+                                        activity.type === 'status_changed'
+                                            ? `Status: ${activity.from_status ?? '—'} → ${activity.to_status ?? '—'}`
+                                            : activity.body || activity.type.replace('_', ' '),
+                                    meta: `${activity.actor_name} · ${activity.created_at}`,
+                                }))}
+                            />
                         </section>
-                    </aside>
-                </div>
-            )}
+                    </>
+                )}
+            </Drawer>
         </AdminLayout>
     );
 }

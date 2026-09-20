@@ -2,13 +2,25 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Models\Application;
+use App\Models\EmployerEnquiry;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEnquiryNoteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        $application = $this->route('application');
+        if ($application instanceof Application) {
+            return $this->user()?->can('update', $application) === true;
+        }
+
+        $enquiry = $this->route('employerEnquiry');
+        if ($enquiry instanceof EmployerEnquiry) {
+            return $this->user()?->can('update', $enquiry) === true;
+        }
+
+        return false;
     }
 
     /**

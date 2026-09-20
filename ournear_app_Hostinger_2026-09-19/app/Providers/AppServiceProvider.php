@@ -2,12 +2,23 @@
 
 namespace App\Providers;
 
-use Illuminate\Auth\Notifications\ResetPassword;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Http\Request;
+use App\Models\Application;
+use App\Models\CandidateProfile;
+use App\Models\EmployerEnquiry;
+use App\Models\Job;
+use App\Models\User;
+use App\Policies\ApplicationPolicy;
+use App\Policies\CandidateProfilePolicy;
+use App\Policies\EmployerEnquiryPolicy;
+use App\Policies\JobPolicy;
+use App\Policies\UserPolicy;
 use App\Services\AnalyticsService;
 use App\Services\PublicSeoService;
 use App\Services\WebsiteSettingService;
+use Illuminate\Auth\Notifications\ResetPassword;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -28,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::policy(Job::class, JobPolicy::class);
+        Gate::policy(Application::class, ApplicationPolicy::class);
+        Gate::policy(EmployerEnquiry::class, EmployerEnquiryPolicy::class);
+        Gate::policy(CandidateProfile::class, CandidateProfilePolicy::class);
+        Gate::policy(User::class, UserPolicy::class);
+
         RateLimiter::for('admin-login', function (Request $request) {
             return Limit::perMinute(5)->by(strtolower((string) $request->input('email')).'|'.$request->ip());
         });
@@ -75,7 +92,7 @@ class AppServiceProvider extends ServiceProvider
 
         ResetPassword::createUrlUsing(function (object $notifiable, string $token) {
             $email = $notifiable->getEmailForPasswordReset();
-            $route = $notifiable instanceof \App\Models\User && $notifiable->isAdmin()
+            $route = $notifiable instanceof User && $notifiable->isAdmin()
                 ? 'admin.password.reset'
                 : 'password.reset';
 

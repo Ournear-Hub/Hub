@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\EmployerEnquiryStatus;
+use App\Models\EmployerEnquiry;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +11,10 @@ class UpdateEmployerEnquiryStatusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        $enquiry = $this->route('employerEnquiry');
+
+        return $enquiry instanceof EmployerEnquiry
+            && $this->user()?->can('update', $enquiry) === true;
     }
 
     /**

@@ -57,11 +57,7 @@ class CandidateApplicationsController extends Controller
 
     public function resume(Request $request, Application $application): StreamedResponse
     {
-        abort_unless(
-            $request->user()?->isCandidate() === true
-            && (int) $application->user_id === (int) $request->user()->id,
-            403
-        );
+        $this->authorize('downloadResume', $application);
 
         $path = $application->getAttributes()['resume_path'] ?? null;
 

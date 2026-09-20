@@ -80,6 +80,30 @@ class User extends Authenticatable
     }
 
     /**
+     * V1 admin access. Future Recruiter / Manager roles will extend these
+     * helpers without changing the current Admin middleware.
+     */
+    public function canAccessAdminPanel(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function canManageRecruitment(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function canManageWebsite(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
      * @return HasOne<CandidateProfile, $this>
      */
     public function candidateProfile(): HasOne

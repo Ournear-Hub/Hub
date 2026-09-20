@@ -23,6 +23,8 @@ class ApplicationsController extends Controller
 {
     public function index(Request $request, ApplicationQuery $applications): Response
     {
+        $this->authorize('viewAny', Application::class);
+
         $page = $applications->adminIndex($request)->through(fn (Application $application) => $application->toAdminListArray());
 
         $selected = null;
@@ -99,8 +101,7 @@ class ApplicationsController extends Controller
 
     public function resume(Application $application): StreamedResponse
     {
-        abort_unless($requestUser = request()->user(), 403);
-        abort_unless($requestUser->isAdmin(), 403);
+        $this->authorize('downloadResume', $application);
 
         $path = $application->getAttributes()['resume_path'] ?? null;
 
