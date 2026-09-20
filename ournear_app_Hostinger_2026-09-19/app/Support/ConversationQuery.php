@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\ConversationContextType;
+use App\Enums\PermissionName;
 use App\Models\Conversation;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -82,6 +83,8 @@ class ConversationQuery
         return [
             'admins' => User::query()
                 ->where('role', 'admin')
+                ->where('is_active', true)
+                ->whereHas('roles.permissions', fn ($query) => $query->where('name', PermissionName::MessagesManage->value))
                 ->orderBy('name')
                 ->get(['id', 'name', 'email'])
                 ->map(fn (User $user) => [

@@ -4,6 +4,7 @@ namespace App\Http\Requests\Account;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +37,7 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this);
 
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
@@ -47,12 +49,24 @@ class LoginRequest extends FormRequest
         if (! $user instanceof User || ! in_array($user->role, [UserRole::Candidate, UserRole::Employer], true)) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this, $user instanceof User ? $user : null, 'not_account_member');
 
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
         }
 
+        if (! $user->isActive()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this, $user, 'inactive');
+
+            throw ValidationException::withMessages([
+                'email' => 'This account is inactive.',
+            ]);
+        }
+
+        app(LoginLogService::class)->success($this, $user, 'account');
         RateLimiter::clear($this->throttleKey());
     }
 

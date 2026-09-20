@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PermissionName;
 use App\Models\Application;
 use App\Models\User;
 
@@ -9,12 +10,13 @@ class ApplicationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::ApplicationsView->value)
+            || $user->hasPermission(PermissionName::ApplicationsManage->value);
     }
 
     public function view(User $user, Application $application): bool
     {
-        if ($user->canManageRecruitment()) {
+        if ($this->viewAny($user)) {
             return true;
         }
 
@@ -23,12 +25,12 @@ class ApplicationPolicy
 
     public function update(User $user, Application $application): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::ApplicationsManage->value);
     }
 
     public function downloadResume(User $user, Application $application): bool
     {
-        if ($user->canManageRecruitment()) {
+        if ($this->view($user, $application)) {
             return true;
         }
 

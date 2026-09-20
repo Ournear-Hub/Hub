@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -35,6 +36,7 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this);
 
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
@@ -46,12 +48,24 @@ class LoginRequest extends FormRequest
         if (! $user instanceof User || ! $user->isAdmin()) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this, $user instanceof User ? $user : null, 'not_admin');
 
             throw ValidationException::withMessages([
                 'email' => 'These credentials do not match our records.',
             ]);
         }
 
+        if (! $user->isActive()) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            app(LoginLogService::class)->failure($this, $user, 'inactive');
+
+            throw ValidationException::withMessages([
+                'email' => 'This account is inactive.',
+            ]);
+        }
+
+        app(LoginLogService::class)->success($this, $user, 'admin');
         RateLimiter::clear($this->throttleKey());
     }
 

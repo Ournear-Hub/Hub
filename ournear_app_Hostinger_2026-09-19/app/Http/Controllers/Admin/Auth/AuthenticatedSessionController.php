@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LoginRequest;
+use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,8 +27,11 @@ class AuthenticatedSessionController extends Controller
         return redirect()->intended(route('admin.dashboard'));
     }
 
-    public function destroy(Request $request): RedirectResponse
+    public function destroy(Request $request, LoginLogService $logs): RedirectResponse
     {
+        $user = $request->user();
+        $logs->logout($request, $user instanceof User ? $user : null);
+
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();

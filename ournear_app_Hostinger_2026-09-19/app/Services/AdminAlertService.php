@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\AdminNotificationEvent;
+use App\Enums\PermissionName;
 use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\Employee;
@@ -241,7 +242,11 @@ class AdminAlertService
 
         DB::afterCommit(function () use ($event, $title, $body, $url, $context, $fingerprint) {
             try {
-                $admins = User::query()->where('role', UserRole::Admin->value)->get();
+                $admins = User::query()
+                    ->where('role', UserRole::Admin->value)
+                    ->where('is_active', true)
+                    ->whereHas('roles.permissions', fn ($query) => $query->where('name', PermissionName::NotificationsView->value))
+                    ->get();
                 if ($admins->isEmpty()) {
                     return;
                 }

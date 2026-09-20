@@ -2,9 +2,11 @@
 
 namespace Database\Factories;
 
+use App\Enums\StaffRoleSlug;
 use App\Enums\UserRole;
 use App\Models\CandidateProfile;
 use App\Models\EmployerProfile;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -21,8 +23,6 @@ class UserFactory extends Factory
     protected static ?string $password;
 
     /**
-     * Define the model's default state.
-     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -31,10 +31,26 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'role' => UserRole::Admin,
+            'is_active' => true,
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    public function configure(): static
+    {
+        return $this->afterCreating(function (User $user) {
+            if ($user->role !== UserRole::Admin) {
+                return;
+            }
+
+            $role = Role::query()->where('slug', StaffRoleSlug::SuperAdmin->value)->first();
+            if ($role && $user->roles()->doesntExist()) {
+                $user->roles()->sync([$role->id]);
+                $user->forgetPermissionCache();
+            }
+        });
     }
 
     public function candidate(): static
@@ -53,6 +69,26 @@ class UserFactory extends Factory
         ])->afterCreating(function (User $user) {
             EmployerProfile::query()->create(['user_id' => $user->id]);
         });
+    }
+
+    public function staffRole(string $slug): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => UserRole::Admin,
+        ])->afterCreating(function (User $user) use ($slug) {
+            $role = Role::query()->where('slug', $slug)->first();
+            if ($role) {
+                $user->roles()->sync([$role->id]);
+                $user->forgetPermissionCache();
+            }
+        });
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
     }
 
     /**

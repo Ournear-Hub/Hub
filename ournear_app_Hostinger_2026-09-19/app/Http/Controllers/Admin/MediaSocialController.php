@@ -17,6 +17,8 @@ class MediaSocialController extends Controller
 {
     public function index(Request $request, SocialLinkService $socials): Response
     {
+        abort_unless($request->user()?->canManageWebsite() === true, 403);
+
         $tab = $request->string('tab')->toString() === 'social' ? 'social' : 'media';
 
         $media = MediaAsset::query()
@@ -42,8 +44,9 @@ class MediaSocialController extends Controller
             ->with('success', 'Image uploaded.');
     }
 
-    public function destroy(MediaAsset $media, MediaLibraryService $library): RedirectResponse
+    public function destroy(Request $request, MediaAsset $media, MediaLibraryService $library): RedirectResponse
     {
+        abort_unless($request->user()?->canManageWebsite() === true, 403);
         $library->delete($media);
 
         return back()->with('success', 'Image deleted.');

@@ -1,6 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import BrandMark from '@/Components/BrandMark';
+import type { SharedPageProps } from '@/types/page';
 import type { AdminNavItem, NavSection } from '@/types/layout';
 
 const dashboardItem: AdminNavItem = { label: 'Dashboard', href: '/admin' };
@@ -10,45 +11,45 @@ const sections: NavSection[] = [
         id: 'recruitment',
         label: 'Recruitment',
         items: [
-            { label: 'Jobs', href: '/admin/jobs' },
-            { label: 'Candidates', href: '/admin/candidates' },
-            { label: 'Applications', href: '/admin/applications' },
-            { label: 'Screening', href: '/admin/screening' },
-            { label: 'Shortlisted', href: '/admin/shortlisted' },
-            { label: 'Employer Submissions', href: '/admin/submissions' },
-            { label: 'Placements', href: '/admin/placements' },
-            { label: 'Joined / Employees', href: '/admin/employees' },
-            { label: 'Replacements', href: '/admin/replacements' },
+            { label: 'Jobs', href: '/admin/jobs', permission: 'jobs.view' },
+            { label: 'Candidates', href: '/admin/candidates', permission: 'candidates.view' },
+            { label: 'Applications', href: '/admin/applications', permission: 'applications.view' },
+            { label: 'Screening', href: '/admin/screening', permission: 'applications.view' },
+            { label: 'Shortlisted', href: '/admin/shortlisted', permission: 'applications.view' },
+            { label: 'Employer Submissions', href: '/admin/submissions', permission: 'submissions.view' },
+            { label: 'Placements', href: '/admin/placements', permission: 'placements.view' },
+            { label: 'Joined / Employees', href: '/admin/employees', permission: 'employees.view' },
+            { label: 'Replacements', href: '/admin/replacements', permission: 'replacements.view' },
         ],
     },
     {
         id: 'employers',
         label: 'Employers',
         items: [
-            { label: 'Employers', href: '/admin/employers' },
-            { label: 'Employer Enquiries', href: '/admin/employer-enquiries' },
+            { label: 'Employers', href: '/admin/employers', permission: 'employers.view' },
+            { label: 'Employer Enquiries', href: '/admin/employer-enquiries', permission: 'employers.view' },
         ],
     },
     {
         id: 'finance',
         label: 'Finance',
-        items: [{ label: 'Payments', href: '/admin/finance' }],
+        items: [{ label: 'Payments', href: '/admin/finance', permission: 'finance.view' }],
     },
     {
         id: 'communication',
         label: 'Communication',
         items: [
-            { label: 'Notifications', href: '/admin/notifications' },
-            { label: 'Messages', href: '/admin/messages' },
+            { label: 'Notifications', href: '/admin/notifications', permission: 'notifications.view' },
+            { label: 'Messages', href: '/admin/messages', permission: 'messages.manage' },
         ],
     },
     {
         id: 'users',
         label: 'Users & Security',
         items: [
-            { label: 'Users', comingSoon: true },
-            { label: 'Activity Logs', comingSoon: true },
-            { label: 'Login Logs', comingSoon: true },
+            { label: 'Users', href: '/admin/users', permission: 'users.view' },
+            { label: 'Activity Logs', href: '/admin/activity-logs', permission: 'security.view' },
+            { label: 'Login Logs', href: '/admin/login-logs', permission: 'security.view' },
             { label: 'Approval Requests', comingSoon: true },
         ],
     },
@@ -56,8 +57,8 @@ const sections: NavSection[] = [
         id: 'website',
         label: 'Website',
         items: [
-            { label: 'Content', href: '/admin/website-content' },
-            { label: 'Media & Social', href: '/admin/media-social' },
+            { label: 'Content', href: '/admin/website-content', permission: 'website.manage' },
+            { label: 'Media & Social', href: '/admin/media-social', permission: 'website.manage' },
             { label: 'Settings', href: '/admin/settings' },
         ],
     },
@@ -66,8 +67,8 @@ const sections: NavSection[] = [
         label: 'Administration',
         items: [
             { label: 'Admin Users', comingSoon: true },
-            { label: 'Roles & Permissions', comingSoon: true },
-            { label: 'Master Data', href: '/admin/master-data' },
+            { label: 'Roles & Permissions', href: '/admin/roles', permission: 'roles.manage' },
+            { label: 'Master Data', href: '/admin/master-data', permission: 'master_data.manage' },
         ],
     },
 ];
@@ -76,6 +77,18 @@ type SidebarProps = {
     open: boolean;
     onClose: () => void;
 };
+
+function hasPermission(permissions: string[] | undefined, required?: string): boolean {
+    if (!required) {
+        return true;
+    }
+
+    return (permissions ?? []).includes(required) || (permissions ?? []).includes(required.replace('.view', '.manage'));
+}
+
+function visibleItems(items: AdminNavItem[], permissions: string[] | undefined): AdminNavItem[] {
+    return items.filter((item) => item.comingSoon || hasPermission(permissions, item.permission));
+}
 
 function isActive(url: string, href: string): boolean {
     if (href === '/admin') {
@@ -119,8 +132,12 @@ function NavLink({ item, url, onClose }: { item: AdminNavItem; url: string; onCl
 }
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
-    const { url } = usePage();
+    const { url, props } = usePage<SharedPageProps>();
+    const permissions = props.auth.user?.permissions;
     const [manual, setManual] = useState<Record<string, boolean>>({});
+    const visibleSections = sections
+        .map((section) => ({ ...section, items: visibleItems(section.items, permissions) }))
+        .filter((section) => section.items.length > 0);
 
     const isSectionOpen = (section: NavSection): boolean => {
         if (Object.prototype.hasOwnProperty.call(manual, section.id)) {
@@ -132,7 +149,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
     const toggle = (id: string) => {
         setManual((current) => {
-            const section = sections.find((item) => item.id === id);
+            const section = visibleSections.find((item) => item.id === id);
             const currentlyOpen = section
                 ? Object.prototype.hasOwnProperty.call(current, id)
                     ? current[id]
@@ -169,7 +186,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                 <nav className="flex-1 space-y-4 overflow-y-auto p-3" aria-label="Admin">
                     <NavLink item={dashboardItem} url={url} onClose={onClose} />
 
-                    {sections.map((section) => {
+                    {visibleSections.map((section) => {
                         const openSection = isSectionOpen(section);
 
                         return (

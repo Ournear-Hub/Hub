@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Account;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Account\ResetPasswordRequest;
 use App\Models\User;
+use App\Services\LoginLogService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +25,7 @@ class NewPasswordController extends Controller
         ]);
     }
 
-    public function store(ResetPasswordRequest $request): RedirectResponse
+    public function store(ResetPasswordRequest $request, LoginLogService $logs): RedirectResponse
     {
         $account = User::query()->where('email', $request->string('email')->toString())->first();
 
@@ -34,13 +35,16 @@ class NewPasswordController extends Controller
 
         $status = Password::reset(
             $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user) use ($request) {
+            function ($user) use ($request, $logs) {
                 $user->forceFill([
                     'password' => Hash::make($request->string('password')->toString()),
                     'remember_token' => Str::random(40),
                 ])->save();
 
                 event(new PasswordReset($user));
+                if ($user instanceof User) {
+                    $logs->passwordResetSuccess($request, $user);
+                }
             }
         );
 

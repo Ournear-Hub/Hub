@@ -25,6 +25,8 @@ class WebsiteContentController extends Controller
 
     public function index(Request $request, ContactEnquiryQuery $enquiries, WebsiteContentService $content): Response
     {
+        abort_unless($request->user()?->canManageWebsite() === true, 403);
+
         $content->ensureSeeded();
 
         $allowed = collect($content->pageTabs())->pluck('slug');

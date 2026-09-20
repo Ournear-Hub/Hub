@@ -26,6 +26,11 @@ abstract class TestCase extends BaseTestCase
         return User::factory()->create($overrides);
     }
 
+    protected function makeStaff(string $roleSlug, array $overrides = []): User
+    {
+        return User::factory()->staffRole($roleSlug)->create($overrides);
+    }
+
     protected function makeCandidate(array $overrides = []): User
     {
         return User::factory()->candidate()->create($overrides);

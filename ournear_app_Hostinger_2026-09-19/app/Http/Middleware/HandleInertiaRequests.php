@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\PermissionName;
 use App\Models\User;
 use App\Support\NotificationQuery;
 use App\Services\AnalyticsService;
@@ -52,6 +53,9 @@ class HandleInertiaRequests extends Middleware
                         'name' => $request->user()->name,
                         'email' => $request->user()->email,
                         'role' => $request->user()->role->value,
+                        'permissions' => $request->user()->isAdmin()
+                            ? $request->user()->permissionNames()
+                            : [],
                     ]
                     : null,
             ],
@@ -62,7 +66,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'adminAlerts' => function () use ($request) {
                 $user = $request->user();
-                if (! $user instanceof User || ! $user->canManageRecruitment()) {
+                if (! $user instanceof User || ! $user->hasPermission(PermissionName::NotificationsView->value)) {
                     return null;
                 }
 

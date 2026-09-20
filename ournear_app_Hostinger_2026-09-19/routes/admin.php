@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogsController;
 use App\Http\Controllers\Admin\ApplicationsController;
 use App\Http\Controllers\Admin\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Admin\Auth\NewPasswordController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Admin\CandidatesController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EmployeesController;
 use App\Http\Controllers\Admin\FinanceController;
+use App\Http\Controllers\Admin\LoginLogsController;
 use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Http\Controllers\Admin\EmployerEnquiriesController;
@@ -16,6 +18,8 @@ use App\Http\Controllers\Admin\EmployerSubmissionsController;
 use App\Http\Controllers\Admin\JobsController;
 use App\Http\Controllers\Admin\PlacementsController;
 use App\Http\Controllers\Admin\ReplacementsController;
+use App\Http\Controllers\Admin\RolesController;
+use App\Http\Controllers\Admin\UsersController;
 use App\Enums\MasterEntityType;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MediaSocialController;
@@ -134,5 +138,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
         Route::put('settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile');
         Route::put('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
+
+        Route::get('users', [UsersController::class, 'index'])->name('users.index');
+        Route::post('users', [UsersController::class, 'store'])->name('users.store');
+        Route::put('users/{user}', [UsersController::class, 'update'])->whereNumber('user')->name('users.update');
+        Route::put('users/{user}/roles', [UsersController::class, 'syncRoles'])->whereNumber('user')->name('users.roles');
+        Route::patch('users/{user}/status', [UsersController::class, 'updateStatus'])->whereNumber('user')->name('users.status');
+        Route::post('users/{user}/password-reset', [UsersController::class, 'sendPasswordReset'])->whereNumber('user')->name('users.password-reset');
+
+        Route::get('roles', [RolesController::class, 'index'])->name('roles.index');
+        Route::put('roles/{role}/permissions', [RolesController::class, 'syncPermissions'])->whereNumber('role')->name('roles.permissions');
+
+        Route::get('activity-logs', [ActivityLogsController::class, 'index'])->name('activity-logs.index');
+        Route::get('login-logs', [LoginLogsController::class, 'index'])->name('login-logs.index');
     });
 });

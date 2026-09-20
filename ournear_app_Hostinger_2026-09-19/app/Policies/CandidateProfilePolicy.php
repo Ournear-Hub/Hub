@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PermissionName;
 use App\Models\CandidateProfile;
 use App\Models\User;
 
@@ -9,12 +10,13 @@ class CandidateProfilePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::CandidatesView->value)
+            || $user->hasPermission(PermissionName::CandidatesManage->value);
     }
 
     public function view(User $user, CandidateProfile $candidateProfile): bool
     {
-        if ($user->canManageRecruitment()) {
+        if ($this->viewAny($user)) {
             return true;
         }
 
@@ -23,7 +25,7 @@ class CandidateProfilePolicy
 
     public function update(User $user, CandidateProfile $candidateProfile): bool
     {
-        if ($user->canManageRecruitment()) {
+        if ($user->hasPermission(PermissionName::CandidatesManage->value)) {
             return true;
         }
 

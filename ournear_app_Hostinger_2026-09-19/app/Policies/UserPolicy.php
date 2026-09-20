@@ -2,30 +2,75 @@
 
 namespace App\Policies;
 
+use App\Enums\PermissionName;
+use App\Enums\StaffRoleSlug;
 use App\Models\User;
 
 class UserPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->canManageUsers();
+        return $user->hasPermission(PermissionName::UsersView->value)
+            || $user->hasPermission(PermissionName::UsersManage->value);
     }
 
     public function view(User $user, User $model): bool
     {
-        if ($user->canManageUsers()) {
+        if ($this->viewAny($user)) {
             return true;
         }
 
         return (int) $user->id === (int) $model->id;
     }
 
+    public function create(User $user): bool
+    {
+        return $user->hasPermission(PermissionName::UsersManage->value);
+    }
+
     public function update(User $user, User $model): bool
     {
-        if ($user->canManageUsers()) {
+        if ((int) $user->id === (int) $model->id) {
             return true;
         }
 
-        return (int) $user->id === (int) $model->id;
+        return $user->hasPermission(PermissionName::UsersManage->value);
+    }
+
+    public function assignRoles(User $user, User $model): bool
+    {
+        if (! $user->hasPermission(PermissionName::UsersManage->value) || ! $model->isAdmin()) {
+            return false;
+        }
+
+        if ($model->isSuperAdmin() && ! $user->isSuperAdmin()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function deactivate(User $user, User $model): bool
+    {
+        if (! $user->hasPermission(PermissionName::UsersManage->value)) {
+            return false;
+        }
+
+        if ((int) $user->id === (int) $model->id) {
+            return false;
+        }
+
+        if ($model->hasStaffRole(StaffRoleSlug::SuperAdmin->value) && ! $user->isSuperAdmin()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function sendPasswordReset(User $user, User $model): bool
+    {
+        return $this->assignRoles($user, $model) || (
+            $user->hasPermission(PermissionName::UsersManage->value) && $model->isAdmin()
+        );
     }
 }

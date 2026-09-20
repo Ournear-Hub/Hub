@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ConversationContextType;
+use App\Enums\PermissionName;
 use App\Models\Application;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
@@ -119,7 +120,7 @@ class MessageService
             ]);
         }
 
-        if (! $recipient->canManageRecruitment()) {
+        if (! $recipient->isAdmin() || ! $recipient->isActive() || ! $recipient->hasPermission(PermissionName::MessagesManage->value)) {
             throw ValidationException::withMessages([
                 'recipient_id' => 'In-app messages can only be sent to Admin users until candidate and employer portals are available.',
             ]);

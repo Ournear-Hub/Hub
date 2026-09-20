@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PermissionName;
 use App\Models\EmployerEnquiry;
 use App\Models\User;
 
@@ -9,12 +10,13 @@ class EmployerEnquiryPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::EmployersView->value)
+            || $user->hasPermission(PermissionName::EmployersManage->value);
     }
 
     public function view(User $user, EmployerEnquiry $employerEnquiry): bool
     {
-        if ($user->canManageRecruitment()) {
+        if ($this->viewAny($user)) {
             return true;
         }
 
@@ -25,6 +27,6 @@ class EmployerEnquiryPolicy
 
     public function update(User $user, EmployerEnquiry $employerEnquiry): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::EmployersManage->value);
     }
 }

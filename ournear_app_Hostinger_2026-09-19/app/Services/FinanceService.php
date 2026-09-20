@@ -6,6 +6,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\PlacementStatus;
 use App\Enums\RecruitmentActivityType;
+use App\Enums\SecurityActivityType;
 use App\Models\Employee;
 use App\Models\Invoice;
 use App\Models\Payment;
@@ -19,6 +20,7 @@ class FinanceService
     public function __construct(
         private RecruitmentActivityService $activities,
         private AdminAlertService $alerts,
+        private SecurityAuditService $audit,
     ) {}
 
     public function createInvoice(
@@ -141,6 +143,12 @@ class FinanceService
 
             $cancelled = $invoice->fresh() ?? $invoice;
             $this->alerts->invoiceCancelled($cancelled);
+            $this->audit->record(
+                SecurityActivityType::InvoiceCancelled,
+                'Invoice '.($cancelled->business_id ?? $cancelled->id).' was cancelled.',
+                $actor,
+                $cancelled,
+            );
 
             return $cancelled;
         });

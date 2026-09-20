@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\PermissionName;
 use App\Models\Conversation;
 use App\Models\User;
 
@@ -9,17 +10,18 @@ class ConversationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::MessagesManage->value);
     }
 
     public function view(User $user, Conversation $conversation): bool
     {
-        return $user->canManageRecruitment() && $conversation->hasParticipant($user);
+        return $user->hasPermission(PermissionName::MessagesManage->value)
+            && $conversation->hasParticipant($user);
     }
 
     public function create(User $user): bool
     {
-        return $user->canManageRecruitment();
+        return $user->hasPermission(PermissionName::MessagesManage->value);
     }
 
     public function update(User $user, Conversation $conversation): bool

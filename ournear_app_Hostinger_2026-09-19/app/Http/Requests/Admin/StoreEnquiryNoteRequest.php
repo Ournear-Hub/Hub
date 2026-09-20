@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Models\Application;
+use App\Models\ContactEnquiry;
 use App\Models\EmployerEnquiry;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -18,6 +19,11 @@ class StoreEnquiryNoteRequest extends FormRequest
         $enquiry = $this->route('employerEnquiry');
         if ($enquiry instanceof EmployerEnquiry) {
             return $this->user()?->can('update', $enquiry) === true;
+        }
+
+        $contact = $this->route('contactEnquiry');
+        if ($contact instanceof ContactEnquiry) {
+            return $this->user()?->canManageWebsite() === true;
         }
 
         return false;

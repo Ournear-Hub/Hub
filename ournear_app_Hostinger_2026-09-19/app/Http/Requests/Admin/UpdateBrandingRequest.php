@@ -11,7 +11,7 @@ class UpdateBrandingRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() === true;
+        return $this->user()?->canManageWebsite() === true;
     }
 
     protected function prepareForValidation(): void

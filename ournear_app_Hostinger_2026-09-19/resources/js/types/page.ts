@@ -8,6 +8,7 @@ export type AuthUser = {
     name: string;
     email: string;
     role?: 'admin' | 'candidate' | 'employer';
+    permissions?: string[];
 };
 
 export type FlashProps = {

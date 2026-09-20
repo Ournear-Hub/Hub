@@ -15,6 +15,7 @@ export type AdminNavItem = {
     label: string;
     href?: string;
     comingSoon?: boolean;
+    permission?: string;
 };
 
 export type NavSection = {
