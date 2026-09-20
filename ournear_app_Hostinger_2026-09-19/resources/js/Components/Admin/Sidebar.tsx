@@ -38,8 +38,8 @@ const sections: NavSection[] = [
         id: 'communication',
         label: 'Communication',
         items: [
-            { label: 'Notifications', comingSoon: true },
-            { label: 'Messages', comingSoon: true },
+            { label: 'Notifications', href: '/admin/notifications' },
+            { label: 'Messages', href: '/admin/messages' },
         ],
     },
     {

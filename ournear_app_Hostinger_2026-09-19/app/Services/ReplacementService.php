@@ -17,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class ReplacementService
 {
-    public function __construct(private RecruitmentActivityService $activities) {}
+    public function __construct(
+        private RecruitmentActivityService $activities,
+        private AdminAlertService $alerts,
+    ) {}
 
     public function request(Employee $employee, User $actor, ReplacementReason $reason, ?string $notes = null): Replacement
     {
@@ -50,7 +53,10 @@ class ReplacementService
                 $employee->placement,
             );
 
-            return $replacement->fresh() ?? $replacement;
+            $created = $replacement->fresh() ?? $replacement;
+            $this->alerts->replacementRequested($created);
+
+            return $created;
         });
     }
 
@@ -93,7 +99,10 @@ class ReplacementService
                 $submission,
             );
 
-            return $replacement->fresh() ?? $replacement;
+            $identified = $replacement->fresh() ?? $replacement;
+            $this->alerts->replacementCandidateIdentified($identified);
+
+            return $identified;
         });
     }
 
@@ -142,7 +151,10 @@ class ReplacementService
                 $replacement->originalPlacement,
             );
 
-            return $replacement->fresh() ?? $replacement;
+            $cancelled = $replacement->fresh() ?? $replacement;
+            $this->alerts->replacementCancelled($cancelled);
+
+            return $cancelled;
         });
     }
 
@@ -211,6 +223,8 @@ class ReplacementService
             $placement->application,
             $placement->submission,
         );
+
+        $this->alerts->replacementCompleted($replacement->fresh() ?? $replacement);
     }
 
     private function assertCanRequest(Employee $employee): void

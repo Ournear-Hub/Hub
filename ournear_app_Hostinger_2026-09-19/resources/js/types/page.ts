@@ -1,6 +1,7 @@
 import type { SiteContent, SeoProps, PageSeoProps, AnalyticsProps } from '@/types/public';
 import type { PublicSocialLink } from '@/types/media';
 import type { CmsPage } from '@/types/cms';
+import type { AdminAlertItem } from '@/types/communication';
 
 export type AuthUser = {
     id: number;
@@ -20,6 +21,10 @@ export type SharedPageProps = {
         user: AuthUser | null;
     };
     flash: FlashProps;
+    adminAlerts?: {
+        unread: number;
+        recent: AdminAlertItem[];
+    } | null;
     errors?: Record<string, string>;
     publicContent?: SiteContent;
     socialLinks?: PublicSocialLink[];

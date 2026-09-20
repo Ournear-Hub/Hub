@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationSubmissionService
 {
+    public function __construct(private AdminAlertService $alerts) {}
+
     public function submit(Job $job, array $validated, UploadedFile $resume): Application
     {
         if (! $job->acceptsApplications()) {
@@ -40,7 +42,7 @@ class ApplicationSubmissionService
 
         $filename = Str::uuid()->toString().'.'.$extension;
 
-        return DB::transaction(function () use ($job, $validated, $resume, $filename, $email) {
+        $application = DB::transaction(function () use ($job, $validated, $resume, $filename, $email) {
             $stored = $resume->storeAs('', $filename, 'resumes');
 
             if ($stored === false) {
@@ -65,6 +67,10 @@ class ApplicationSubmissionService
                 'internal_notes' => [],
             ]);
         });
+
+        $this->alerts->applicationReceived($application);
+
+        return $application;
     }
 
     public function replaceResume(Application $application, UploadedFile $resume, User $candidate): Application

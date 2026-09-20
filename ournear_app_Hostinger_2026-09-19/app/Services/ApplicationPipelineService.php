@@ -24,6 +24,7 @@ class ApplicationPipelineService
     public function __construct(
         private RecruitmentActivityService $activities,
         private RecruitmentNotificationService $notifications,
+        private AdminAlertService $alerts,
     ) {}
 
     public function changeStatus(Application $application, ApplicationStatus $status, User $actor): Application
@@ -188,8 +189,10 @@ class ApplicationPipelineService
         $fresh = $application->fresh() ?? $application;
 
         if (in_array($fresh->status, [ApplicationStatus::New, ApplicationStatus::Reviewing], true)) {
-            return $this->changeStatus($fresh, ApplicationStatus::Shortlisted, $actor);
+            $fresh = $this->changeStatus($fresh, ApplicationStatus::Shortlisted, $actor);
         }
+
+        $this->alerts->candidateShortlisted($fresh);
 
         return $fresh;
     }

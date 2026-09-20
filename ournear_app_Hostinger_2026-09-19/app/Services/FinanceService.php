@@ -16,7 +16,10 @@ use Illuminate\Validation\ValidationException;
 
 class FinanceService
 {
-    public function __construct(private RecruitmentActivityService $activities) {}
+    public function __construct(
+        private RecruitmentActivityService $activities,
+        private AdminAlertService $alerts,
+    ) {}
 
     public function createInvoice(
         Employee $employee,
@@ -104,7 +107,10 @@ class FinanceService
                 InvoiceStatus::Issued->value,
             );
 
-            return $invoice->fresh() ?? $invoice;
+            $issued = $invoice->fresh() ?? $invoice;
+            $this->alerts->invoiceIssued($issued);
+
+            return $issued;
         });
     }
 
@@ -133,7 +139,10 @@ class FinanceService
                 InvoiceStatus::Cancelled->value,
             );
 
-            return $invoice->fresh() ?? $invoice;
+            $cancelled = $invoice->fresh() ?? $invoice;
+            $this->alerts->invoiceCancelled($cancelled);
+
+            return $cancelled;
         });
     }
 
@@ -203,7 +212,10 @@ class FinanceService
                 payment: $payment,
             );
 
-            return $payment->fresh() ?? $payment;
+            $recorded = $payment->fresh() ?? $payment;
+            $this->alerts->paymentReceived($invoice, $recorded);
+
+            return $recorded;
         });
     }
 

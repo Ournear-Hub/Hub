@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Enums\MasterEntityType;
 use App\Models\Application;
 use App\Models\CandidateProfile;
+use App\Models\Conversation;
 use App\Models\Employee;
 use App\Models\EmployerEnquiry;
 use App\Models\EmployerProfile;
@@ -16,6 +17,8 @@ use App\Models\Replacement;
 use App\Models\User;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CandidateProfilePolicy;
+use App\Policies\ConversationPolicy;
+use App\Policies\DatabaseNotificationPolicy;
 use App\Policies\EmployeePolicy;
 use App\Policies\EmployerEnquiryPolicy;
 use App\Policies\EmployerProfilePolicy;
@@ -32,6 +35,7 @@ use App\Services\WebsiteSettingService;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -64,6 +68,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Replacement::class, ReplacementPolicy::class);
         Gate::policy(Invoice::class, InvoicePolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+        Gate::policy(DatabaseNotification::class, DatabaseNotificationPolicy::class);
+        Gate::policy(Conversation::class, ConversationPolicy::class);
 
         foreach (MasterEntityType::cases() as $type) {
             Gate::policy($type->modelClass(), MasterDataPolicy::class);

@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
+use App\Support\NotificationQuery;
 use App\Services\AnalyticsService;
 use App\Services\PublicSeoService;
 use App\Services\SocialLinkService;
@@ -58,6 +60,23 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
                 'status' => $request->session()->get('status'),
             ],
+            'adminAlerts' => function () use ($request) {
+                $user = $request->user();
+                if (! $user instanceof User || ! $user->canManageRecruitment()) {
+                    return null;
+                }
+
+                return [
+                    'unread' => $user->unreadNotifications()->count(),
+                    'recent' => $user->notifications()
+                        ->latest()
+                        ->limit(8)
+                        ->get()
+                        ->map(fn ($notification) => NotificationQuery::toAdminArray($notification))
+                        ->values()
+                        ->all(),
+                ];
+            },
             'publicContent' => fn () => app(WebsiteContentService::class)->common(),
             'socialLinks' => fn () => app(SocialLinkService::class)->publicLinks(),
             'seo' => fn () => app(WebsiteSettingService::class)->publicSeo(),

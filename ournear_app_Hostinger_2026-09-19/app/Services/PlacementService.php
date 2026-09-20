@@ -18,6 +18,7 @@ class PlacementService
     public function __construct(
         private RecruitmentActivityService $activities,
         private ReplacementService $replacements,
+        private AdminAlertService $alerts,
     ) {}
 
     public function createFromSubmission(EmployerSubmission $submission, User $actor, ?string $notes = null): Placement
@@ -49,7 +50,10 @@ class PlacementService
 
             $this->replacements->syncPlacementCreated($placement->fresh() ?? $placement, $actor);
 
-            return $placement->fresh() ?? $placement;
+            $created = $placement->fresh() ?? $placement;
+            $this->alerts->placementCreated($created);
+
+            return $created;
         });
     }
 
@@ -90,7 +94,10 @@ class PlacementService
                 PlacementStatus::Offered->value,
             );
 
-            return $placement->fresh() ?? $placement;
+            $offered = $placement->fresh() ?? $placement;
+            $this->alerts->offerCreated($offered);
+
+            return $offered;
         });
     }
 
@@ -125,7 +132,10 @@ class PlacementService
                 PlacementStatus::Accepted->value,
             );
 
-            return $placement->fresh() ?? $placement;
+            $accepted = $placement->fresh() ?? $placement;
+            $this->alerts->offerAccepted($accepted);
+
+            return $accepted;
         });
     }
 
@@ -158,7 +168,10 @@ class PlacementService
                 PlacementStatus::Declined->value,
             );
 
-            return $placement->fresh() ?? $placement;
+            $declined = $placement->fresh() ?? $placement;
+            $this->alerts->offerDeclined($declined);
+
+            return $declined;
         });
     }
 
@@ -194,7 +207,10 @@ class PlacementService
                 PlacementStatus::JoiningConfirmed->value,
             );
 
-            return $placement->fresh() ?? $placement;
+            $confirmed = $placement->fresh() ?? $placement;
+            $this->alerts->joiningConfirmed($confirmed);
+
+            return $confirmed;
         });
     }
 
@@ -247,7 +263,10 @@ class PlacementService
 
             $this->replacements->syncEmployeeJoined($placement->fresh() ?? $placement, $employee, $actor);
 
-            return $placement->fresh() ?? $placement;
+            $joined = $placement->fresh() ?? $placement;
+            $this->alerts->employeeJoined($joined, $employee);
+
+            return $joined;
         });
     }
 

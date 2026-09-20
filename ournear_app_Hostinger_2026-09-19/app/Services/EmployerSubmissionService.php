@@ -17,6 +17,7 @@ class EmployerSubmissionService
     public function __construct(
         private RecruitmentActivityService $activities,
         private ReplacementService $replacements,
+        private AdminAlertService $alerts,
     ) {}
 
     public function submit(Application $application, User $actor): EmployerSubmission
@@ -50,13 +51,16 @@ class EmployerSubmissionService
 
             $this->replacements->syncSubmissionCreated($submission->fresh() ?? $submission, $actor);
 
-            return $submission->fresh() ?? $submission;
+            $created = $submission->fresh() ?? $submission;
+            $this->alerts->submissionCreated($created);
+
+            return $created;
         });
     }
 
     public function select(EmployerSubmission $submission, User $actor, ?string $notes = null): EmployerSubmission
     {
-        return $this->decide(
+        $decided = $this->decide(
             $submission,
             $actor,
             EmployerSubmissionStatus::Selected,
@@ -64,6 +68,9 @@ class EmployerSubmissionService
             'Employer selected this candidate for the job.',
             $notes,
         );
+        $this->alerts->employerSelected($decided);
+
+        return $decided;
     }
 
     public function reject(
@@ -87,7 +94,7 @@ class EmployerSubmissionService
             $body .= ' Reason: '.$reason->name.'.';
         }
 
-        return $this->decide(
+        $decided = $this->decide(
             $submission,
             $actor,
             EmployerSubmissionStatus::Rejected,
@@ -96,6 +103,9 @@ class EmployerSubmissionService
             $notes,
             $reason?->id,
         );
+        $this->alerts->employerRejected($decided);
+
+        return $decided;
     }
 
     public function hold(EmployerSubmission $submission, User $actor, ?string $notes = null): EmployerSubmission
