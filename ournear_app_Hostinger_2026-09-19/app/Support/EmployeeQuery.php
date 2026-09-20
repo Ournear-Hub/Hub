@@ -24,6 +24,8 @@ class EmployeeQuery
                 'submission',
                 'placement',
                 'candidateProfile',
+                'originatingReplacements',
+                'resultingReplacement.originalEmployee.application',
             ])
             ->latest('joined_at');
 
@@ -89,6 +91,8 @@ class EmployeeQuery
                 'placement.offer',
                 'candidateProfile',
                 'creator:id,name',
+                'originatingReplacements',
+                'resultingReplacement.originalEmployee.application',
             ])
             ->find($id);
     }

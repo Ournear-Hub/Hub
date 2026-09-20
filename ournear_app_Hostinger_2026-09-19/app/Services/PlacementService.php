@@ -15,7 +15,10 @@ use Illuminate\Validation\ValidationException;
 
 class PlacementService
 {
-    public function __construct(private RecruitmentActivityService $activities) {}
+    public function __construct(
+        private RecruitmentActivityService $activities,
+        private ReplacementService $replacements,
+    ) {}
 
     public function createFromSubmission(EmployerSubmission $submission, User $actor, ?string $notes = null): Placement
     {
@@ -43,6 +46,8 @@ class PlacementService
                 null,
                 PlacementStatus::Open->value,
             );
+
+            $this->replacements->syncPlacementCreated($placement->fresh() ?? $placement, $actor);
 
             return $placement->fresh() ?? $placement;
         });
@@ -239,6 +244,8 @@ class PlacementService
                 PlacementStatus::Joined->value,
                 $employee,
             );
+
+            $this->replacements->syncEmployeeJoined($placement->fresh() ?? $placement, $employee, $actor);
 
             return $placement->fresh() ?? $placement;
         });

@@ -171,6 +171,7 @@ export default function PlacementsIndex({ placements, selected, filters, options
                                 { id: 'offer', label: 'Offer' },
                                 { id: 'joining', label: 'Joining' },
                                 { id: 'employee', label: 'Employee' },
+                                { id: 'replacement', label: 'Replacement' },
                                 { id: 'timeline', label: 'Timeline' },
                             ]}
                             active={tab}
@@ -315,6 +316,46 @@ export default function PlacementsIndex({ placements, selected, filters, options
                             ) : (
                                 <p className="text-sm text-muted">The employee record is created when the candidate joins.</p>
                             )
+                        ) : null}
+                        {tab === 'replacement' ? (
+                            <div className="space-y-3 text-sm">
+                                {selected.replacement?.as_original ? (
+                                    <p>
+                                        Replacement requested:{' '}
+                                        <Link href={`/admin/replacements?replacement=${selected.replacement.as_original.id}`} className="font-medium text-brand">
+                                            {selected.replacement.as_original.business_id}
+                                        </Link>{' '}
+                                        ({selected.replacement.as_original.status})
+                                        {selected.replacement.as_original.replacement_employee_name
+                                            ? ` · Replacement employee ${selected.replacement.as_original.replacement_employee_name}`
+                                            : ''}
+                                    </p>
+                                ) : null}
+                                {selected.replacement?.as_replacement ? (
+                                    <p>
+                                        This is a replacement placement for{' '}
+                                        {selected.replacement.as_replacement.original_employee_name ?? 'the original employee'}. Case{' '}
+                                        <Link href={`/admin/replacements?replacement=${selected.replacement.as_replacement.id}`} className="font-medium text-brand">
+                                            {selected.replacement.as_replacement.business_id}
+                                        </Link>
+                                        {selected.replacement.as_replacement.original_placement_id ? (
+                                            <>
+                                                {' '}
+                                                · Original placement{' '}
+                                                <Link
+                                                    href={`/admin/placements?placement=${selected.replacement.as_replacement.original_placement_id}`}
+                                                    className="font-medium text-brand"
+                                                >
+                                                    {selected.replacement.as_replacement.original_placement_business_id}
+                                                </Link>
+                                            </>
+                                        ) : null}
+                                    </p>
+                                ) : null}
+                                {!selected.replacement ? (
+                                    <p className="text-muted">No replacement case is linked to this placement.</p>
+                                ) : null}
+                            </div>
                         ) : null}
                         {tab === 'timeline' ? (
                             <Timeline

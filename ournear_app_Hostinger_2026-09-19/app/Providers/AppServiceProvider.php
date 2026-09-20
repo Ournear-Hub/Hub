@@ -11,6 +11,7 @@ use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
 use App\Models\Placement;
+use App\Models\Replacement;
 use App\Models\User;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CandidateProfilePolicy;
@@ -21,6 +22,7 @@ use App\Policies\EmployerSubmissionPolicy;
 use App\Policies\JobPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PlacementPolicy;
+use App\Policies\ReplacementPolicy;
 use App\Policies\UserPolicy;
 use App\Services\AnalyticsService;
 use App\Services\PublicSeoService;
@@ -57,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(EmployerSubmission::class, EmployerSubmissionPolicy::class);
         Gate::policy(Placement::class, PlacementPolicy::class);
         Gate::policy(Employee::class, EmployeePolicy::class);
+        Gate::policy(Replacement::class, ReplacementPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
         foreach (MasterEntityType::cases() as $type) {

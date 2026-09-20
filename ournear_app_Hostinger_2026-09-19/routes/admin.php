@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\EmployersController;
 use App\Http\Controllers\Admin\EmployerSubmissionsController;
 use App\Http\Controllers\Admin\JobsController;
 use App\Http\Controllers\Admin\PlacementsController;
+use App\Http\Controllers\Admin\ReplacementsController;
 use App\Enums\MasterEntityType;
 use App\Http\Controllers\Admin\MasterDataController;
 use App\Http\Controllers\Admin\MediaSocialController;
@@ -82,6 +83,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('placements/{placement}/join', [PlacementsController::class, 'join'])->name('placements.join');
         Route::post('placements/{placement}/withdraw', [PlacementsController::class, 'withdraw'])->name('placements.withdraw');
         Route::get('employees', [EmployeesController::class, 'index'])->name('employees.index');
+        Route::post('employees/{employee}/replacements', [ReplacementsController::class, 'store'])->name('employees.replacements.store');
+        Route::get('replacements', [ReplacementsController::class, 'index'])->name('replacements.index');
+        Route::post('replacements/{replacement}/identify', [ReplacementsController::class, 'identify'])->name('replacements.identify');
+        Route::post('replacements/{replacement}/cancel', [ReplacementsController::class, 'cancel'])->name('replacements.cancel');
         Route::get('employer-enquiries', [EmployerEnquiriesController::class, 'index'])->name('employer-enquiries.index');
         Route::patch('employer-enquiries/{employerEnquiry}/status', [EmployerEnquiriesController::class, 'updateStatus'])->name('employer-enquiries.status');
         Route::post('employer-enquiries/{employerEnquiry}/notes', [EmployerEnquiriesController::class, 'storeNote'])->name('employer-enquiries.notes');

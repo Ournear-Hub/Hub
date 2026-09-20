@@ -25,6 +25,9 @@ class PlacementQuery
                 'submission',
                 'offer',
                 'employee',
+                'originatingReplacements.replacementEmployee.application',
+                'resultingReplacement.originalEmployee.application',
+                'resultingReplacement.originalPlacement',
             ])
             ->latest();
 
@@ -101,6 +104,9 @@ class PlacementQuery
                 'creator:id,name',
                 'joiningConfirmer:id,name',
                 'activities.actor:id,name',
+                'originatingReplacements.replacementEmployee.application',
+                'resultingReplacement.originalEmployee.application',
+                'resultingReplacement.originalPlacement',
             ])
             ->find($id);
     }

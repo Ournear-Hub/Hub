@@ -24,6 +24,24 @@ export type PlacementListItem = {
     application: PlacementLineage | null;
     submission: PlacementLineage | null;
     employee: PlacementLineage | null;
+    replacement?: {
+        as_original: {
+            id: number;
+            business_id: string | null;
+            status: string;
+            replacement_employee_id: number | null;
+            replacement_employee_name?: string | null;
+        } | null;
+        as_replacement: {
+            id: number;
+            business_id: string | null;
+            status: string;
+            original_employee_id: number | null;
+            original_employee_name?: string | null;
+            original_placement_id: number | null;
+            original_placement_business_id?: string | null;
+        } | null;
+    } | null;
 };
 
 export type PlacementOffer = {
@@ -75,4 +93,20 @@ export type EmployeeListItem = {
     application: PlacementLineage | null;
     submission: PlacementLineage | null;
     placement: PlacementLineage | null;
+    replacement?: {
+        role: 'original' | 'replacement';
+        originating: {
+            id: number;
+            business_id: string | null;
+            status: string;
+            replacement_employee_id: number | null;
+        } | null;
+        resulting: {
+            id: number;
+            business_id: string | null;
+            status: string;
+            original_employee_id: number | null;
+            original_employee_name?: string | null;
+        } | null;
+    } | null;
 };

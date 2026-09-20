@@ -18,7 +18,7 @@ const sections: NavSection[] = [
             { label: 'Employer Submissions', href: '/admin/submissions' },
             { label: 'Placements', href: '/admin/placements' },
             { label: 'Joined / Employees', href: '/admin/employees' },
-            { label: 'Replacements', comingSoon: true },
+            { label: 'Replacements', href: '/admin/replacements' },
         ],
     },
     {

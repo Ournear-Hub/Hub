@@ -3,7 +3,19 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
-import { Button, DataTable, Drawer, FilterBar, Input, SearchBar, Select, Tabs, Timeline } from '@/Components/Admin/ui';
+import {
+    Button,
+    DataTable,
+    Drawer,
+    FilterBar,
+    Input,
+    Modal,
+    SearchBar,
+    Select,
+    Tabs,
+    Textarea,
+    Timeline,
+} from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
 import type { Paginator } from '@/types/jobs';
 import type { EmployeeListItem } from '@/types/placements';
@@ -13,6 +25,7 @@ type EmployeeDetail = EmployeeListItem & {
     expected_joining_date: string | null;
     actual_joining_date: string | null;
     joining_notes: string | null;
+    can_request_replacement?: boolean;
     activities: Array<{
         id: number;
         type: string;
@@ -39,6 +52,7 @@ type Props = {
         employers: Array<{ id: number; label: string }>;
         jobs: Array<{ id: number; title: string; business_id: string | null }>;
     };
+    replacementReasons: string[];
 };
 
 function activityTitle(activity: EmployeeDetail['activities'][number]): string {
@@ -49,8 +63,11 @@ function activityTitle(activity: EmployeeDetail['activities'][number]): string {
     return activity.body || activity.type.replace(/_/g, ' ');
 }
 
-export default function EmployeesIndex({ employees, selected, filters, options }: Props) {
+export default function EmployeesIndex({ employees, selected, filters, options, replacementReasons }: Props) {
     const [tab, setTab] = useState('overview');
+    const [requestOpen, setRequestOpen] = useState(false);
+    const [reason, setReason] = useState('');
+    const [notes, setNotes] = useState('');
 
     const visit = (overrides: Record<string, string | undefined> = {}) => {
         const next = { ...filters, ...overrides };
@@ -145,6 +162,7 @@ export default function EmployeesIndex({ employees, selected, filters, options }
                             tabs={[
                                 { id: 'overview', label: 'Overview' },
                                 { id: 'lineage', label: 'Lineage' },
+                                { id: 'replacement', label: 'Replacement' },
                                 { id: 'timeline', label: 'Timeline' },
                             ]}
                             active={tab}
@@ -231,6 +249,43 @@ export default function EmployeesIndex({ employees, selected, filters, options }
                                 </li>
                             </ul>
                         ) : null}
+                        {tab === 'replacement' ? (
+                            <div className="space-y-3 text-sm">
+                                {selected.replacement?.role === 'replacement' ? (
+                                    <p>
+                                        This employee joined as a replacement for{' '}
+                                        {selected.replacement.resulting?.original_employee_name ?? 'the original employee'}.
+                                    </p>
+                                ) : (
+                                    <p>This employee is the original joined placement record.</p>
+                                )}
+                                {selected.replacement?.originating ? (
+                                    <p>
+                                        Replacement case{' '}
+                                        <Link href={`/admin/replacements?replacement=${selected.replacement.originating.id}`} className="font-medium text-brand">
+                                            {selected.replacement.originating.business_id}
+                                        </Link>{' '}
+                                        ({selected.replacement.originating.status})
+                                    </p>
+                                ) : null}
+                                {selected.replacement?.resulting ? (
+                                    <p>
+                                        Originating replacement{' '}
+                                        <Link href={`/admin/replacements?replacement=${selected.replacement.resulting.id}`} className="font-medium text-brand">
+                                            {selected.replacement.resulting.business_id}
+                                        </Link>
+                                    </p>
+                                ) : null}
+                                <Button disabled={!selected.can_request_replacement} onClick={() => setRequestOpen(true)}>
+                                    Request replacement
+                                </Button>
+                                {!selected.can_request_replacement ? (
+                                    <p className="text-muted">
+                                        A replacement can only be requested from a joined employee who does not already have an open or completed replacement case.
+                                    </p>
+                                ) : null}
+                            </div>
+                        ) : null}
                         {tab === 'timeline' ? (
                             <Timeline
                                 items={(selected.activities ?? []).map((activity) => ({
@@ -244,6 +299,43 @@ export default function EmployeesIndex({ employees, selected, filters, options }
                     </div>
                 ) : null}
             </Drawer>
+            <Modal
+                open={requestOpen}
+                title="Request replacement"
+                onClose={() => setRequestOpen(false)}
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setRequestOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            disabled={!reason}
+                            onClick={() => {
+                                if (!selected || !reason) {
+                                    return;
+                                }
+                                router.post(`/admin/employees/${selected.id}/replacements`, { reason, notes });
+                                setRequestOpen(false);
+                            }}
+                        >
+                            Request replacement
+                        </Button>
+                    </>
+                }
+            >
+                <div className="space-y-3 text-left text-sm">
+                    <p>The original employee and placement remain historical records. The replacement candidate will follow a new recruitment path.</p>
+                    <Select value={reason} onChange={(event) => setReason(event.target.value)} aria-label="Replacement reason">
+                        <option value="">Select a reason</option>
+                        {replacementReasons.map((item) => (
+                            <option key={item} value={item}>
+                                {item}
+                            </option>
+                        ))}
+                    </Select>
+                    <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Notes (optional)" />
+                </div>
+            </Modal>
         </AdminLayout>
     );
 }

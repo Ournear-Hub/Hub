@@ -122,6 +122,60 @@ class Placement extends Model
         return $this->hasMany(RecruitmentActivity::class)->orderBy('created_at');
     }
 
+    /**
+     * @return HasMany<Replacement, $this>
+     */
+    public function originatingReplacements(): HasMany
+    {
+        return $this->hasMany(Replacement::class, 'original_placement_id');
+    }
+
+    /**
+     * @return HasOne<Replacement, $this>
+     */
+    public function resultingReplacement(): HasOne
+    {
+        return $this->hasOne(Replacement::class, 'replacement_placement_id');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function replacementContext(): ?array
+    {
+        $this->loadMissing([
+            'originatingReplacements.replacementEmployee.application',
+            'resultingReplacement.originalEmployee.application',
+            'resultingReplacement.originalPlacement',
+        ]);
+
+        $originating = $this->originatingReplacements->sortByDesc('id')->first();
+        $resulting = $this->resultingReplacement;
+
+        if ($originating === null && $resulting === null) {
+            return null;
+        }
+
+        return [
+            'as_original' => $originating ? [
+                'id' => $originating->id,
+                'business_id' => $originating->business_id,
+                'status' => $originating->status->value,
+                'replacement_employee_id' => $originating->replacement_employee_id,
+                'replacement_employee_name' => $originating->replacementEmployee?->application?->full_name,
+            ] : null,
+            'as_replacement' => $resulting ? [
+                'id' => $resulting->id,
+                'business_id' => $resulting->business_id,
+                'status' => $resulting->status->value,
+                'original_employee_id' => $resulting->original_employee_id,
+                'original_employee_name' => $resulting->originalEmployee?->application?->full_name,
+                'original_placement_id' => $resulting->originalPlacement?->id,
+                'original_placement_business_id' => $resulting->originalPlacement?->business_id,
+            ] : null,
+        ];
+    }
+
     public function canOffer(): bool
     {
         return $this->status === PlacementStatus::Open;
@@ -202,6 +256,7 @@ class Placement extends Model
                 'id' => $this->employee->id,
                 'business_id' => $this->employee->business_id,
             ] : null,
+            'replacement' => $this->replacementContext(),
         ];
     }
 
@@ -248,6 +303,7 @@ class Placement extends Model
             ? filled($this->application->getRawOriginal('resume_path') ?? $this->application->getAttributes()['resume_path'] ?? null)
             : false;
         $payload['activities'] = $this->timeline();
+        $payload['replacement'] = $this->replacementContext();
 
         return $payload;
     }

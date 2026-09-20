@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\ReplacementReason;
 use App\Http\Controllers\Controller;
 use App\Models\Employee;
 use App\Support\EmployeeQuery;
@@ -28,6 +29,7 @@ class EmployeesController extends Controller
             'selected' => $selected?->toAdminArray(),
             'filters' => $employees->filters($request),
             'options' => $employees->options(),
+            'replacementReasons' => array_map(fn (ReplacementReason $reason) => $reason->value, ReplacementReason::cases()),
         ]);
     }
 }

@@ -23,4 +23,9 @@ enum RecruitmentActivityType: string
     case OfferWithdrawn = 'offer_withdrawn';
     case JoiningConfirmed = 'joining_confirmed';
     case CandidateJoined = 'candidate_joined';
+    case ReplacementRequested = 'replacement_requested';
+    case ReplacementCandidateIdentified = 'replacement_candidate_identified';
+    case ReplacementPlacementLinked = 'replacement_placement_linked';
+    case ReplacementCompleted = 'replacement_completed';
+    case ReplacementCancelled = 'replacement_cancelled';
 }

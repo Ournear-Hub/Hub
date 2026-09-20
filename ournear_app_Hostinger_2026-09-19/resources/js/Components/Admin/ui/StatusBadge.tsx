@@ -33,6 +33,8 @@ const tones: Record<string, string> = {
     Declined: 'bg-danger/10 text-danger',
     'Joining Confirmed': 'bg-warning/15 text-ink',
     Joined: 'bg-success/20 text-success',
+    Requested: 'bg-surface text-ink',
+    Cancelled: 'bg-danger/10 text-danger',
 };
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {

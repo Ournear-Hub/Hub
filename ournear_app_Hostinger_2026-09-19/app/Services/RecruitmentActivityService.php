@@ -9,6 +9,7 @@ use App\Models\EmployerEnquiry;
 use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
 use App\Models\Placement;
+use App\Models\Replacement;
 use App\Models\RecruitmentActivity;
 use App\Models\User;
 
@@ -26,6 +27,7 @@ class RecruitmentActivityService
         ?EmployerProfile $employer = null,
         ?Placement $placement = null,
         ?Employee $employee = null,
+        ?Replacement $replacement = null,
     ): RecruitmentActivity {
         return RecruitmentActivity::query()->create([
             'application_id' => $application?->id,
@@ -34,6 +36,7 @@ class RecruitmentActivityService
             'employer_profile_id' => $employer?->id ?? $submission?->employer_profile_id ?? $placement?->employer_profile_id,
             'placement_id' => $placement?->id ?? $employee?->placement_id,
             'employee_id' => $employee?->id,
+            'replacement_id' => $replacement?->id,
             'type' => $type,
             'body' => $body,
             'from_status' => $fromStatus,

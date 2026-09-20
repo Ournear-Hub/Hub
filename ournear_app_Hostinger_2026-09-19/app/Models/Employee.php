@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\BusinessIdPrefix;
+use App\Enums\PlacementStatus;
+use App\Enums\ReplacementStatus;
 use App\Models\Concerns\HasBusinessId;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Employee extends Model
 {
@@ -106,6 +109,77 @@ class Employee extends Model
     }
 
     /**
+     * @return HasMany<Replacement, $this>
+     */
+    public function originatingReplacements(): HasMany
+    {
+        return $this->hasMany(Replacement::class, 'original_employee_id');
+    }
+
+    /**
+     * @return HasOne<Replacement, $this>
+     */
+    public function resultingReplacement(): HasOne
+    {
+        return $this->hasOne(Replacement::class, 'replacement_employee_id');
+    }
+
+    public function canRequestReplacement(): bool
+    {
+        $this->loadMissing(['placement', 'employer', 'job', 'application', 'submission']);
+
+        if ($this->placement === null || $this->placement->status !== PlacementStatus::Joined) {
+            return false;
+        }
+
+        if ($this->employer === null || $this->job === null || $this->application === null || $this->submission === null) {
+            return false;
+        }
+
+        return ! Replacement::query()
+            ->where('original_employee_id', $this->id)
+            ->whereIn('status', [
+                ReplacementStatus::Requested->value,
+                ReplacementStatus::InProgress->value,
+                ReplacementStatus::Placed->value,
+                ReplacementStatus::Completed->value,
+            ])
+            ->exists();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function replacementSummary(): ?array
+    {
+        $this->loadMissing(['originatingReplacements', 'resultingReplacement.originalEmployee.application']);
+
+        $originating = $this->originatingReplacements->sortByDesc('id')->first();
+        $resulting = $this->resultingReplacement;
+
+        if ($originating === null && $resulting === null) {
+            return null;
+        }
+
+        return [
+            'role' => $resulting ? 'replacement' : 'original',
+            'originating' => $originating ? [
+                'id' => $originating->id,
+                'business_id' => $originating->business_id,
+                'status' => $originating->status->value,
+                'replacement_employee_id' => $originating->replacement_employee_id,
+            ] : null,
+            'resulting' => $resulting ? [
+                'id' => $resulting->id,
+                'business_id' => $resulting->business_id,
+                'status' => $resulting->status->value,
+                'original_employee_id' => $resulting->original_employee_id,
+                'original_employee_name' => $resulting->originalEmployee?->application?->full_name,
+            ] : null,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toAdminListArray(): array
@@ -152,6 +226,7 @@ class Employee extends Model
                 'business_id' => $this->placement->business_id,
                 'status' => $this->placement->status->value,
             ] : null,
+            'replacement' => $this->replacementSummary(),
         ];
     }
 
@@ -183,6 +258,8 @@ class Employee extends Model
         $payload['actual_joining_date'] = $this->placement?->actual_joining_date?->toDateString();
         $payload['joining_notes'] = $this->placement?->joining_notes;
         $payload['activities'] = $this->placement?->timeline() ?? [];
+        $payload['can_request_replacement'] = $this->canRequestReplacement();
+        $payload['replacement'] = $this->replacementSummary();
 
         return $payload;
     }

@@ -14,7 +14,10 @@ use Illuminate\Validation\ValidationException;
 
 class EmployerSubmissionService
 {
-    public function __construct(private RecruitmentActivityService $activities) {}
+    public function __construct(
+        private RecruitmentActivityService $activities,
+        private ReplacementService $replacements,
+    ) {}
 
     public function submit(Application $application, User $actor): EmployerSubmission
     {
@@ -44,6 +47,8 @@ class EmployerSubmissionService
                 submission: $submission,
                 employer: $employer,
             );
+
+            $this->replacements->syncSubmissionCreated($submission->fresh() ?? $submission, $actor);
 
             return $submission->fresh() ?? $submission;
         });
