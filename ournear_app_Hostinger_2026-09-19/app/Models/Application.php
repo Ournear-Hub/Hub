@@ -124,6 +124,14 @@ class Application extends Model
     }
 
     /**
+     * @return HasMany<EmployerSubmission, $this>
+     */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(EmployerSubmission::class);
+    }
+
+    /**
      * @return HasMany<RecruitmentActivity, $this>
      */
     public function activities(): HasMany
@@ -183,6 +191,7 @@ class Application extends Model
         $this->loadMissing([
             'job.classifiedIndustry',
             'job.classifiedLocation',
+            'job.employer.user',
             'user.candidateProfile',
             'screening',
             'classifiedLocation',
@@ -191,6 +200,7 @@ class Application extends Model
         ]);
 
         $profile = $this->user?->candidateProfile;
+        $submitBlockedReason = $this->submitBlockedReason();
 
         return [
             'id' => $this->id,
@@ -209,6 +219,8 @@ class Application extends Model
             'screening_decision' => $this->screeningDecision()->value,
             'screening_decision_label' => $this->screeningDecision()->label(),
             'shortlisted_at' => $this->screening?->shortlisted_at?->toDateTimeString(),
+            'can_submit_to_employer' => $submitBlockedReason === null,
+            'submit_blocked_reason' => $submitBlockedReason,
             'candidate' => [
                 'id' => $profile?->id,
                 'business_id' => $profile?->business_id,
@@ -336,6 +348,50 @@ class Application extends Model
         ], true);
     }
 
+    public function isEligibleForEmployerSubmission(): bool
+    {
+        if (in_array($this->status, [
+            ApplicationStatus::New,
+            ApplicationStatus::Reviewing,
+            ApplicationStatus::Rejected,
+            ApplicationStatus::Withdrawn,
+            ApplicationStatus::Placed,
+        ], true)) {
+            return false;
+        }
+
+        if ($this->screeningDecision() === ScreeningDecision::NotSuitable) {
+            return false;
+        }
+
+        return $this->status === ApplicationStatus::Shortlisted
+            || $this->screeningDecision() === ScreeningDecision::Shortlisted;
+    }
+
+    public function submitBlockedReason(): ?string
+    {
+        if (! $this->isEligibleForEmployerSubmission()) {
+            return 'Only shortlisted applications can be submitted.';
+        }
+
+        $this->loadMissing('job');
+
+        if ($this->job === null || $this->job->employer_id === null) {
+            return 'This job is not assigned to an employer yet.';
+        }
+
+        $exists = $this->submissions()
+            ->where('job_id', $this->job_id)
+            ->where('employer_profile_id', $this->job->employer_id)
+            ->exists();
+
+        if ($exists) {
+            return 'This application has already been submitted to the employer for this job.';
+        }
+
+        return null;
+    }
+
     /**
      * @return array<string, mixed>|null
      */
@@ -358,6 +414,7 @@ class Application extends Model
             'employment_type' => $job['employment_type'],
             'experience' => $job['experience'],
             'status_label' => $job['status_label'],
+            'employer' => $job['employer'],
             'workspace_url' => route('admin.jobs.index', ['job' => $this->job->slug], false),
         ];
     }

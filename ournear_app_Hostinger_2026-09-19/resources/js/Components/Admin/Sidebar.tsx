@@ -15,7 +15,7 @@ const sections: NavSection[] = [
             { label: 'Applications', href: '/admin/applications' },
             { label: 'Screening', href: '/admin/screening' },
             { label: 'Shortlisted', href: '/admin/shortlisted' },
-            { label: 'Employer Submissions', comingSoon: true },
+            { label: 'Employer Submissions', href: '/admin/submissions' },
             { label: 'Placements', comingSoon: true },
             { label: 'Joined / Employees', comingSoon: true },
             { label: 'Replacements', comingSoon: true },
@@ -25,7 +25,7 @@ const sections: NavSection[] = [
         id: 'employers',
         label: 'Employers',
         items: [
-            { label: 'Employers', comingSoon: true },
+            { label: 'Employers', href: '/admin/employers' },
             { label: 'Employer Enquiries', href: '/admin/employer-enquiries' },
         ],
     },

@@ -11,10 +11,12 @@ use App\Http\Requests\Admin\SaveApplicationInterviewRequest;
 use App\Http\Requests\Admin\SaveApplicationScreeningRequest;
 use App\Http\Requests\Admin\ShortlistApplicationRequest;
 use App\Http\Requests\Admin\StoreEnquiryNoteRequest;
+use App\Http\Requests\Admin\SubmitApplicationToEmployerRequest;
 use App\Http\Requests\Admin\UpdateApplicationStatusRequest;
 use App\Models\Application;
 use App\Models\RejectionReason;
 use App\Services\ApplicationPipelineService;
+use App\Services\EmployerSubmissionService;
 use App\Support\ApplicationQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -120,6 +122,18 @@ class ApplicationsController extends Controller
         );
 
         return back()->with('success', 'Candidate shortlisted.');
+    }
+
+    public function submitToEmployer(
+        SubmitApplicationToEmployerRequest $request,
+        Application $application,
+        EmployerSubmissionService $submissions,
+    ): RedirectResponse {
+        $submission = $submissions->submit($application, $request->user());
+
+        return redirect()
+            ->route('admin.submissions.index', ['submission' => $submission->id])
+            ->with('success', 'Candidate submitted to the employer.');
     }
 
     public function resume(Application $application): StreamedResponse

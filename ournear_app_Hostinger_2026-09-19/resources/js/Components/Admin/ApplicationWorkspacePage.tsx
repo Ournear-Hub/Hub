@@ -5,6 +5,7 @@ import Pagination from '@/Components/Pagination';
 import ApplicationDrawer from '@/Components/Admin/ApplicationDrawer';
 import {
     Button,
+    ConfirmDialog,
     DataTable,
     Drawer,
     FilterBar,
@@ -46,6 +47,7 @@ export default function ApplicationWorkspacePage({
 }: Props) {
     const [compareIds, setCompareIds] = useState<number[]>([]);
     const [compareOpen, setCompareOpen] = useState(false);
+    const [submitId, setSubmitId] = useState<number | null>(null);
 
     const visit = (overrides: Record<string, string | undefined> = {}) => {
         const next = { ...filters, ...overrides };
@@ -157,9 +159,27 @@ export default function ApplicationWorkspacePage({
             key: 'actions',
             header: 'Actions',
             render: (row) => (
-                <Button variant="ghost" onClick={() => visit({ application: String(row.id) })}>
-                    View
-                </Button>
+                <div className="flex flex-wrap gap-1">
+                    <Button variant="ghost" onClick={() => visit({ application: String(row.id) })}>
+                        View
+                    </Button>
+                    {variant === 'shortlisted' ? (
+                        <Button
+                            variant="ghost"
+                            disabled={!row.can_submit_to_employer}
+                            title={row.submit_blocked_reason ?? 'Submit to employer'}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                if (!row.can_submit_to_employer) {
+                                    return;
+                                }
+                                setSubmitId(row.id);
+                            }}
+                        >
+                            Submit
+                        </Button>
+                    ) : null}
+                </div>
             ),
         },
     ];
@@ -324,6 +344,22 @@ export default function ApplicationWorkspacePage({
                     />
                 ) : null}
             </Drawer>
+            <ConfirmDialog
+                open={submitId !== null}
+                title="Submit this candidate to the employer?"
+                description={
+                    applications.data.find((row) => row.id === submitId)?.submit_blocked_reason ??
+                    'This creates an employer submission for this job only. It does not select or place the candidate.'
+                }
+                confirmLabel="Submit"
+                onConfirm={() => {
+                    if (submitId !== null) {
+                        router.post(`/admin/applications/${submitId}/submit`);
+                    }
+                    setSubmitId(null);
+                }}
+                onClose={() => setSubmitId(null)}
+            />
         </AdminLayout>
     );
 }

@@ -6,13 +6,16 @@ use App\Enums\JobPublishingStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreJobRequest;
 use App\Http\Requests\Admin\UpdateJobRequest;
+use App\Enums\RecruitmentActivityType;
 use App\Models\EmploymentType;
+use App\Models\EmployerProfile;
 use App\Models\ExperienceRange;
 use App\Models\Industry;
 use App\Models\Job;
 use App\Models\JobCategory;
 use App\Models\Location;
 use App\Services\MasterData\MasterDataService;
+use App\Services\RecruitmentActivityService;
 use App\Support\JobListingQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,7 +64,16 @@ class JobsController extends Controller
                 'job' => $selected?->slug ?? '',
                 'mode' => $mode === 'view' ? '' : $mode,
             ],
-            'lookups' => $masterData->formOptions(),
+            'lookups' => [
+                ...$masterData->formOptions(),
+                'employers' => EmployerProfile::query()
+                    ->with('user')
+                    ->latest()
+                    ->get()
+                    ->map(fn (EmployerProfile $employer) => $employer->toSelectArray())
+                    ->values()
+                    ->all(),
+            ],
         ]);
     }
 
@@ -72,9 +84,10 @@ class JobsController extends Controller
         return $this->index($request, $jobs, $masterData);
     }
 
-    public function store(StoreJobRequest $request): RedirectResponse
+    public function store(StoreJobRequest $request, RecruitmentActivityService $activities): RedirectResponse
     {
         $job = Job::query()->create($this->payload($request));
+        $this->recordEmployerAssignment($job, null, $request->user(), $activities);
 
         return redirect()
             ->route('admin.jobs.index', ['job' => $job->slug])
@@ -97,9 +110,11 @@ class JobsController extends Controller
         return $this->index($request, $jobs, $masterData);
     }
 
-    public function update(UpdateJobRequest $request, Job $job): RedirectResponse
+    public function update(UpdateJobRequest $request, Job $job, RecruitmentActivityService $activities): RedirectResponse
     {
+        $previousEmployerId = $job->employer_id;
         $job->update($this->payload($request, $job));
+        $this->recordEmployerAssignment($job->fresh() ?? $job, $previousEmployerId, $request->user(), $activities);
 
         return redirect()
             ->route('admin.jobs.index', ['job' => $job->slug])
@@ -178,6 +193,14 @@ class JobsController extends Controller
             $data['job_title_id'] = null;
         }
 
+        if ($request->exists('employer_id')) {
+            $data['employer_id'] = filled($request->input('employer_id')) ? $request->integer('employer_id') : null;
+        } elseif ($job !== null) {
+            unset($data['employer_id']);
+        } else {
+            $data['employer_id'] = null;
+        }
+
         if ($job === null) {
             $data['slug'] = Job::uniqueSlug($data['title']);
         }
@@ -217,6 +240,7 @@ class JobsController extends Controller
         }
 
         $job = Job::query()
+            ->with(['employer.user'])
             ->withCount('applications')
             ->where('slug', $slug)
             ->first();
@@ -226,5 +250,30 @@ class JobsController extends Controller
         }
 
         return null;
+    }
+
+    private function recordEmployerAssignment(
+        Job $job,
+        ?int $previousEmployerId,
+        $actor,
+        RecruitmentActivityService $activities,
+    ): void {
+        $job->loadMissing('employer');
+        $current = $job->employer_id;
+
+        if ((int) $current === (int) $previousEmployerId) {
+            return;
+        }
+
+        if ($current === null || $job->employer === null || $actor === null) {
+            return;
+        }
+
+        $activities->record(
+            actor: $actor,
+            type: RecruitmentActivityType::EmployerAssigned,
+            body: 'Assigned employer '.$job->employer->displayCompany().' to job '.$job->title.'.',
+            employer: $job->employer,
+        );
     }
 }

@@ -11,6 +11,13 @@ export type ApplicationJobSummary = {
     employment_type?: string | null;
     experience?: string | null;
     status_label?: string;
+    employer?: {
+        id: number;
+        business_id: string | null;
+        company_name: string;
+        contact_person?: string | null;
+        workspace_url?: string | null;
+    } | null;
     workspace_url?: string | null;
 };
 
@@ -43,6 +50,8 @@ export type AdminApplicationListItem = {
     screening_decision: string;
     screening_decision_label: string;
     shortlisted_at: string | null;
+    can_submit_to_employer?: boolean;
+    submit_blocked_reason?: string | null;
     candidate: ApplicationCandidateSummary;
     job: ApplicationJobSummary | null;
 };

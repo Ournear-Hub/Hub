@@ -41,6 +41,15 @@ export type AdminJob = {
     location_id: number | null;
     employment_type_id: number | null;
     experience_range_id: number | null;
+    employer_id: number | null;
+    employer: {
+        id: number;
+        business_id: string | null;
+        company_name: string;
+        contact_person: string | null;
+        email: string | null;
+        workspace_url?: string | null;
+    } | null;
     salary: string | null;
     vacancy: number;
     posted_date: string | null;

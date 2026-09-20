@@ -23,6 +23,14 @@ export type JobFormLookups = {
     employment_types: MasterOption[];
     experience_ranges: MasterOption[];
     qualifications: MasterOption[];
+    employers?: Array<{
+        id: number;
+        business_id: string | null;
+        company_name: string | null;
+        contact_person: string | null;
+        email?: string | null;
+        label: string;
+    }>;
 };
 
 export type MasterChange = {

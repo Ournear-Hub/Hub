@@ -24,6 +24,7 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
         location_id: job?.location_id ? String(job.location_id) : '',
         employment_type_id: job?.employment_type_id ? String(job.employment_type_id) : '',
         experience_range_id: job?.experience_range_id ? String(job.experience_range_id) : '',
+        employer_id: job?.employer_id ? String(job.employer_id) : '',
         salary: job?.salary ?? '',
         vacancy: job?.vacancy ?? 1,
         posted_date: job?.posted_date ?? new Date().toISOString().slice(0, 10),
@@ -88,6 +89,23 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
                         onChange={(event) => form.setData('project', event.target.value)}
                     />
                     {fieldError('project')}
+                </div>
+                <div className="md:col-span-2">
+                    <Label htmlFor="employer_id">Employer</Label>
+                    <Select
+                        id="employer_id"
+                        value={form.data.employer_id}
+                        onChange={(event) => form.setData('employer_id', event.target.value)}
+                    >
+                        <option value="">Unassigned</option>
+                        {(lookups.employers ?? []).map((employer) => (
+                            <option key={employer.id} value={employer.id}>
+                                {employer.label}
+                            </option>
+                        ))}
+                    </Select>
+                    {fieldError('employer_id')}
+                    <p className="mt-1 text-xs text-muted">Existing jobs can remain unassigned. Submissions require an employer.</p>
                 </div>
                 <div>
                     <Label htmlFor="industry_id">Industry</Label>

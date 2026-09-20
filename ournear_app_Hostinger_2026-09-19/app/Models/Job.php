@@ -46,6 +46,7 @@ class Job extends Model
         'location_id',
         'employment_type_id',
         'experience_range_id',
+        'employer_id',
         'salary',
         'vacancy',
         'posted_date',
@@ -99,6 +100,22 @@ class Job extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    /**
+     * @return BelongsTo<EmployerProfile, $this>
+     */
+    public function employer(): BelongsTo
+    {
+        return $this->belongsTo(EmployerProfile::class, 'employer_id');
+    }
+
+    /**
+     * @return HasMany<EmployerSubmission, $this>
+     */
+    public function submissions(): HasMany
+    {
+        return $this->hasMany(EmployerSubmission::class);
     }
 
     /**
@@ -257,6 +274,7 @@ class Job extends Model
             'classifiedLocation',
             'classifiedEmploymentType',
             'classifiedExperienceRange',
+            'employer.user',
         ]);
 
         return [
@@ -278,6 +296,8 @@ class Job extends Model
             'location_id' => $this->location_id,
             'employment_type_id' => $this->employment_type_id,
             'experience_range_id' => $this->experience_range_id,
+            'employer_id' => $this->employer_id,
+            'employer' => $this->employer?->toAdminSummary(),
             'salary' => $this->salary,
             'vacancy' => $this->vacancy,
             'posted_date' => $this->posted_date?->toDateString(),

@@ -57,6 +57,7 @@ class JobListingQuery
                 'classifiedLocation',
                 'classifiedEmploymentType',
                 'classifiedExperienceRange',
+                'employer.user',
             ])
             ->withCount('applications')
             ->latest('updated_at');

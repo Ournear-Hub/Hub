@@ -11,4 +11,9 @@ enum RecruitmentActivityType: string
     case MarkedSuitable = 'marked_suitable';
     case MarkedNotSuitable = 'marked_not_suitable';
     case Shortlisted = 'shortlisted';
+    case EmployerAssigned = 'employer_assigned';
+    case CandidateSubmitted = 'candidate_submitted';
+    case SubmissionStatusChanged = 'submission_status_changed';
+    case EmployerSelected = 'employer_selected';
+    case EmployerRejected = 'employer_rejected';
 }

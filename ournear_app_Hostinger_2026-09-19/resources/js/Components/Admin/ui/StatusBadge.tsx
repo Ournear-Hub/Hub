@@ -24,6 +24,9 @@ const tones: Record<string, string> = {
     Pending: 'bg-surface text-muted',
     Suitable: 'bg-brand/10 text-brand',
     'Not Suitable': 'bg-danger/10 text-danger',
+    Submitted: 'bg-brand/10 text-brand',
+    'Under Review': 'bg-warning/15 text-ink',
+    'On Hold': 'bg-surface text-muted',
 };
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {

@@ -14,6 +14,8 @@ class RecruitmentActivity extends Model
     protected $fillable = [
         'application_id',
         'employer_enquiry_id',
+        'employer_submission_id',
+        'employer_profile_id',
         'type',
         'body',
         'from_status',
@@ -53,6 +55,22 @@ class RecruitmentActivity extends Model
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id');
+    }
+
+    /**
+     * @return BelongsTo<EmployerSubmission, $this>
+     */
+    public function submission(): BelongsTo
+    {
+        return $this->belongsTo(EmployerSubmission::class, 'employer_submission_id');
+    }
+
+    /**
+     * @return BelongsTo<EmployerProfile, $this>
+     */
+    public function employer(): BelongsTo
+    {
+        return $this->belongsTo(EmployerProfile::class, 'employer_profile_id');
     }
 
     /**

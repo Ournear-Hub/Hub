@@ -57,6 +57,7 @@ class StoreJobRequest extends FormRequest
             'location_id',
             'employment_type_id',
             'experience_range_id',
+            'employer_id',
             'closing_date',
             'salary',
         ] as $field) {

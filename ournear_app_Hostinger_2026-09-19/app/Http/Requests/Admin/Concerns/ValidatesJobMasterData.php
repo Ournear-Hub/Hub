@@ -27,6 +27,7 @@ trait ValidatesJobMasterData
             'location_id' => [$presence, 'integer', 'exists:locations,id'],
             'employment_type_id' => [$presence, 'integer', 'exists:employment_types,id'],
             'experience_range_id' => [$presence, 'integer', 'exists:experience_ranges,id'],
+            'employer_id' => ['nullable', 'integer', 'exists:employer_profiles,id'],
         ];
     }
 

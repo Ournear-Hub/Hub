@@ -54,7 +54,7 @@ export default function ApplicationDrawer({
     rejectionReasons,
 }: Props) {
     const [tab, setTab] = useState(defaultTab);
-    const [confirm, setConfirm] = useState<'shortlist' | 'suitable' | null>(null);
+    const [confirm, setConfirm] = useState<'shortlist' | 'suitable' | 'submit' | null>(null);
     const [rejectOpen, setRejectOpen] = useState(false);
     const noteForm = useForm({ note: '' });
     const screeningForm = useForm({
@@ -289,7 +289,17 @@ export default function ApplicationDrawer({
                         >
                             Shortlist candidate
                         </Button>
+                        <Button
+                            variant="secondary"
+                            disabled={!selected.can_submit_to_employer}
+                            onClick={() => setConfirm('submit')}
+                        >
+                            Submit to employer
+                        </Button>
                     </div>
+                    {selected.submit_blocked_reason ? (
+                        <p className="text-sm text-muted">{selected.submit_blocked_reason}</p>
+                    ) : null}
                     {selected.job?.id ? (
                         <Link href={`/admin/shortlisted?job_id=${selected.job.id}`} className="inline-block text-sm font-medium text-brand">
                             View shortlist for this job
@@ -373,18 +383,29 @@ export default function ApplicationDrawer({
 
             <ConfirmDialog
                 open={confirm !== null}
-                title={confirm === 'shortlist' ? 'Shortlist this candidate?' : 'Mark this candidate suitable?'}
-                description={
-                    confirm === 'shortlist'
-                        ? 'This shortlists the candidate for this job only. Employer selection is a later step.'
-                        : 'This records that the candidate passed initial screening for this job.'
+                title={
+                    confirm === 'submit'
+                        ? 'Submit this candidate to the employer?'
+                        : confirm === 'shortlist'
+                          ? 'Shortlist this candidate?'
+                          : 'Mark this candidate suitable?'
                 }
-                confirmLabel={confirm === 'shortlist' ? 'Shortlist' : 'Mark suitable'}
+                description={
+                    confirm === 'submit'
+                        ? selected.submit_blocked_reason ??
+                          'This creates an employer submission for this job only. It does not select or place the candidate.'
+                        : confirm === 'shortlist'
+                          ? 'This shortlists the candidate for this job only. Employer selection is a later step.'
+                          : 'This records that the candidate passed initial screening for this job.'
+                }
+                confirmLabel={confirm === 'submit' ? 'Submit' : confirm === 'shortlist' ? 'Shortlist' : 'Mark suitable'}
                 onConfirm={() => {
                     if (confirm === 'shortlist') {
                         router.post(`/admin/applications/${selected.id}/shortlist`, {
                             notes: screeningForm.data.notes,
                         });
+                    } else if (confirm === 'submit') {
+                        router.post(`/admin/applications/${selected.id}/submit`);
                     } else {
                         submitScreening('suitable');
                     }

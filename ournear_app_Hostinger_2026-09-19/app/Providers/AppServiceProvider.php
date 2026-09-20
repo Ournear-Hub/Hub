@@ -6,11 +6,15 @@ use App\Enums\MasterEntityType;
 use App\Models\Application;
 use App\Models\CandidateProfile;
 use App\Models\EmployerEnquiry;
+use App\Models\EmployerProfile;
+use App\Models\EmployerSubmission;
 use App\Models\Job;
 use App\Models\User;
 use App\Policies\ApplicationPolicy;
 use App\Policies\CandidateProfilePolicy;
 use App\Policies\EmployerEnquiryPolicy;
+use App\Policies\EmployerProfilePolicy;
+use App\Policies\EmployerSubmissionPolicy;
 use App\Policies\JobPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\UserPolicy;
@@ -45,6 +49,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Application::class, ApplicationPolicy::class);
         Gate::policy(EmployerEnquiry::class, EmployerEnquiryPolicy::class);
         Gate::policy(CandidateProfile::class, CandidateProfilePolicy::class);
+        Gate::policy(EmployerProfile::class, EmployerProfilePolicy::class);
+        Gate::policy(EmployerSubmission::class, EmployerSubmissionPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
         foreach (MasterEntityType::cases() as $type) {
