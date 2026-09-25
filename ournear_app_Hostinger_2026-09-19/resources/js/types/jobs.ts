@@ -2,6 +2,9 @@ export type PublicJobCard = {
     title: string;
     slug: string;
     project: string;
+    company_name: string;
+    company_logo_url: string | null;
+    company_url: string | null;
     industry: string;
     category: string;
     location: string;
@@ -11,7 +14,14 @@ export type PublicJobCard = {
     vacancy: number;
     posted_date: string | null;
     closing_date: string | null;
+    posted_label?: string;
+    closing_label?: string;
+    is_closed?: boolean;
     featured: boolean;
+    is_saved?: boolean | null;
+    has_applied?: boolean;
+    has_resume?: boolean;
+    apply_state?: 'guest' | 'apply' | 'upload_resume' | 'applied' | 'closed' | 'hidden';
 };
 
 export type PublicJobDetail = PublicJobCard & {
@@ -55,6 +65,8 @@ export type AdminJob = {
     posted_date: string | null;
     closing_date: string | null;
     featured: boolean;
+    posting_tier?: 'trial' | 'basic';
+    trial_expires_at?: string | null;
     active: boolean;
     publishing_status: 'draft' | 'published';
     status_label: string;
@@ -65,6 +77,20 @@ export type AdminJob = {
     applications_count: number;
     created_at: string | null;
     updated_at: string | null;
+    skills?: string | null;
+    notice_period?: string | null;
+    keywords?: string | null;
+    qualification?: string | null;
+    created_by?: string | null;
+    source?: string | null;
+    links?: {
+        applications?: string;
+        candidates?: string;
+        screening?: string;
+        shortlisted?: string;
+        submissions?: string;
+        placements?: string;
+    };
 };
 
 export type AdminApplicationListItem = {

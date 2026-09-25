@@ -4,10 +4,10 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import Button from '@/Components/Public/Button';
 import FormField from '@/Components/Public/FormField';
 import JobCard from '@/Components/Public/JobCard';
+import JobDetail from '@/Components/Public/JobDetail';
 import PageContainer from '@/Components/Public/PageContainer';
 import Pagination from '@/Components/Pagination';
-import SectionHeading from '@/Components/Public/SectionHeading';
-import type { Paginator, PublicJobCard } from '@/types/jobs';
+import type { Paginator, PublicJobCard, PublicJobDetail } from '@/types/jobs';
 import type { SiteContent } from '@/types/public';
 
 type Filters = {
@@ -31,6 +31,7 @@ type Options = {
 type JobsIndexProps = {
     content: SiteContent;
     jobs: Paginator<PublicJobCard>;
+    selected: PublicJobDetail | null;
     filters: Filters;
     options: Options;
 };
@@ -38,7 +39,7 @@ type JobsIndexProps = {
 const selectClass =
     'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand';
 
-export default function JobsIndex({ content, jobs, filters, options }: JobsIndexProps) {
+export default function JobsIndex({ content, jobs, selected, filters, options }: JobsIndexProps) {
     const search = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const form = new FormData(event.currentTarget);
@@ -57,18 +58,37 @@ export default function JobsIndex({ content, jobs, filters, options }: JobsIndex
         );
     };
 
+    const filterQuery = {
+        keyword: filters.keyword,
+        location: filters.location,
+        industry: filters.industry,
+        category: filters.category,
+        employment_type: filters.employment_type,
+        experience: filters.experience,
+        featured: filters.featured ? 1 : undefined,
+    };
+
+    const selectJob = (slug: string) => {
+        if (window.matchMedia('(min-width: 1024px)').matches) {
+            router.get('/jobs', { ...filterQuery, job: slug }, { preserveState: true, preserveScroll: true, replace: true });
+            return;
+        }
+
+        router.get(`/jobs/${slug}`);
+    };
+
     return (
         <PublicLayout title="Jobs">
-            <section className="bg-brand py-14 text-white">
+            <section className="bg-brand py-10 text-white">
                 <PageContainer>
                     <p className="text-sm font-medium text-accent">{content.tagline}</p>
                     <h1 className="mt-3 text-4xl font-semibold">Jobs</h1>
                     <p className="mt-3 max-w-2xl text-white/80">
-                        Browse open roles. Apply directly — no candidate account is required.
+                        Browse open roles. Sign in as a candidate to apply with your profile and resume.
                     </p>
                 </PageContainer>
             </section>
-            <section className="py-12">
+            <section className="py-8">
                 <PageContainer>
                     <form onSubmit={search} className="grid gap-3 rounded-xl border border-line bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
                         <FormField id="job-keywords" name="keyword" label="Keywords" defaultValue={filters.keyword} />
@@ -115,12 +135,7 @@ export default function JobsIndex({ content, jobs, filters, options }: JobsIndex
                             <label htmlFor="job-type" className="mb-1 block text-sm font-medium text-ink">
                                 Employment type
                             </label>
-                            <select
-                                id="job-type"
-                                name="employment_type"
-                                defaultValue={filters.employment_type}
-                                className={selectClass}
-                            >
+                            <select id="job-type" name="employment_type" defaultValue={filters.employment_type} className={selectClass}>
                                 <option value="">All types</option>
                                 {options.employment_types.map((value) => (
                                     <option key={value} value={value}>
@@ -133,12 +148,7 @@ export default function JobsIndex({ content, jobs, filters, options }: JobsIndex
                             <label htmlFor="job-experience" className="mb-1 block text-sm font-medium text-ink">
                                 Experience
                             </label>
-                            <select
-                                id="job-experience"
-                                name="experience"
-                                defaultValue={filters.experience}
-                                className={selectClass}
-                            >
+                            <select id="job-experience" name="experience" defaultValue={filters.experience} className={selectClass}>
                                 <option value="">All experience</option>
                                 {options.experiences.map((value) => (
                                     <option key={value} value={value}>
@@ -157,27 +167,43 @@ export default function JobsIndex({ content, jobs, filters, options }: JobsIndex
                             </Button>
                         </div>
                     </form>
-                    <div className="mt-10">
-                        <SectionHeading
-                            title="Open roles"
-                            description={
-                                jobs.total === 0
-                                    ? 'No matching roles are open at the moment.'
-                                    : `${jobs.total} open ${jobs.total === 1 ? 'role' : 'roles'}.`
-                            }
-                        />
+                    <div className="mt-8">
+                        <p className="text-sm text-muted">
+                            {jobs.total === 0
+                                ? 'No matching roles are open at the moment.'
+                                : `${jobs.total} open ${jobs.total === 1 ? 'role' : 'roles'}.`}
+                        </p>
                         {jobs.data.length === 0 ? (
-                            <p className="mt-8 rounded-xl border border-line bg-white p-6 text-sm text-muted">
+                            <p className="mt-6 rounded-xl border border-line bg-white p-6 text-sm text-muted">
                                 Try a wider search, or check back soon for new vacancies.
                             </p>
                         ) : (
-                            <div className="mt-8 grid gap-4 md:grid-cols-2">
-                                {jobs.data.map((job) => (
-                                    <JobCard key={job.slug} job={job} />
-                                ))}
+                            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(18rem,24rem)_minmax(0,1fr)]">
+                                <div className="space-y-3">
+                                    {jobs.data.map((job) => (
+                                        <JobCard
+                                            key={job.slug}
+                                            job={job}
+                                            selected={selected?.slug === job.slug}
+                                            onSelect={selectJob}
+                                        />
+                                    ))}
+                                    <Pagination links={jobs.links} />
+                                </div>
+                                <div className="hidden self-start lg:sticky lg:top-24 lg:block">
+                                    {selected ? (
+                                        <JobDetail job={selected} />
+                                    ) : (
+                                        <div className="rounded-xl border border-dashed border-line bg-white p-10 text-center">
+                                            <h2 className="text-lg font-semibold text-ink">Select a job</h2>
+                                            <p className="mt-2 text-sm text-muted">
+                                                Choose a role from the list to see the full details here.
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
-                        <Pagination links={jobs.links} />
                     </div>
                 </PageContainer>
             </section>

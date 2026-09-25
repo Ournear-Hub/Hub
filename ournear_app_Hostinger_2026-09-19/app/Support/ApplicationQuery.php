@@ -4,15 +4,19 @@ namespace App\Support;
 
 use App\Enums\ApplicationStatus;
 use App\Enums\ScreeningDecision;
+use App\Enums\ScreeningStage;
 use App\Models\Application;
 use App\Models\CandidateProfile;
+use App\Models\EmployerProfile;
 use App\Models\ExperienceRange;
 use App\Models\Job;
 use App\Models\Location;
 use App\Models\Qualification;
+use App\Services\ScreeningMatchService;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 
 class ApplicationQuery
 {
@@ -25,8 +29,14 @@ class ApplicationQuery
             ->with([
                 'job.classifiedIndustry',
                 'job.classifiedLocation',
+                'job.classifiedExperienceRange',
+                'job.employer.user',
                 'user.candidateProfile',
-                'screening',
+                'screening.screener:id,name',
+                'screening.shortlister:id,name',
+                'screening.holder:id,name',
+                'submissions',
+                'activities.actor:id,name',
                 'classifiedLocation',
                 'classifiedExperienceRange',
                 'classifiedQualification',
@@ -39,6 +49,10 @@ class ApplicationQuery
 
         $this->applySearch($query, $request);
         $this->applyFilters($query, $request, $workspace);
+
+        if ($this->hasMatchRange($request)) {
+            return $this->paginateByMatch($query, $request);
+        }
 
         return $query->paginate(15)->withQueryString();
     }
@@ -57,14 +71,19 @@ class ApplicationQuery
                 'job.classifiedLocation',
                 'job.classifiedEmploymentType',
                 'job.classifiedExperienceRange',
+                'job.employer.user',
                 'user.candidateProfile.classifiedLocation',
                 'user.candidateProfile.classifiedExperienceRange',
                 'user.candidateProfile.classifiedQualification',
                 'screening.rejectionReason',
                 'screening.screener:id,name',
                 'screening.shortlister:id,name',
+                'screening.holder:id,name',
                 'interview',
                 'activities.actor:id,name',
+                'submissions.employer.user',
+                'submissions.placement',
+                'placements.employee',
                 'classifiedLocation',
                 'classifiedExperienceRange',
                 'classifiedQualification',
@@ -103,6 +122,27 @@ class ApplicationQuery
                 ],
                 ScreeningDecision::cases(),
             ),
+            'screening_stages' => ScreeningStage::options(),
+            'employers' => EmployerProfile::query()
+                ->with('user')
+                ->latest()
+                ->get()
+                ->map(fn (EmployerProfile $employer) => $employer->toSelectArray())
+                ->values()
+                ->all(),
+            'candidates' => CandidateProfile::query()
+                ->with('user')
+                ->whereHas('applications')
+                ->latest()
+                ->get()
+                ->map(fn (CandidateProfile $profile) => [
+                    'id' => $profile->id,
+                    'business_id' => $profile->business_id,
+                    'name' => $profile->user?->name,
+                    'label' => trim(($profile->business_id ? $profile->business_id.' · ' : '').($profile->user?->name ?: 'Candidate')),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 
@@ -129,7 +169,11 @@ class ApplicationQuery
             'shortlisted_from' => $request->string('shortlisted_from')->toString(),
             'shortlisted_to' => $request->string('shortlisted_to')->toString(),
             'screening_decision' => $request->string('screening_decision')->toString(),
+            'screening_stage' => $request->string('screening_stage')->toString(),
+            'match_range' => $request->string('match_range')->toString(),
+            'verification_state' => $request->string('verification_state')->toString(),
             'candidate' => $request->string('candidate')->toString(),
+            'employer_id' => $request->string('employer_id')->toString(),
             'application' => $selectedId > 0 ? (string) $selectedId : '',
         ];
     }
@@ -172,6 +216,11 @@ class ApplicationQuery
         $jobId = $request->query('job_id');
         if (filled($jobId)) {
             $query->where('job_id', (int) $jobId);
+        }
+
+        $employerId = $request->integer('employer_id');
+        if ($employerId > 0) {
+            $query->whereHas('job', fn (Builder $job) => $job->where('employer_id', $employerId));
         }
 
         $industry = trim((string) $request->query('industry', ''));
@@ -222,6 +271,21 @@ class ApplicationQuery
             $this->constrainScreeningDecision($query, $decision);
         }
 
+        $stage = trim((string) $request->query('screening_stage', ''));
+        if ($stage !== '') {
+            $this->constrainScreeningStage($query, $stage);
+        }
+
+        $verification = trim((string) $request->query('verification_state', ''));
+        if ($verification === 'verified') {
+            $query->whereHas('user', fn (Builder $user) => $user->whereNotNull('email_verified_at'));
+        } elseif ($verification === 'unverified') {
+            $query->where(function (Builder $inner) {
+                $inner->whereNull('user_id')
+                    ->orWhereHas('user', fn (Builder $user) => $user->whereNull('email_verified_at'));
+            });
+        }
+
         $candidate = $request->integer('candidate');
         if ($candidate > 0) {
             $userId = CandidateProfile::query()->whereKey($candidate)->value('user_id');
@@ -267,6 +331,63 @@ class ApplicationQuery
         }
 
         $query->whereHas('screening', fn (Builder $screening) => $screening->where('decision', $decision));
+    }
+
+    /**
+     * @param  Builder<Application>  $query
+     */
+    private function constrainScreeningStage(Builder $query, string $stage): void
+    {
+        if ($stage === ScreeningStage::Pending->value) {
+            $query->where(function (Builder $inner) {
+                $inner->whereDoesntHave('screening')
+                    ->orWhereHas('screening', fn (Builder $screening) => $screening->where('stage', ScreeningStage::Pending->value));
+            });
+
+            return;
+        }
+
+        $query->whereHas('screening', fn (Builder $screening) => $screening->where('stage', $stage));
+    }
+
+    private function hasMatchRange(Request $request): bool
+    {
+        $range = trim((string) $request->query('match_range', ''));
+
+        return in_array($range, ['0-49', '50-74', '75-100'], true);
+    }
+
+    /**
+     * @param  Builder<Application>  $query
+     * @return LengthAwarePaginator<int, Application>
+     */
+    private function paginateByMatch(Builder $query, Request $request): LengthAwarePaginator
+    {
+        [$min, $max] = match (trim((string) $request->query('match_range', ''))) {
+            '0-49' => [0, 49],
+            '50-74' => [50, 74],
+            default => [75, 100],
+        };
+
+        $match = app(ScreeningMatchService::class);
+        $filtered = $query->get()->filter(function (Application $application) use ($match, $min, $max) {
+            $result = $match->evaluate($application);
+
+            if ($result['state'] !== 'scored' || $result['percent'] === null) {
+                return false;
+            }
+
+            return $result['percent'] >= $min && $result['percent'] <= $max;
+        })->values();
+
+        $page = max(1, (int) $request->query('page', 1));
+        $perPage = 15;
+        $slice = $filtered->forPage($page, $perPage)->values();
+
+        return new Paginator($slice, $filtered->count(), $perPage, $page, [
+            'path' => $request->url(),
+            'query' => $request->query(),
+        ]);
     }
 
     /**

@@ -2,12 +2,14 @@
 
 namespace App\Support;
 
+use App\Enums\AccountStatus;
 use App\Enums\UserRole;
 use App\Models\CandidateProfile;
 use App\Models\ExperienceRange;
 use App\Models\Location;
 use App\Models\Qualification;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 class CandidateQuery
@@ -23,6 +25,9 @@ class CandidateQuery
                 'classifiedLocation',
                 'classifiedExperienceRange',
                 'classifiedQualification',
+                'industry',
+                'jobCategory',
+                'skills',
             ])
             ->withCount('applications')
             ->whereHas('user', fn ($user) => $user->where('role', UserRole::Candidate->value))
@@ -35,9 +40,46 @@ class CandidateQuery
                     ->orWhere('mobile', 'like', '%'.$search.'%')
                     ->orWhereHas('user', function ($user) use ($search) {
                         $user->where('name', 'like', '%'.$search.'%')
-                            ->orWhere('email', 'like', '%'.$search.'%');
+                            ->orWhere('email', 'like', '%'.$search.'%')
+                            ->orWhere('business_id', 'like', '%'.$search.'%')
+                            ->orWhere('location', 'like', '%'.$search.'%');
                     });
             });
+        }
+
+        $jobId = $request->integer('job_id');
+        if ($jobId > 0) {
+            $query->whereHas('applications', fn (Builder $application) => $application->where('job_id', $jobId));
+        }
+
+        $status = trim((string) $request->query('status', ''));
+        if ($status !== '') {
+            $query->whereHas('user', function (Builder $user) use ($status) {
+                if ($status === AccountStatus::Active->value) {
+                    $user->where(function (Builder $inner) {
+                        $inner->where('account_status', AccountStatus::Active->value)
+                            ->orWhere(function (Builder $legacy) {
+                                $legacy->where('is_active', true)
+                                    ->where(function (Builder $empty) {
+                                        $empty->whereNull('account_status')->orWhere('account_status', '');
+                                    });
+                            });
+                    });
+
+                    return;
+                }
+
+                if (AccountStatus::tryFrom($status)) {
+                    $user->where('account_status', $status);
+                }
+            });
+        }
+
+        $verification = trim((string) $request->query('verification', ''));
+        if ($verification === 'verified') {
+            $query->whereHas('user', fn (Builder $user) => $user->whereNotNull('email_verified_at'));
+        } elseif ($verification === 'unverified') {
+            $query->whereHas('user', fn (Builder $user) => $user->whereNull('email_verified_at'));
         }
 
         $this->applyMasterOrLegacyFilter($query, $request, 'location_id', 'location', Location::class);

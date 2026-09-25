@@ -6,7 +6,7 @@ export default function ScreeningIndex(props: ApplicationWorkspaceProps) {
         <ApplicationWorkspacePage
             {...props}
             title="Screening"
-            description="Screen applications for a job, then shortlist or mark not suitable."
+            description="Job-centric screening workspace. Compare candidates, record evidence, and make a human recruitment decision. Match % does not determine suitability."
             basePath="/admin/screening"
             variant="screening"
             defaultTab="screening"

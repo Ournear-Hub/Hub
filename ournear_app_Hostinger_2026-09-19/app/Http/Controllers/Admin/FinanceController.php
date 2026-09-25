@@ -11,6 +11,7 @@ use App\Http\Requests\Admin\IssueInvoiceRequest;
 use App\Http\Requests\Admin\RecordPaymentRequest;
 use App\Models\Employee;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Services\FinanceService;
 use App\Support\FinanceQuery;
 use App\Support\Money;
@@ -28,20 +29,36 @@ class FinanceController extends Controller
         $page = $finance->adminIndex($request)
             ->through(fn (Invoice $invoice) => $invoice->toAdminListArray());
 
+        $payments = $finance->paymentsIndex($request)
+            ->through(fn (Payment $payment) => $payment->toAdminArray());
+
         $selected = $finance->selected($request);
         if ($selected && $request->user()?->cannot('view', $selected)) {
             $selected = null;
         }
 
+        $selectedPayment = $finance->selectedPayment($request);
+        if ($selectedPayment && $selectedPayment->invoice && $request->user()?->cannot('view', $selectedPayment->invoice)) {
+            $selectedPayment = null;
+        }
+
+        if ($selectedPayment !== null) {
+            $selected = null;
+        }
+
         return Inertia::render('Admin/Finance/Index', [
             'invoices' => $page,
+            'payments' => $payments,
             'selected' => $selected?->toAdminArray(),
+            'selectedPayment' => $selectedPayment?->toAdminDetailArray(),
             'summary' => $finance->summary(),
+            'dashboard' => $finance->dashboard(),
             'recentPayments' => $finance->recentPayments($request),
             'filters' => $finance->filters($request),
             'options' => $finance->options(),
             'statuses' => array_map(fn (InvoiceStatus $status) => $status->value, InvoiceStatus::cases()),
             'methods' => array_map(fn (PaymentMethod $method) => $method->value, PaymentMethod::cases()),
+            'can_manage' => $request->user()?->can('create', Invoice::class) === true,
         ]);
     }
 

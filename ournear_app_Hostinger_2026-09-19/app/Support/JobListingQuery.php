@@ -18,7 +18,7 @@ class JobListingQuery
      */
     public function publicIndex(Request $request): LengthAwarePaginator
     {
-        $query = Job::query()->publiclyVisible()->latest('posted_date');
+        $query = Job::query()->with('employer.user')->publiclyVisible()->latest('posted_date');
 
         $keyword = trim((string) $request->query('keyword', ''));
         if ($keyword !== '') {
@@ -70,7 +70,12 @@ class JobListingQuery
                     ->orWhere('project', 'like', '%'.$search.'%')
                     ->orWhere('slug', 'like', '%'.$search.'%')
                     ->orWhere('location', 'like', '%'.$search.'%')
-                    ->orWhereHas('classifiedLocation', fn ($location) => $location->where('name', 'like', '%'.$search.'%'));
+                    ->orWhereHas('classifiedLocation', fn ($location) => $location->where('name', 'like', '%'.$search.'%'))
+                    ->orWhereHas('employer', function ($employer) use ($search) {
+                        $employer->where('business_id', 'like', '%'.$search.'%')
+                            ->orWhere('company_name', 'like', '%'.$search.'%')
+                            ->orWhere('contact_person', 'like', '%'.$search.'%');
+                    });
             });
         }
 
@@ -104,6 +109,11 @@ class JobListingQuery
             $query->where('active', $active === '1');
         }
 
+        $employerId = $request->integer('employer_id');
+        if ($employerId > 0) {
+            $query->where('employer_id', $employerId);
+        }
+
         return $query->paginate(15)->withQueryString();
     }
 
@@ -113,6 +123,7 @@ class JobListingQuery
     public function featuredPublic(): array
     {
         return Job::query()
+            ->with('employer.user')
             ->publiclyVisible()
             ->where('featured', true)
             ->latest('posted_date')

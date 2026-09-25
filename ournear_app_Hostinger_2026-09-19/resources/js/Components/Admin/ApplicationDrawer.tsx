@@ -54,7 +54,9 @@ export default function ApplicationDrawer({
     rejectionReasons,
 }: Props) {
     const [tab, setTab] = useState(defaultTab);
-    const [confirm, setConfirm] = useState<'shortlist' | 'suitable' | 'submit' | null>(null);
+    const [confirm, setConfirm] = useState<
+        'shortlist' | 'suitable' | 'submit' | 'start' | 'match' | 'contact' | 'called' | 'interviewed' | 'hold' | null
+    >(null);
     const [rejectOpen, setRejectOpen] = useState(false);
     const noteForm = useForm({ note: '' });
     const screeningForm = useForm({
@@ -97,6 +99,14 @@ export default function ApplicationDrawer({
         });
     };
 
+    const submitScreeningAction = (action: string) => {
+        router.post(`/admin/applications/${selected.id}/screening/actions`, {
+            action,
+            remarks: screeningForm.data.notes,
+            notes: screeningForm.data.notes,
+        });
+    };
+
     const saveInterview = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         interviewForm.put(`/admin/applications/${selected.id}/interview`);
@@ -104,13 +114,48 @@ export default function ApplicationDrawer({
 
     return (
         <>
+            <div className="mb-4 flex flex-wrap gap-3 text-sm">
+                {selected.candidate.workspace_url ? (
+                    <Link href={selected.candidate.workspace_url} className="font-medium text-brand">
+                        Candidate
+                    </Link>
+                ) : null}
+                {selected.job?.workspace_url ? (
+                    <Link href={selected.job.workspace_url} className="font-medium text-brand">
+                        Job
+                    </Link>
+                ) : null}
+                {selected.links?.employer || selected.employer?.workspace_url ? (
+                    <Link href={selected.links?.employer ?? selected.employer?.workspace_url ?? '#'} className="font-medium text-brand">
+                        Employer
+                    </Link>
+                ) : null}
+                {selected.links?.screening ? (
+                    <Link href={selected.links.screening} className="font-medium text-brand">
+                        Screening
+                    </Link>
+                ) : null}
+                {selected.links?.shortlist ? (
+                    <Link href={selected.links.shortlist} className="font-medium text-brand">
+                        Shortlist
+                    </Link>
+                ) : null}
+                {selected.links?.submissions ? (
+                    <Link href={selected.links.submissions} className="font-medium text-brand">
+                        Employer Submission
+                    </Link>
+                ) : null}
+            </div>
             <Tabs
                 tabs={[
                     { id: 'overview', label: 'Overview' },
                     { id: 'candidate', label: 'Candidate' },
                     { id: 'job', label: 'Job' },
+                    { id: 'employer', label: 'Employer' },
                     { id: 'resume', label: 'Resume' },
+                    { id: 'documents', label: 'Documents' },
                     { id: 'screening', label: 'Screening' },
+                    { id: 'pipeline', label: 'Pipeline' },
                     { id: 'timeline', label: 'Timeline' },
                     { id: 'interview', label: 'Interview' },
                 ]}
@@ -130,6 +175,7 @@ export default function ApplicationDrawer({
                             ['Job', selected.job?.title ?? '—'],
                             ['Candidate ID', selected.candidate.business_id ?? '—'],
                             ['Candidate', selected.candidate.name],
+                            ['Employer', selected.employer?.company_name ?? selected.job?.employer?.company_name ?? '—'],
                             ['Screening', selected.screening?.decision_label ?? 'Pending'],
                         ]}
                     />
@@ -226,6 +272,7 @@ export default function ApplicationDrawer({
                             ['Employment Type', selected.job?.employment_type ?? '—'],
                             ['Experience', selected.job?.experience ?? '—'],
                             ['Job status', selected.job?.status_label ?? '—'],
+                            ['Employer', selected.job?.employer?.company_name ?? selected.employer?.company_name ?? '—'],
                         ]}
                     />
                     {selected.job?.workspace_url ? (
@@ -236,75 +283,306 @@ export default function ApplicationDrawer({
                 </div>
             ) : null}
 
+            {tab === 'employer' ? (
+                <div className="mt-4 space-y-4">
+                    {selected.employer || selected.job?.employer ? (
+                        <>
+                            <DetailRows
+                                rows={[
+                                    ['Employer ID', selected.employer?.business_id ?? selected.job?.employer?.business_id ?? '—'],
+                                    ['Company', selected.employer?.company_name ?? selected.job?.employer?.company_name ?? '—'],
+                                    ['Contact', selected.employer?.contact_person ?? selected.job?.employer?.contact_person ?? '—'],
+                                ]}
+                            />
+                            {(selected.links?.employer || selected.employer?.workspace_url || selected.job?.employer?.workspace_url) ? (
+                                <Link
+                                    href={selected.links?.employer ?? selected.employer?.workspace_url ?? selected.job?.employer?.workspace_url ?? '#'}
+                                    className="inline-block text-sm font-medium text-brand"
+                                >
+                                    Open Employer Workspace
+                                </Link>
+                            ) : null}
+                        </>
+                    ) : (
+                        <p className="text-sm text-muted">This job is not assigned to an employer yet.</p>
+                    )}
+                </div>
+            ) : null}
+
             {tab === 'resume' ? (
                 <div className="mt-4">
                     {selected.has_resume ? (
-                        <a href={selected.resume_url} className="inline-block text-sm font-medium text-brand">
-                            Download resume
-                        </a>
+                        <div className="flex flex-wrap gap-3">
+                            <a
+                                href={selected.resume_view_url ?? `${selected.resume_url}?disposition=inline`}
+                                className="inline-block text-sm font-medium text-brand"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                View Resume
+                            </a>
+                            <a href={selected.resume_url} className="inline-block text-sm font-medium text-brand">
+                                Download Resume
+                            </a>
+                        </div>
                     ) : (
                         <p className="text-sm text-muted">No resume on file.</p>
                     )}
                 </div>
             ) : null}
 
-            {tab === 'screening' ? (
+            {tab === 'documents' ? (
                 <div className="mt-4 space-y-4">
-                    <DetailRows
-                        rows={[
-                            ['Decision', selected.screening?.decision_label ?? 'Pending'],
-                            ['Screened', selected.screening?.screened_at ?? '—'],
-                            ['Screened by', selected.screening?.screened_by ?? '—'],
-                            ['Rejection reason', selected.screening?.rejection_reason ?? '—'],
-                            ['Shortlisted', selected.screening?.shortlisted_at ?? '—'],
-                        ]}
-                    />
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Resume</h3>
+                        {selected.has_resume ? (
+                            <div className="mt-2 flex flex-wrap gap-3 text-sm">
+                                <a href={selected.resume_view_url ?? `${selected.resume_url}?disposition=inline`} className="font-medium text-brand" target="_blank" rel="noreferrer">
+                                    View Resume
+                                </a>
+                                <a href={selected.resume_url} className="font-medium text-brand">
+                                    Download Resume
+                                </a>
+                            </div>
+                        ) : (
+                            <p className="mt-2 text-sm text-muted">No resume on file.</p>
+                        )}
+                    </section>
+                    {['Certificates', 'Licences', 'Payslips', 'Experience documents', 'Other documents'].map((label) => (
+                        <section key={label}>
+                            <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">{label}</h3>
+                            <p className="mt-2 text-sm text-muted">Not recorded yet.</p>
+                        </section>
+                    ))}
+                </div>
+            ) : null}
+
+            {tab === 'screening' ? (
+                <div className="mt-4 space-y-6">
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Decision</h3>
+                        <div className="mt-2">
+                            <DetailRows
+                                rows={[
+                                    ['Screening status', selected.screening?.stage_label ?? selected.screening_stage_label ?? 'Pending'],
+                                    ['Decision', selected.screening?.decision_label ?? 'Pending'],
+                                    ['Employer submission', selected.employer_submission_label ?? 'Has not been shortlisted'],
+                                    ['Match %', selected.match?.label ?? 'Not enough data'],
+                                    ['Screened', selected.screening?.screened_at ?? 'Not recorded yet'],
+                                    ['Screened by', selected.screening?.screened_by ?? 'Not recorded yet'],
+                                    ['Rejection reason', selected.screening?.rejection_reason ?? 'Not recorded yet'],
+                                    ['Shortlisted', selected.screening?.shortlisted_at ?? 'Not recorded yet'],
+                                    ['On hold', selected.screening?.held_at ?? 'Not recorded yet'],
+                                ]}
+                            />
+                        </div>
+                        <p className="mt-3 text-xs text-muted">
+                            {selected.match?.disclaimer ??
+                                'Match % compares recorded fields only. It does not determine suitability. The human recruitment decision remains final.'}
+                        </p>
+                    </section>
+
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Match factors</h3>
+                        <ul className="mt-2 space-y-2 text-sm">
+                            {(selected.match?.factors ?? []).map((factor) => (
+                                <li key={factor.key} className="rounded-md bg-surface px-3 py-2">
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <span className="font-medium text-ink">{factor.label}</span>
+                                        <StatusBadge
+                                            status={
+                                                factor.state === 'compared'
+                                                    ? factor.matched
+                                                        ? 'Matched'
+                                                        : 'Does not match'
+                                                    : factor.state === 'unavailable'
+                                                      ? 'Not available in V1.1'
+                                                      : 'Not enough data'
+                                            }
+                                        />
+                                    </div>
+                                    <p className="mt-1 text-xs text-muted">{factor.note}</p>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Screening stages</h3>
+                        <div className="mt-2 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="text-muted">
+                                    <tr>
+                                        <th className="px-2 py-2 font-medium">Stage</th>
+                                        <th className="px-2 py-2 font-medium">Status</th>
+                                        <th className="px-2 py-2 font-medium">Date/time</th>
+                                        <th className="px-2 py-2 font-medium">Performed by</th>
+                                        <th className="px-2 py-2 font-medium">Remarks</th>
+                                        <th className="px-2 py-2 font-medium">Evidence</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(selected.screening_stages ?? []).map((stage) => (
+                                        <tr key={stage.key} className="border-t border-line">
+                                            <td className="px-2 py-2 text-ink">{stage.label}</td>
+                                            <td className="px-2 py-2">
+                                                <StatusBadge status={stage.status} />
+                                            </td>
+                                            <td className="px-2 py-2 text-muted">{stage.occurred_at ?? 'Not recorded yet'}</td>
+                                            <td className="px-2 py-2 text-muted">{stage.performed_by ?? 'Not recorded yet'}</td>
+                                            <td className="px-2 py-2 text-muted">{stage.remarks ?? 'Not recorded yet'}</td>
+                                            <td className="px-2 py-2 text-muted">{stage.evidence ?? 'Not recorded yet'}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Screening timeline</h3>
+                        <div className="mt-2">
+                            <Timeline
+                                items={(selected.screening_timeline ?? []).map((item) => ({
+                                    id: item.id,
+                                    title: item.action,
+                                    meta: [
+                                        item.occurred_at,
+                                        item.status,
+                                        item.actor_name,
+                                        item.remarks,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(' · '),
+                                }))}
+                                empty="No screening activity yet. Viewing this page does not create activity."
+                            />
+                        </div>
+                    </section>
+
                     <div>
-                        <Label htmlFor="screening-notes">Screening notes</Label>
+                        <Label htmlFor="screening-notes">Remarks</Label>
                         <Textarea
                             id="screening-notes"
                             value={screeningForm.data.notes}
                             onChange={(event) => screeningForm.setData('notes', event.target.value)}
-                            placeholder="Notes for this screening decision"
+                            placeholder="Remarks for the next screening action"
                         />
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button
-                            disabled={!selected.can_mark_suitable}
-                            onClick={() => setConfirm('suitable')}
-                        >
-                            Mark suitable
+                        <Button disabled={!selected.can_start_screening} onClick={() => setConfirm('start')}>
+                            Start Screening
                         </Button>
-                        <Button
-                            variant="danger"
-                            disabled={!selected.can_mark_not_suitable}
-                            onClick={() => setRejectOpen(true)}
-                        >
-                            Mark not suitable
+                        <Button disabled={!selected.can_mark_suitable} onClick={() => setConfirm('match')}>
+                            Mark Matched
                         </Button>
-                        <Button
-                            variant="secondary"
-                            disabled={!selected.can_shortlist}
-                            onClick={() => setConfirm('shortlist')}
-                        >
-                            Shortlist candidate
+                        <Button variant="secondary" disabled={!selected.can_contact} onClick={() => setConfirm('contact')}>
+                            Contact
                         </Button>
-                        <Button
-                            variant="secondary"
-                            disabled={!selected.can_submit_to_employer}
-                            onClick={() => setConfirm('submit')}
-                        >
-                            Submit to employer
+                        <Button variant="secondary" disabled={!selected.can_mark_called} onClick={() => setConfirm('called')}>
+                            Mark Called
+                        </Button>
+                        <Button variant="secondary" disabled={!selected.can_mark_interviewed} onClick={() => setConfirm('interviewed')}>
+                            Mark Interviewed
+                        </Button>
+                        <Button variant="secondary" disabled title="Not available in V1.1">
+                            Verify available documents
+                        </Button>
+                        <Button variant="secondary" disabled={!selected.can_shortlist} onClick={() => setConfirm('shortlist')}>
+                            Shortlist
+                        </Button>
+                        <Button variant="secondary" disabled={!selected.can_hold} onClick={() => setConfirm('hold')}>
+                            Hold
+                        </Button>
+                        <Button variant="danger" disabled={!selected.can_mark_not_suitable} onClick={() => setRejectOpen(true)}>
+                            Reject
+                        </Button>
+                        <Button disabled={!selected.can_submit_to_employer} onClick={() => setConfirm('submit')}>
+                            Submit to Employer
                         </Button>
                     </div>
+                    <p className="text-sm text-muted">Document verification types are not available in V1.1. No fake verification records are created.</p>
                     {selected.submit_blocked_reason ? (
                         <p className="text-sm text-muted">{selected.submit_blocked_reason}</p>
                     ) : null}
-                    {selected.job?.id ? (
-                        <Link href={`/admin/shortlisted?job_id=${selected.job.id}`} className="inline-block text-sm font-medium text-brand">
-                            View shortlist for this job
-                        </Link>
-                    ) : null}
+                    <div className="flex flex-wrap gap-3">
+                        {selected.job?.id ? (
+                            <Link href={`/admin/shortlisted?job_id=${selected.job.id}`} className="inline-block text-sm font-medium text-brand">
+                                Open Shortlisted workspace
+                            </Link>
+                        ) : null}
+                        {selected.links?.submissions ? (
+                            <Link href={selected.links.submissions} className="inline-block text-sm font-medium text-brand">
+                                Open Employer Submission
+                            </Link>
+                        ) : null}
+                    </div>
+                </div>
+            ) : null}
+
+            {tab === 'pipeline' ? (
+                <div className="mt-4 space-y-5">
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Shortlist</h3>
+                        <p className="mt-2 text-sm text-ink">
+                            {selected.screening?.decision_label ?? 'Pending'}
+                            {selected.screening?.shortlisted_at ? ` · ${selected.screening.shortlisted_at}` : ''}
+                        </p>
+                        {selected.links?.shortlist ? (
+                            <Link href={selected.links.shortlist} className="mt-2 inline-block text-sm font-medium text-brand">
+                                Open shortlist
+                            </Link>
+                        ) : null}
+                    </section>
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Employer Submission</h3>
+                        {(selected.submissions?.length ?? 0) === 0 ? (
+                            <p className="mt-2 text-sm text-muted">Not submitted to an employer yet.</p>
+                        ) : (
+                            <ul className="mt-2 space-y-2 text-sm">
+                                {selected.submissions?.map((submission) => (
+                                    <li key={submission.id} className="rounded-md bg-surface px-3 py-2">
+                                        {submission.business_id ?? `Submission ${submission.id}`} · {submission.status}
+                                        {submission.employer?.company_name ? ` · ${submission.employer.company_name}` : ''}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {selected.links?.submissions ? (
+                            <Link href={selected.links.submissions} className="mt-2 inline-block text-sm font-medium text-brand">
+                                Open submissions
+                            </Link>
+                        ) : null}
+                    </section>
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Selection</h3>
+                        {selected.status === 'Selected' || (selected.submissions ?? []).some((item) => item.status === 'Selected') ? (
+                            <p className="mt-2 text-sm text-ink">
+                                {selected.status === 'Selected' ? 'Application selected' : 'Employer selected this candidate'}
+                            </p>
+                        ) : (
+                            <p className="mt-2 text-sm text-muted">No selection recorded yet.</p>
+                        )}
+                    </section>
+                    <section>
+                        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Placement</h3>
+                        {(selected.placements?.length ?? 0) === 0 ? (
+                            <p className="mt-2 text-sm text-muted">No placement recorded yet.</p>
+                        ) : (
+                            <ul className="mt-2 space-y-2 text-sm">
+                                {selected.placements?.map((placement) => (
+                                    <li key={placement.id} className="rounded-md bg-surface px-3 py-2">
+                                        {placement.business_id ?? `Placement ${placement.id}`} · {placement.status}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {selected.links?.placements ? (
+                            <Link href={selected.links.placements} className="mt-2 inline-block text-sm font-medium text-brand">
+                                Open placements
+                            </Link>
+                        ) : null}
+                    </section>
                 </div>
             ) : null}
 
@@ -388,17 +666,47 @@ export default function ApplicationDrawer({
                         ? 'Submit this candidate to the employer?'
                         : confirm === 'shortlist'
                           ? 'Shortlist this candidate?'
-                          : 'Mark this candidate suitable?'
+                          : confirm === 'start'
+                            ? 'Start screening this application?'
+                            : confirm === 'match' || confirm === 'suitable'
+                              ? 'Mark this candidate matched?'
+                              : confirm === 'contact'
+                                ? 'Record that this candidate was contacted?'
+                                : confirm === 'called'
+                                  ? 'Record that this candidate was called?'
+                                  : confirm === 'interviewed'
+                                    ? 'Record that this candidate was interviewed?'
+                                    : confirm === 'hold'
+                                      ? 'Put this candidate on hold?'
+                                      : 'Confirm screening action?'
                 }
                 description={
                     confirm === 'submit'
                         ? selected.submit_blocked_reason ??
                           'This creates an employer submission for this job only. It does not select or place the candidate.'
                         : confirm === 'shortlist'
-                          ? 'This shortlists the candidate for this job only. Employer selection is a later step.'
-                          : 'This records that the candidate passed initial screening for this job.'
+                          ? 'This shortlists the candidate for this job only. Employer selection is a later step. Screening history is preserved.'
+                          : confirm === 'start'
+                            ? 'This starts screening and may move a New application to Reviewing. Viewing the page does not start screening.'
+                            : confirm === 'match' || confirm === 'suitable'
+                              ? 'This records a matched screening decision. Match % does not determine suitability. The human decision remains final.'
+                              : confirm === 'hold'
+                                ? 'This pauses recruitment for this application. It does not reject the candidate.'
+                                : 'This records a screening activity with the remarks entered above.'
                 }
-                confirmLabel={confirm === 'submit' ? 'Submit' : confirm === 'shortlist' ? 'Shortlist' : 'Mark suitable'}
+                confirmLabel={
+                    confirm === 'submit'
+                        ? 'Submit'
+                        : confirm === 'shortlist'
+                          ? 'Shortlist'
+                          : confirm === 'start'
+                            ? 'Start screening'
+                            : confirm === 'match' || confirm === 'suitable'
+                              ? 'Mark matched'
+                              : confirm === 'hold'
+                                ? 'Hold'
+                                : 'Confirm'
+                }
                 onConfirm={() => {
                     if (confirm === 'shortlist') {
                         router.post(`/admin/applications/${selected.id}/shortlist`, {
@@ -406,8 +714,21 @@ export default function ApplicationDrawer({
                         });
                     } else if (confirm === 'submit') {
                         router.post(`/admin/applications/${selected.id}/submit`);
-                    } else {
+                    } else if (confirm === 'suitable') {
                         submitScreening('suitable');
+                    } else if (confirm) {
+                        const actionMap: Record<string, string> = {
+                            start: 'start',
+                            match: 'match',
+                            contact: 'contact',
+                            called: 'called',
+                            interviewed: 'interviewed',
+                            hold: 'hold',
+                        };
+                        const action = actionMap[confirm];
+                        if (action) {
+                            submitScreeningAction(action);
+                        }
                     }
                     setConfirm(null);
                 }}
@@ -416,7 +737,7 @@ export default function ApplicationDrawer({
 
             <Modal
                 open={rejectOpen}
-                title="Mark not suitable"
+                title="Reject this candidate?"
                 onClose={() => setRejectOpen(false)}
                 footer={
                     <>
@@ -433,7 +754,7 @@ export default function ApplicationDrawer({
                             }}
                             disabled={!screeningForm.data.rejection_reason_id}
                         >
-                            Mark not suitable
+                            Mark not suitable / Reject
                         </Button>
                     </>
                 }

@@ -170,4 +170,16 @@ class ApplicationsWorkspaceTest extends TestCase
             ->get(route('admin.applications.resume', $application))
             ->assertOk();
     }
+
+    public function test_admin_can_view_application_resume_inline(): void
+    {
+        $admin = $this->makeAdmin();
+        $path = 'workspace-resume-inline.pdf';
+        Storage::disk('resumes')->put($path, 'resume-bytes');
+        $application = Application::factory()->create(['resume_path' => $path]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.applications.resume', ['application' => $application, 'disposition' => 'inline']))
+            ->assertOk();
+    }
 }

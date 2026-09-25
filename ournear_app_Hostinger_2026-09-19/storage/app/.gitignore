@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+!candidate-files/
+!freelancer-files/
 !.gitignore

@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     ConfirmDialog,
@@ -19,6 +20,7 @@ import {
     Timeline,
 } from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
+import { recorded } from '@/lib/recorded';
 import type { AdminApplication } from '@/types/applications';
 import type { AdminJob, Paginator } from '@/types/jobs';
 
@@ -37,12 +39,16 @@ type SubmissionListItem = {
     id: number;
     business_id: string | null;
     status: string;
+    response_status?: string;
+    selection_outcome?: string;
     submitted_at: string | null;
+    submitted_by?: string | null;
     updated_at: string | null;
     employer: EmployerSummary | null;
     job: { id: number; business_id: string | null; title: string; slug?: string } | null;
     candidate: { id: number | null; business_id: string | null; name: string | null };
     application: { id: number; business_id: string | null } | null;
+    links?: Record<string, string | null | undefined>;
 };
 
 type SubmissionDetail = SubmissionListItem & {
@@ -54,10 +60,15 @@ type SubmissionDetail = SubmissionListItem & {
     can_select: boolean;
     can_reject: boolean;
     can_hold: boolean;
+    can_review?: boolean;
     can_create_placement?: boolean;
+    can_request_interview?: boolean;
+    interview_requested_available?: boolean;
     placement?: { id: number; business_id: string | null; status: string } | null;
     has_resume: boolean;
     resume_url: string | null;
+    package?: Array<{ label: string; available: boolean; href: string | null; note: string | null }>;
+    chain?: Array<{ key: string; label: string; value?: string | null; href?: string | null; status?: string | null }>;
     job: AdminJob | null;
     application: AdminApplication | null;
     employer: EmployerSummary | null;
@@ -79,7 +90,9 @@ type Props = {
         search: string;
         employer_id: string;
         job_id: string;
+        candidate_id: string;
         status: string;
+        response_status: string;
         date_from: string;
         date_to: string;
         submission: string;
@@ -87,7 +100,9 @@ type Props = {
     options: {
         employers: Array<{ id: number; label: string }>;
         jobs: Array<{ id: number; title: string; business_id: string | null }>;
+        candidates?: Array<{ id: number; label: string }>;
         statuses: string[];
+        response_statuses?: Array<{ value: string; label: string }>;
     };
     statuses: string[];
     rejectionReasons: Array<{ id: number; name: string; selectable?: boolean }>;
@@ -103,13 +118,13 @@ function activityTitle(activity: SubmissionDetail['activities'][number]): string
 
 export default function SubmissionsIndex({ submissions, selected, filters, options, statuses, rejectionReasons }: Props) {
     const [tab, setTab] = useState('overview');
-    const [confirm, setConfirm] = useState<'select' | 'hold' | 'place' | null>(null);
+    const [confirm, setConfirm] = useState<'select' | 'hold' | 'place' | 'review' | null>(null);
     const [rejectOpen, setRejectOpen] = useState(false);
     const [notes, setNotes] = useState('');
     const [rejectionReasonId, setRejectionReasonId] = useState('');
 
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -130,15 +145,18 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
     };
 
     const columns: Array<DataTableColumn<SubmissionListItem>> = [
-        { key: 'id', header: 'Submission ID', className: 'font-medium text-ink', render: (row) => row.business_id ?? '—' },
-        { key: 'employer', header: 'Employer', render: (row) => row.employer?.company_name ?? '—' },
-        { key: 'job', header: 'Job', render: (row) => row.job?.title ?? '—' },
-        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => row.candidate.name ?? '—' },
-        { key: 'candidate_id', header: 'Candidate ID', render: (row) => row.candidate.business_id ?? '—' },
-        { key: 'application', header: 'Application ID', render: (row) => row.application?.business_id ?? '—' },
-        { key: 'submitted', header: 'Submitted', render: (row) => row.submitted_at ?? '—' },
-        { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-        { key: 'updated', header: 'Updated', render: (row) => row.updated_at ?? '—' },
+        { key: 'id', header: 'Submission ID', className: 'font-medium text-ink', render: (row) => recorded(row.business_id) },
+        { key: 'employer', header: 'Employer', render: (row) => recorded(row.employer?.company_name) },
+        { key: 'job', header: 'Job', render: (row) => recorded(row.job?.title) },
+        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => recorded(row.candidate.name) },
+        { key: 'candidate_id', header: 'Candidate ID', render: (row) => recorded(row.candidate.business_id) },
+        { key: 'application', header: 'Application ID', render: (row) => recorded(row.application?.business_id) },
+        { key: 'submitted', header: 'Submitted', render: (row) => recorded(row.submitted_at) },
+        { key: 'submitted_by', header: 'Submitted by', render: (row) => recorded(row.submitted_by) },
+        { key: 'status', header: 'Submission status', render: (row) => <StatusBadge status={row.status} /> },
+        { key: 'response', header: 'Response status', render: (row) => <StatusBadge status={row.response_status ?? row.status} /> },
+        { key: 'selection', header: 'Selection outcome', render: (row) => recorded(row.selection_outcome) },
+        { key: 'updated', header: 'Updated', render: (row) => recorded(row.updated_at) },
         {
             key: 'actions',
             header: 'Actions',
@@ -161,7 +179,7 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                     <h1 className="text-2xl font-semibold tracking-tight text-ink">Employer Submissions</h1>
                     <p className="mt-1 text-sm text-muted">Shortlisted candidates presented to an employer for a specific job. This is not placement.</p>
                 </div>
-                <FilterBar onSubmit={filter}>
+                <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Submission, employer, job, candidate, application ID" />
                     <Select name="employer_id" defaultValue={filters.employer_id} aria-label="Employer">
                         <option value="">All employers</option>
@@ -179,6 +197,14 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                             </option>
                         ))}
                     </Select>
+                    <Select name="candidate_id" defaultValue={filters.candidate_id} aria-label="Candidate">
+                        <option value="">All candidates</option>
+                        {(options.candidates ?? []).map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                                {candidate.label}
+                            </option>
+                        ))}
+                    </Select>
                     <Select name="status" defaultValue={filters.status} aria-label="Submission status">
                         <option value="">All statuses</option>
                         {statuses.map((status) => (
@@ -187,9 +213,22 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                             </option>
                         ))}
                     </Select>
+                    <Select name="response_status" defaultValue={filters.response_status} aria-label="Response status">
+                        <option value="">All responses</option>
+                        {(options.response_statuses ?? []).map((status) => (
+                            <option key={status.value} value={status.value}>
+                                {status.label}
+                            </option>
+                        ))}
+                    </Select>
                     <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="Submitted from" />
                     <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="Submitted to" />
-                    <Button type="submit">Filter</Button>
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit">Filter</Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset
+                        </Button>
+                    </div>
                 </FilterBar>
                 <DataTable
                     columns={columns}
@@ -209,9 +248,10 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                         <Tabs
                             tabs={[
                                 { id: 'overview', label: 'Overview' },
+                                { id: 'chain', label: 'Recruitment chain' },
                                 { id: 'candidate', label: 'Candidate' },
                                 { id: 'job', label: 'Job' },
-                                { id: 'resume', label: 'Resume' },
+                                { id: 'resume', label: 'Package' },
                                 { id: 'employer', label: 'Employer' },
                                 { id: 'timeline', label: 'Timeline' },
                                 { id: 'decision', label: 'Decision' },
@@ -222,13 +262,17 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                         {tab === 'overview' ? (
                             <dl className="grid gap-2 text-sm">
                                 {[
-                                    ['Submission ID', selected.business_id ?? '—'],
-                                    ['Employer', selected.employer?.company_name ?? '—'],
-                                    ['Job', selected.job?.title ?? '—'],
-                                    ['Candidate', selected.candidate.name ?? '—'],
-                                    ['Application', selected.application?.business_id ?? '—'],
-                                    ['Submitted', selected.submitted_at ?? '—'],
+                                    ['Submission ID', recorded(selected.business_id)],
+                                    ['Employer', recorded(selected.employer?.company_name)],
+                                    ['Job', recorded(selected.job?.title)],
+                                    ['Candidate', recorded(selected.candidate.name)],
+                                    ['Application', recorded(selected.application?.business_id)],
+                                    ['Submitted', recorded(selected.submitted_at)],
+                                    ['Submitted by', recorded(selected.submitted_by)],
+                                    ['Response', recorded(selected.response_status)],
+                                    ['Selection', recorded(selected.selection_outcome)],
                                     ['Status', selected.status],
+                                    ['Remarks', recorded(selected.notes)],
                                 ].map(([label, value]) => (
                                     <div key={label} className="grid grid-cols-3 gap-2">
                                         <dt className="text-muted">{label}</dt>
@@ -236,6 +280,12 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                                     </div>
                                 ))}
                             </dl>
+                        ) : null}
+                        {tab === 'chain' ? (
+                            <div className="space-y-3">
+                                <p className="text-sm text-muted">Existing records only. Application and screening details stay on their own workspaces.</p>
+                                <RecruitmentChain steps={selected.chain ?? []} />
+                            </div>
                         ) : null}
                         {tab === 'candidate' ? (
                             <div className="space-y-3 text-sm">
@@ -262,13 +312,20 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                             </div>
                         ) : null}
                         {tab === 'resume' ? (
-                            selected.has_resume && selected.resume_url ? (
-                                <a href={selected.resume_url} className="inline-block text-sm font-medium text-brand">
-                                    Download resume
-                                </a>
-                            ) : (
-                                <p className="text-sm text-muted">No resume on file.</p>
-                            )
+                            <div className="space-y-3 text-sm">
+                                {(selected.package ?? []).map((item) => (
+                                    <div key={item.label} className="rounded-md bg-surface px-3 py-2">
+                                        <p className="font-medium text-ink">{item.label}</p>
+                                        {item.available && item.href ? (
+                                            <a href={item.href} className="font-medium text-brand">
+                                                Download
+                                            </a>
+                                        ) : (
+                                            <p className="text-muted">{item.note ?? 'Not recorded yet'}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         ) : null}
                         {tab === 'employer' ? (
                             <div className="space-y-3 text-sm">
@@ -296,7 +353,7 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                         {tab === 'decision' ? (
                             <div className="space-y-4">
                                 <p className="text-sm text-muted">
-                                    Current decision: <StatusBadge status={selected.status} />
+                                    Current decision: <StatusBadge status={selected.status} /> · {recorded(selected.selection_outcome)}
                                 </p>
                                 <Textarea
                                     value={notes}
@@ -304,6 +361,9 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                                     placeholder="Decision notes"
                                 />
                                 <div className="flex flex-wrap gap-2">
+                                    <Button variant="secondary" disabled={!selected.can_review} onClick={() => setConfirm('review')}>
+                                        Under Review
+                                    </Button>
                                     <Button disabled={!selected.can_select} onClick={() => setConfirm('select')}>
                                         Selected
                                     </Button>
@@ -313,10 +373,14 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                                     <Button variant="secondary" disabled={!selected.can_hold} onClick={() => setConfirm('hold')}>
                                         On hold
                                     </Button>
+                                    <Button disabled title="Not available in V1.1">
+                                        Interview Requested
+                                    </Button>
                                     <Button disabled={!selected.can_create_placement} onClick={() => setConfirm('place')}>
                                         Create placement
                                     </Button>
                                 </div>
+                                <p className="text-xs text-muted">Interview Requested is not available in V1.1. Compatible statuses: Pending (Submitted), Under Review, Selected, Rejected, On Hold.</p>
                                 {selected.placement ? (
                                     <Link href={`/admin/placements?placement=${selected.placement.id}`} className="inline-block text-sm font-medium text-brand">
                                         Open placement {selected.placement.business_id}
@@ -337,16 +401,28 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                         ? 'Create a placement from this selection?'
                         : confirm === 'select'
                           ? 'Record employer selection?'
-                          : 'Put this submission on hold?'
+                          : confirm === 'review'
+                            ? 'Mark this submission as under review?'
+                            : 'Put this submission on hold?'
                 }
                 description={
                     confirm === 'place'
                         ? 'Placement starts from this employer, job, and application only. It does not globally select the candidate.'
                         : confirm === 'select'
-                          ? 'Selection is for this employer and job only. Placement is a later step.'
-                          : 'The employer has not made a final decision.'
+                          ? 'Selection is for this employer and job only. Placement is a later step. Previous status is kept in activity history.'
+                          : confirm === 'review'
+                            ? 'The previous status, staff member, date, and remarks are recorded in activity.'
+                            : 'The employer has not made a final decision. Previous status is kept in activity history.'
                 }
-                confirmLabel={confirm === 'place' ? 'Create placement' : confirm === 'select' ? 'Select' : 'On hold'}
+                confirmLabel={
+                    confirm === 'place'
+                        ? 'Create placement'
+                        : confirm === 'select'
+                          ? 'Select'
+                          : confirm === 'review'
+                            ? 'Under Review'
+                            : 'On hold'
+                }
                 onConfirm={() => {
                     if (!selected || confirm === null) {
                         return;
@@ -354,7 +430,8 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
                     if (confirm === 'place') {
                         router.post(`/admin/submissions/${selected.id}/place`, { notes });
                     } else {
-                        router.post(`/admin/submissions/${selected.id}/${confirm === 'select' ? 'select' : 'hold'}`, { notes });
+                        const action = confirm === 'select' ? 'select' : confirm === 'review' ? 'review' : 'hold';
+                        router.post(`/admin/submissions/${selected.id}/${action}`, { notes });
                     }
                     setConfirm(null);
                 }}

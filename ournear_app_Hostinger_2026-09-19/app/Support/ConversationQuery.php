@@ -18,16 +18,25 @@ class ConversationQuery
     public function adminIndex(Request $request, User $user): LengthAwarePaginator
     {
         $query = Conversation::query()
-            ->whereHas('participantRecords', fn (Builder $participant) => $participant->where('user_id', $user->id))
             ->with(['latestMessage.sender:id,name', 'participants:id,name', 'participantRecords'])
             ->latest('updated_at');
+
+        if (! $user->isSuperAdmin()) {
+            $query->whereHas('participantRecords', fn (Builder $participant) => $participant->where('user_id', $user->id));
+        }
 
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
             $query->where(function (Builder $inner) use ($search) {
                 $inner->where('subject', 'like', '%'.$search.'%')
-                    ->orWhereHas('messages', fn (Builder $message) => $message->where('body', 'like', '%'.$search.'%'));
+                    ->orWhereHas('messages', fn (Builder $message) => $message->where('body', 'like', '%'.$search.'%'))
+                    ->orWhereHas('participants', fn (Builder $participant) => $participant->where('name', 'like', '%'.$search.'%'));
             });
+        }
+
+        $contextType = trim((string) $request->query('context_type', ''));
+        if ($contextType !== '') {
+            $query->where('context_type', $contextType);
         }
 
         if ($request->boolean('unread')) {
@@ -44,6 +53,16 @@ class ConversationQuery
             });
         }
 
+        $from = trim((string) $request->query('date_from', ''));
+        if ($from !== '') {
+            $query->whereDate('updated_at', '>=', $from);
+        }
+
+        $to = trim((string) $request->query('date_to', ''));
+        if ($to !== '') {
+            $query->whereDate('updated_at', '<=', $to);
+        }
+
         return $query->paginate(15)->withQueryString();
     }
 
@@ -54,11 +73,15 @@ class ConversationQuery
             return null;
         }
 
-        return Conversation::query()
+        $query = Conversation::query()
             ->with(['messages.sender:id,name', 'participants:id,name', 'participantRecords', 'creator:id,name', 'latestMessage'])
-            ->whereKey($id)
-            ->whereHas('participantRecords', fn (Builder $participant) => $participant->where('user_id', $user->id))
-            ->first();
+            ->whereKey($id);
+
+        if (! $user->isSuperAdmin()) {
+            $query->whereHas('participantRecords', fn (Builder $participant) => $participant->where('user_id', $user->id));
+        }
+
+        return $query->first();
     }
 
     /**
@@ -71,6 +94,9 @@ class ConversationQuery
         return [
             'search' => $request->string('search')->toString(),
             'unread' => $request->boolean('unread') ? '1' : '',
+            'context_type' => $request->string('context_type')->toString(),
+            'date_from' => $request->string('date_from')->toString(),
+            'date_to' => $request->string('date_to')->toString(),
             'conversation' => $selectedId > 0 ? (string) $selectedId : '',
         ];
     }

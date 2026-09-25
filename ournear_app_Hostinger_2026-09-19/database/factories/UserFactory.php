@@ -59,6 +59,7 @@ class UserFactory extends Factory
             'role' => UserRole::Candidate,
         ])->afterCreating(function (User $user) {
             CandidateProfile::query()->create(['user_id' => $user->id]);
+            $user->forceFill(['profile_completion' => $user->calculateProfileCompletion()])->saveQuietly();
         });
     }
 
@@ -68,6 +69,7 @@ class UserFactory extends Factory
             'role' => UserRole::Employer,
         ])->afterCreating(function (User $user) {
             EmployerProfile::query()->create(['user_id' => $user->id]);
+            $user->forceFill(['profile_completion' => $user->calculateProfileCompletion()])->saveQuietly();
         });
     }
 
@@ -88,6 +90,7 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'is_active' => false,
+            'account_status' => \App\Enums\AccountStatus::Inactive,
         ]);
     }
 

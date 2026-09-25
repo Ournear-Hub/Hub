@@ -16,8 +16,7 @@ export type AdminNavItem = {
     href?: string;
     comingSoon?: boolean;
     permission?: string;
-    /** V1.1 core modules stay in the admin sidebar even when staff RBAC is empty or incomplete. */
-    core?: boolean;
+    children?: AdminNavItem[];
 };
 
 export type NavSection = {

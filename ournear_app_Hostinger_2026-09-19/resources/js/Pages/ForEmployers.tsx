@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useForm, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import Button from '@/Components/Public/Button';
 import CtaSection from '@/Components/Public/CtaSection';
@@ -25,7 +25,9 @@ const selectClass =
     'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand';
 
 export default function ForEmployers({ content, cms, industries, workforceTypes }: ForEmployersProps) {
-    const flash = usePage<SharedPageProps>().props.flash;
+    const page = usePage<SharedPageProps>().props;
+    const flash = page.flash;
+    const user = page.auth.user;
     const submitted = Boolean(flash.success);
     const hero = cmsSection(cms, 'hero');
     const provide = cmsSection(cms, 'what_we_provide');
@@ -75,6 +77,21 @@ export default function ForEmployers({ content, cms, industries, workforceTypes 
                     <p className="text-sm font-medium text-accent">{content.tagline}</p>
                     <h1 className="mt-3 text-4xl font-semibold">{hero?.heading}</h1>
                     <p className="mt-3 max-w-2xl text-white/80">{hero?.body}</p>
+                    {!user ? (
+                        <Link
+                            href="/login"
+                            className="mt-6 inline-flex min-h-11 items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-brand hover:bg-white/90"
+                        >
+                            Login as Employer
+                        </Link>
+                    ) : user.role === 'employer' ? (
+                        <Link
+                            href="/account"
+                            className="mt-6 inline-flex min-h-11 items-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-brand hover:bg-white/90"
+                        >
+                            Employer dashboard
+                        </Link>
+                    ) : null}
                 </PageContainer>
             </section>
             <section className="py-16">

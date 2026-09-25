@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\ApplicationStatus;
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
+use App\Enums\ScreeningAction;
 use App\Enums\ScreeningDecision;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\RecordScreeningActionRequest;
 use App\Http\Requests\Admin\SaveApplicationInterviewRequest;
 use App\Http\Requests\Admin\SaveApplicationScreeningRequest;
 use App\Http\Requests\Admin\ShortlistApplicationRequest;
@@ -17,6 +19,7 @@ use App\Models\Application;
 use App\Models\RejectionReason;
 use App\Services\ApplicationPipelineService;
 use App\Services\EmployerSubmissionService;
+use App\Services\ScreeningWorkspaceService;
 use App\Support\ApplicationQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -124,6 +127,24 @@ class ApplicationsController extends Controller
         return back()->with('success', 'Candidate shortlisted.');
     }
 
+    public function recordScreeningAction(
+        RecordScreeningActionRequest $request,
+        Application $application,
+        ApplicationPipelineService $pipeline,
+    ): RedirectResponse {
+        $action = $request->enum('action', ScreeningAction::class);
+        $remarks = $request->input('remarks') ?: $request->input('notes');
+
+        $pipeline->recordScreeningAction(
+            $application,
+            $action,
+            $request->user(),
+            is_string($remarks) ? $remarks : null,
+        );
+
+        return back()->with('success', $action->successMessage());
+    }
+
     public function submitToEmployer(
         SubmitApplicationToEmployerRequest $request,
         Application $application,
@@ -136,7 +157,7 @@ class ApplicationsController extends Controller
             ->with('success', 'Candidate submitted to the employer.');
     }
 
-    public function resume(Application $application): StreamedResponse
+    public function resume(Request $request, Application $application): StreamedResponse
     {
         $this->authorize('downloadResume', $application);
 
@@ -149,8 +170,22 @@ class ApplicationsController extends Controller
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $label = $application->business_id ?: 'application-'.$application->id;
         $downloadName = $label.'.'.$extension;
+        $inline = $request->string('disposition')->toString() === 'inline';
+        $mime = match ($extension) {
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            default => 'application/octet-stream',
+        };
 
-        return Storage::disk('resumes')->download($path, $downloadName);
+        return Storage::disk('resumes')->response($path, $downloadName, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => sprintf(
+                '%s; filename="%s"',
+                $inline ? 'inline' : 'attachment',
+                str_replace('"', '', $downloadName)
+            ),
+        ]);
     }
 
     private function workspace(
@@ -161,17 +196,27 @@ class ApplicationsController extends Controller
     ): Response {
         $this->authorize('viewAny', Application::class);
 
+        $workspace = app(ScreeningWorkspaceService::class);
+
         $page = $applications->adminIndex($request, $view)
-            ->through(fn (Application $application) => $application->toAdminListArray());
+            ->through(fn (Application $application) => $workspace->enrichListItem($application));
 
         $selected = $applications->selected($request);
         if ($selected && $request->user()?->cannot('view', $selected)) {
             $selected = null;
         }
 
+        $selectedPayload = $selected?->toAdminArray(true);
+        if ($selected && is_array($selectedPayload)) {
+            $selectedPayload = $workspace->enrichSelected($selected, $selectedPayload);
+        }
+
+        $jobId = $request->integer('job_id');
+
         return Inertia::render($component, [
             'applications' => $page,
-            'selected' => $selected?->toAdminArray(true),
+            'selected' => $selectedPayload,
+            'jobSummary' => $view === 'screening' ? $workspace->jobSummary($jobId > 0 ? $jobId : null) : null,
             'filters' => $applications->filters($request),
             'options' => $applications->adminFilterOptions(),
             'statuses' => array_map(fn (ApplicationStatus $status) => $status->value, ApplicationStatus::cases()),

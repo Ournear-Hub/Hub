@@ -37,12 +37,14 @@ class StoreApplicationRequest extends FormRequest
             'experience' => ['required', 'string', 'max:255'],
             'qualification' => ['required', 'string', 'max:255'],
             'resume' => [
-                'required',
+                'required_without:candidate_resume_id',
+                'nullable',
                 'file',
                 'max:5120',
                 'mimes:pdf,doc,docx',
                 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document',
             ],
+            'candidate_resume_id' => ['nullable', 'integer'],
             'additional_information' => ['nullable', 'string', 'max:5000'],
             'consent' => ['accepted'],
         ];
@@ -50,10 +52,16 @@ class StoreApplicationRequest extends FormRequest
 
     protected function prepareForValidation(): void
     {
+        $merge = [];
         if ($this->has('email')) {
-            $this->merge([
-                'email' => strtolower(trim((string) $this->input('email'))),
-            ]);
+            $merge['email'] = strtolower(trim((string) $this->input('email')));
+        }
+        if ($this->exists('candidate_resume_id') && $this->input('candidate_resume_id') === '') {
+            $merge['candidate_resume_id'] = null;
+        }
+
+        if ($merge !== []) {
+            $this->merge($merge);
         }
     }
 
@@ -68,6 +76,7 @@ class StoreApplicationRequest extends FormRequest
             'resume.mimes' => 'The resume must be a PDF, DOC, or DOCX file.',
             'resume.mimetypes' => 'The resume must be a PDF, DOC, or DOCX file.',
             'resume.max' => 'The resume must not be larger than 5 MB.',
+            'resume.required_without' => 'Please upload a resume or choose one from your library.',
         ];
     }
 }

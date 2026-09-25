@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\EmployerSubmissionStatus;
+use App\Models\CandidateProfile;
 use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
@@ -22,6 +23,8 @@ class EmployerSubmissionQuery
                 'employer.user',
                 'job',
                 'application.user.candidateProfile',
+                'placement',
+                'submitter:id,name',
             ])
             ->latest('submitted_at');
 
@@ -55,9 +58,24 @@ class EmployerSubmissionQuery
             $query->where('job_id', $jobId);
         }
 
+        $candidateId = $request->integer('candidate_id');
+        if ($candidateId > 0) {
+            $query->whereHas('application.user.candidateProfile', fn (Builder $profile) => $profile->whereKey($candidateId));
+        }
+
         $status = trim((string) $request->query('status', ''));
         if ($status !== '') {
             $query->where('status', $status);
+        }
+
+        $response = trim((string) $request->query('response_status', ''));
+        if ($response !== '') {
+            $mapped = $this->responseStatusToStored($response);
+            if ($mapped === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where('status', $mapped);
+            }
         }
 
         $from = trim((string) $request->query('date_from', ''));
@@ -93,6 +111,7 @@ class EmployerSubmissionQuery
                 'rejectionReason',
                 'submitter:id,name',
                 'decider:id,name',
+                'placement',
                 'activities.actor:id,name',
             ])
             ->find($id);
@@ -109,7 +128,9 @@ class EmployerSubmissionQuery
             'search' => $request->string('search')->toString(),
             'employer_id' => $request->string('employer_id')->toString(),
             'job_id' => $request->string('job_id')->toString(),
+            'candidate_id' => $request->string('candidate_id')->toString(),
             'status' => $request->string('status')->toString(),
+            'response_status' => $request->string('response_status')->toString(),
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
             'submission' => $selectedId > 0 ? (string) $selectedId : '',
@@ -133,7 +154,49 @@ class EmployerSubmissionQuery
                 'title' => $job->title,
                 'business_id' => $job->business_id,
             ])->all(),
+            'candidates' => CandidateProfile::query()
+                ->with('user')
+                ->whereHas('user.applications.submissions')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (CandidateProfile $profile) => [
+                    'id' => $profile->id,
+                    'business_id' => $profile->business_id,
+                    'name' => $profile->user?->name,
+                    'label' => trim(implode(' · ', array_filter([
+                        $profile->business_id,
+                        $profile->user?->name,
+                    ]))),
+                ])
+                ->all(),
             'statuses' => array_map(fn (EmployerSubmissionStatus $status) => $status->value, EmployerSubmissionStatus::cases()),
+            'response_statuses' => [
+                ['value' => EmployerSubmissionStatus::Submitted->value, 'label' => 'Awaiting employer response'],
+                ['value' => EmployerSubmissionStatus::UnderReview->value, 'label' => 'Under Review'],
+                ['value' => EmployerSubmissionStatus::Selected->value, 'label' => 'Selected'],
+                ['value' => EmployerSubmissionStatus::Rejected->value, 'label' => 'Rejected'],
+                ['value' => EmployerSubmissionStatus::OnHold->value, 'label' => 'On Hold'],
+                ['value' => 'Interview Requested', 'label' => 'Interview Requested (Not available in V1.1)'],
+            ],
         ];
+    }
+
+    private function responseStatusToStored(string $response): ?string
+    {
+        return match ($response) {
+            EmployerSubmissionStatus::Submitted->value,
+            'Pending',
+            'pending',
+            'awaiting' => EmployerSubmissionStatus::Submitted->value,
+            EmployerSubmissionStatus::UnderReview->value,
+            'under_review' => EmployerSubmissionStatus::UnderReview->value,
+            EmployerSubmissionStatus::Selected->value,
+            'selected' => EmployerSubmissionStatus::Selected->value,
+            EmployerSubmissionStatus::Rejected->value,
+            'rejected' => EmployerSubmissionStatus::Rejected->value,
+            EmployerSubmissionStatus::OnHold->value,
+            'on_hold' => EmployerSubmissionStatus::OnHold->value,
+            default => null,
+        };
     }
 }

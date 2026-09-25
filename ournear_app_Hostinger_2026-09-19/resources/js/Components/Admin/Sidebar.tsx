@@ -4,16 +4,45 @@ import BrandMark from '@/Components/BrandMark';
 import type { SharedPageProps } from '@/types/page';
 import type { AdminNavItem, NavSection } from '@/types/layout';
 
-const dashboardItem: AdminNavItem = { label: 'Dashboard', href: '/admin', core: true };
+const dashboardItem: AdminNavItem = { label: 'Dashboard', href: '/admin' };
 
 const sections: NavSection[] = [
+    {
+        id: 'platform',
+        label: 'Platform',
+        items: [
+            {
+                label: 'Users',
+                href: '/admin/users',
+                permission: 'users.view',
+                children: [
+                    { label: 'All Users', href: '/admin/users', permission: 'users.view' },
+                    { label: 'Active Users', href: '/admin/users?segment=active', permission: 'users.view' },
+                    { label: 'Inactive Users', href: '/admin/users?segment=inactive', permission: 'users.view' },
+                    { label: 'Blocked Users', href: '/admin/users?segment=blocked', permission: 'users.view' },
+                    { label: 'Suspended Users', href: '/admin/users?segment=suspended', permission: 'users.view' },
+                    { label: 'Verified Users', href: '/admin/users?segment=verified', permission: 'users.view' },
+                    { label: 'Unverified Users', href: '/admin/users?segment=unverified', permission: 'users.view' },
+                    { label: 'New Users', href: '/admin/users?segment=new', permission: 'users.view' },
+                    { label: 'Candidates', href: '/admin/users?segment=candidates', permission: 'users.view' },
+                    { label: 'Employers', href: '/admin/users?segment=employers', permission: 'users.view' },
+                    { label: 'User Activity', href: '/admin/users/activity', permission: 'users.view' },
+                ],
+            },
+            { label: 'Admin Users', href: '/admin/staff', permission: 'users.view' },
+            { label: 'Roles & Permissions', href: '/admin/roles', permission: 'roles.manage' },
+            { label: 'Activity Logs', href: '/admin/activity-logs', permission: 'security.view' },
+            { label: 'Login Logs', href: '/admin/login-logs', permission: 'security.view' },
+        ],
+    },
     {
         id: 'recruitment',
         label: 'Recruitment',
         items: [
-            { label: 'Jobs', href: '/admin/jobs', permission: 'jobs.view', core: true },
+            { label: 'Jobs', href: '/admin/jobs', permission: 'jobs.view' },
             { label: 'Candidates', href: '/admin/candidates', permission: 'candidates.view' },
-            { label: 'Applications', href: '/admin/applications', permission: 'applications.view', core: true },
+            { label: 'Freelancers', href: '/admin/freelancers', permission: 'freelancers.view' },
+            { label: 'Applications', href: '/admin/applications', permission: 'applications.view' },
             { label: 'Screening', href: '/admin/screening', permission: 'applications.view' },
             { label: 'Shortlisted', href: '/admin/shortlisted', permission: 'applications.view' },
             { label: 'Employer Submissions', href: '/admin/submissions', permission: 'submissions.view' },
@@ -27,13 +56,16 @@ const sections: NavSection[] = [
         label: 'Employers',
         items: [
             { label: 'Employers', href: '/admin/employers', permission: 'employers.view' },
-            { label: 'Employer Enquiries', href: '/admin/employer-enquiries', permission: 'employers.view', core: true },
+            { label: 'Employer Enquiries', href: '/admin/employer-enquiries', permission: 'employers.view' },
         ],
     },
     {
         id: 'finance',
         label: 'Finance',
-        items: [{ label: 'Payments', href: '/admin/finance', permission: 'finance.view' }],
+        items: [
+            { label: 'Invoices', href: '/admin/finance?view=invoices', permission: 'finance.view' },
+            { label: 'Payments', href: '/admin/finance?view=payments', permission: 'finance.view' },
+        ],
     },
     {
         id: 'communication',
@@ -44,34 +76,28 @@ const sections: NavSection[] = [
         ],
     },
     {
-        id: 'users',
-        label: 'Users & Security',
-        items: [
-            { label: 'Users', href: '/admin/users', permission: 'users.view' },
-            { label: 'Activity Logs', href: '/admin/activity-logs', permission: 'security.view' },
-            { label: 'Login Logs', href: '/admin/login-logs', permission: 'security.view' },
-            { label: 'Approval Requests', comingSoon: true },
-        ],
-    },
-    {
         id: 'website',
         label: 'Website',
         items: [
-            { label: 'Website Content', href: '/admin/website-content', permission: 'website.manage', core: true },
-            { label: 'Media & Social', href: '/admin/media-social', permission: 'website.manage', core: true },
-            { label: 'Settings', href: '/admin/settings', core: true },
+            { label: 'Content', href: '/admin/website-content', permission: 'website.manage' },
+            { label: 'Media & Social', href: '/admin/media-social', permission: 'website.manage' },
+            { label: 'Settings', href: '/admin/settings', permission: 'website.manage' },
         ],
     },
     {
-        id: 'administration',
-        label: 'Administration',
+        id: 'master-data',
+        label: 'Master Data',
         items: [
-            { label: 'Admin Users', comingSoon: true },
-            { label: 'Roles & Permissions', href: '/admin/roles', permission: 'roles.manage' },
-            { label: 'Master Data', href: '/admin/master-data', permission: 'master_data.manage' },
+            { label: 'Industries', href: '/admin/master-data?tab=industries', permission: 'master_data.manage' },
+            { label: 'Categories', href: '/admin/master-data?tab=categories', permission: 'master_data.manage' },
+            { label: 'Job Titles', href: '/admin/master-data?tab=job-titles', permission: 'master_data.manage' },
+            { label: 'Locations', href: '/admin/master-data?tab=locations', permission: 'master_data.manage' },
+            { label: 'Other Master Data', href: '/admin/master-data', permission: 'master_data.manage' },
         ],
     },
 ];
+
+const defaultOpen = ['platform', 'recruitment', 'employers', 'website'];
 
 type SidebarProps = {
     open: boolean;
@@ -87,32 +113,82 @@ function hasPermission(permissions: string[] | undefined, required?: string): bo
 }
 
 function visibleItems(items: AdminNavItem[], permissions: string[] | undefined): AdminNavItem[] {
-    return items.filter((item) => {
-        if (item.comingSoon || item.core || !item.permission) {
-            return true;
-        }
+    return items
+        .map((item) => ({
+            ...item,
+            children: item.children ? visibleItems(item.children, permissions) : undefined,
+        }))
+        .filter((item) => item.comingSoon || hasPermission(permissions, item.permission) || (item.children && item.children.length > 0));
+}
 
-        return hasPermission(permissions, item.permission);
-    });
+function parseUrl(url: string): { path: string; params: URLSearchParams } {
+    const [path, query = ''] = url.split('?');
+
+    return { path, params: new URLSearchParams(query) };
 }
 
 function isActive(url: string, href: string): boolean {
-    if (href === '/admin') {
-        return url === '/admin' || url === '/admin/';
+    const current = parseUrl(url);
+    const target = parseUrl(href);
+
+    if (target.path === '/admin') {
+        return current.path === '/admin' || current.path === '/admin/';
     }
 
-    return url === href || url.startsWith(`${href}/`);
+    if (target.path === '/admin/users' && !target.params.get('segment')) {
+        if (current.path === '/admin/users/activity' || current.path.startsWith('/admin/users/')) {
+            return false;
+        }
+
+        return current.path === '/admin/users' && !current.params.get('segment');
+    }
+
+    if (target.params.get('segment')) {
+        return current.path === '/admin/users' && current.params.get('segment') === target.params.get('segment');
+    }
+
+    if (target.params.get('view')) {
+        const currentView =
+            current.params.get('view') ||
+            (current.path === '/admin/finance' && current.params.get('payment') ? 'payments' : current.path === '/admin/finance' ? 'invoices' : null);
+
+        return current.path === target.path && currentView === target.params.get('view');
+    }
+
+    if (target.params.get('tab')) {
+        return current.path === target.path && current.params.get('tab') === target.params.get('tab');
+    }
+
+    if (target.path === '/admin/master-data' && !target.params.get('tab')) {
+        return current.path === '/admin/master-data' && !current.params.get('tab');
+    }
+
+    return current.path === target.path || current.path.startsWith(`${target.path}/`);
 }
 
 function sectionHasActive(url: string, items: AdminNavItem[]): boolean {
-    return items.some((item) => item.href && isActive(url, item.href));
+    return items.some((item) => {
+        if (item.href && isActive(url, item.href)) {
+            return true;
+        }
+
+        if (item.children && sectionHasActive(url, item.children)) {
+            return true;
+        }
+
+        if (item.href === '/admin/users' && (url.startsWith('/admin/users/') || url.startsWith('/admin/users?'))) {
+            return true;
+        }
+
+        return false;
+    });
 }
 
-function NavLink({ item, url, onClose }: { item: AdminNavItem; url: string; onClose: () => void }) {
+function NavLink({ item, url, onClose, nested = false }: { item: AdminNavItem; url: string; onClose: () => void; nested?: boolean }) {
     if (item.comingSoon || !item.href) {
         return (
             <span
-                className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-white/45"
+                className={`flex items-center justify-between rounded-md px-3 py-2 text-sm text-white/45 ${nested ? 'pl-6' : ''}`}
                 title="Coming in a later V1.1 phase"
                 aria-disabled="true"
             >
@@ -128,7 +204,7 @@ function NavLink({ item, url, onClose }: { item: AdminNavItem; url: string; onCl
         <Link
             href={item.href}
             onClick={onClose}
-            className={`block rounded-md px-3 py-2 text-sm font-medium ${
+            className={`block rounded-md px-3 py-2 text-sm font-medium ${nested ? 'pl-6 text-[13px]' : ''} ${
                 active ? 'bg-white/15 text-white' : 'text-white/80 hover:bg-white/10 hover:text-white'
             }`}
         >
@@ -150,7 +226,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             return manual[section.id];
         }
 
-        return ['recruitment', 'employers', 'website'].includes(section.id) || sectionHasActive(url, section.items);
+        return defaultOpen.includes(section.id) || sectionHasActive(url, section.items);
     };
 
     const toggle = (id: string) => {
@@ -159,7 +235,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             const currentlyOpen = section
                 ? Object.prototype.hasOwnProperty.call(current, id)
                     ? current[id]
-                    : ['recruitment', 'employers', 'website'].includes(id) || sectionHasActive(url, section.items)
+                    : defaultOpen.includes(id) || sectionHasActive(url, section.items)
                 : true;
 
             return { ...current, [id]: !currentlyOpen };
@@ -178,18 +254,18 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             )}
 
             <aside
-                className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-brand text-white transition-transform lg:static lg:translate-x-0 ${
+                className={`fixed inset-y-0 left-0 z-50 flex h-screen w-64 shrink-0 flex-col bg-brand text-white transition-transform lg:static lg:translate-x-0 ${
                     open ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
-                <div className="flex h-16 items-center border-b border-white/10 px-5">
+                <div className="flex h-16 shrink-0 items-center border-b border-white/10 px-5">
                     <Link href="/admin" className="min-w-0" onClick={onClose}>
                         <BrandMark inverted className="text-base" />
                         <span className="mt-0.5 block text-xs text-white/70">Admin</span>
                     </Link>
                 </div>
 
-                <nav className="flex-1 space-y-4 overflow-y-auto p-3" aria-label="Admin">
+                <nav className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3" aria-label="Admin">
                     <NavLink item={dashboardItem} url={url} onClose={onClose} />
 
                     {visibleSections.map((section) => {
@@ -209,7 +285,12 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                                 {openSection && (
                                     <div className="mt-1 space-y-0.5">
                                         {section.items.map((item) => (
-                                            <NavLink key={item.label} item={item} url={url} onClose={onClose} />
+                                            <div key={item.label}>
+                                                <NavLink item={item} url={url} onClose={onClose} />
+                                                {item.children?.map((child) => (
+                                                    <NavLink key={child.label} item={child} url={url} onClose={onClose} nested />
+                                                ))}
+                                            </div>
                                         ))}
                                     </div>
                                 )}
@@ -218,7 +299,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
                     })}
                 </nav>
 
-                <div className="border-t border-white/10 p-3">
+                <div className="shrink-0 border-t border-white/10 p-3">
                     <Link
                         href="/admin/logout"
                         method="post"

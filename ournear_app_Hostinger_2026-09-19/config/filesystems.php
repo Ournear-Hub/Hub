@@ -47,6 +47,24 @@ return [
             'report' => false,
         ],
 
+        'candidate_files' => [
+            'driver' => 'local',
+            'root' => storage_path('app/candidate-files'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
+        'freelancer_files' => [
+            'driver' => 'local',
+            'root' => storage_path('app/freelancer-files'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

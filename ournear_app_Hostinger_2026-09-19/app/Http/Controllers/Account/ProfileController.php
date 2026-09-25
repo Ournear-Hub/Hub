@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers\Account;
 
+use App\Enums\NoticePeriod;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Account\UpdateAccountPhotoRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
+use App\Services\AccountDashboardService;
+use App\Services\AccountProfileService;
+use App\Services\MasterData\MasterDataService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -11,59 +16,88 @@ use Inertia\Response;
 
 class ProfileController extends Controller
 {
-    public function home(Request $request): Response
+    public function home(Request $request, AccountDashboardService $dashboard): Response
     {
         $user = $request->user();
+        $this->authorize('update', $user);
 
-        return Inertia::render('Account/Home', [
-            'role' => $user->role->value,
-        ]);
+        return Inertia::render('Account/Home', $dashboard->home($user));
     }
 
-    public function edit(Request $request): Response
+    public function edit(Request $request, AccountProfileService $profiles, MasterDataService $masterData): Response
     {
         $user = $request->user();
-        $user->load(['candidateProfile', 'employerProfile']);
+        $this->authorize('update', $user);
+        $user->load([
+            'candidateProfile.industry',
+            'candidateProfile.jobCategory',
+            'candidateProfile.skills',
+            'candidateProfile.employmentHistories.industry',
+            'candidateProfile.preferredLocations',
+            'candidateProfile.preferredEmploymentTypes',
+            'employerProfile',
+        ]);
+
+        $profile = $user->toAccountProfileArray();
+
+        if ($user->isCandidate()) {
+            $profile['experience'] = $user->candidateProfile?->experience;
+            $profile['qualification'] = $user->candidateProfile?->qualification;
+            $profile['professional'] = $user->candidateProfile?->toProfessionalArray();
+        } else {
+            $profile['company_name'] = $user->employerProfile?->company_name;
+            $profile['contact_person'] = $user->employerProfile?->contact_person;
+            $profile['mobile_number'] = $user->employerProfile?->mobile_number;
+            $profile['industry'] = $user->employerProfile?->industry;
+            $profile['about_company'] = $user->employerProfile?->about_company;
+            $profile['company_size'] = $user->employerProfile?->company_size;
+            $profile['company_website'] = $user->employerProfile?->company_website;
+            $profile['company_details'] = $user->employerProfile?->company_details;
+        }
 
         return Inertia::render('Account/Profile', [
             'role' => $user->role->value,
-            'profile' => [
-                'name' => $user->name,
-                'email' => $user->email,
-                ...($user->isCandidate()
-                    ? ($user->candidateProfile?->toAccountArray() ?? [
-                        'mobile' => null,
-                        'location' => null,
-                        'experience' => null,
-                        'qualification' => null,
-                    ])
-                    : ($user->employerProfile?->toAccountArray() ?? [
-                        'company_name' => null,
-                        'contact_person' => null,
-                        'mobile_number' => null,
-                        'industry' => null,
-                    ])),
+            'profile' => $profile,
+            'languages' => $profiles->languageOptions(),
+            'lookups' => [
+                ...$masterData->formOptions(),
+                'notice_periods' => NoticePeriod::options(),
             ],
         ]);
     }
 
-    public function update(UpdateProfileRequest $request): RedirectResponse
+    public function update(UpdateProfileRequest $request, AccountProfileService $profiles): RedirectResponse
     {
         $user = $request->user();
-        $user->update(['name' => $request->string('name')->toString()]);
+        $this->authorize('update', $user);
 
-        if ($user->isCandidate()) {
-            $user->candidateProfile()->updateOrCreate(
-                ['user_id' => $user->id],
-                $request->safe()->only(['mobile', 'location', 'experience', 'qualification'])
-            );
-        } else {
-            $user->employerProfile()->updateOrCreate(
-                ['user_id' => $user->id],
-                $request->safe()->only(['company_name', 'contact_person', 'mobile_number', 'industry'])
-            );
-        }
+        $profiles->updateProfile(
+            $user,
+            $request->profileAttributes(),
+            $request->file('photo'),
+            $request->boolean('remove_photo'),
+        );
 
         return back()->with('success', 'Your profile has been updated.');
+    }
+
+    public function updatePhoto(UpdateAccountPhotoRequest $request, AccountProfileService $profiles): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authorize('update', $user);
+
+        $profiles->updatePhoto($user, $request->file('photo'));
+
+        return back()->with('success', 'Your profile photo has been updated.');
+    }
+
+    public function destroyPhoto(Request $request, AccountProfileService $profiles): RedirectResponse
+    {
+        $user = $request->user();
+        $this->authorize('update', $user);
+
+        $profiles->removePhoto($user);
+
+        return back()->with('success', 'Your profile photo has been removed.');
     }
 }

@@ -55,13 +55,13 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        if (! $user->isActive()) {
+        if (! $user->canSignIn()) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
-            app(LoginLogService::class)->failure($this, $user, 'inactive');
+            app(LoginLogService::class)->failure($this, $user, $user->accountStatus()->value);
 
             throw ValidationException::withMessages([
-                'email' => 'This account is inactive.',
+                'email' => $user->accountStatus()->loginError(),
             ]);
         }
 

@@ -36,6 +36,8 @@ class PublicSeoService
             'about' => $this->forCmsPage('About Us', '/about', 'about'),
             'services' => $this->forCmsPage('Services', '/services', 'services'),
             'for-employers' => $this->forCmsPage('For Employers', '/for-employers', 'for-employers'),
+            'freelancers' => $this->forFreelancers(),
+            'freelancers.received' => $this->forFreelancerReceived(),
             'contact' => $this->forCmsPage('Contact Us', '/contact', 'contact'),
             'privacy-policy' => $this->forCmsPage('Privacy Policy', '/privacy-policy', 'privacy-policy'),
             'terms' => $this->forCmsPage('Terms & Conditions', '/terms-and-conditions', 'terms-and-conditions'),
@@ -77,7 +79,7 @@ class PublicSeoService
         $site = $this->settings->publicSeo();
         $description = $site['default_description'] !== ''
             ? $site['default_description']
-            : 'Browse open roles at OurNear Talent. Apply directly — no candidate account is required.';
+            : 'Browse open roles at OurNear Talent. Sign in as a candidate to apply with your profile and resume.';
 
         return $this->pack(
             title: 'Jobs',
@@ -93,6 +95,39 @@ class PublicSeoService
     /**
      * @return array<string, mixed>
      */
+    public function forFreelancers(): array
+    {
+        $site = $this->settings->publicSeo();
+
+        return $this->pack(
+            title: 'Freelancers',
+            description: 'Register as an OurNear Freelancer Partner. Join the business freelancer partnership network.',
+            canonical: $this->absolute('/freelancers'),
+            robots: 'index,follow',
+            ogType: 'website',
+            ogImage: $this->ogImage(),
+            siteName: $site['site_name'],
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function forFreelancerReceived(): array
+    {
+        $site = $this->settings->publicSeo();
+
+        return $this->pack(
+            title: 'Freelancer partnership received',
+            description: 'Your freelancer partnership registration has been received.',
+            canonical: $this->absolute('/freelancers/received'),
+            robots: 'noindex,nofollow',
+            ogType: 'website',
+            ogImage: null,
+            siteName: $site['site_name'],
+        );
+    }
+
     public function forApply(?Job $job): array
     {
         $site = $this->settings->publicSeo();
@@ -103,7 +138,7 @@ class PublicSeoService
 
         return $this->pack(
             title: $title,
-            description: 'Submit an application for this role. Applications are handled privately by OurNear Talent.',
+            description: 'Upload a resume to apply for this role using your candidate profile.',
             canonical: $canonical,
             robots: 'noindex,nofollow',
             ogType: 'website',
@@ -169,6 +204,7 @@ class PublicSeoService
             'Disallow: /admin',
             'Disallow: /admin/',
             'Disallow: /jobs/*/apply',
+            'Disallow: /freelancers/received',
             'Disallow: /login',
             'Disallow: /register',
             'Disallow: /forgot-password',
@@ -210,6 +246,7 @@ class PublicSeoService
         $urls = [
             ['loc' => $this->absolute('/'), 'changefreq' => 'weekly', 'priority' => '1.0'],
             ['loc' => $this->absolute('/jobs'), 'changefreq' => 'daily', 'priority' => '0.9'],
+            ['loc' => $this->absolute('/freelancers'), 'changefreq' => 'monthly', 'priority' => '0.7'],
             ['loc' => $this->absolute('/about'), 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => $this->absolute('/services'), 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => $this->absolute('/for-employers'), 'changefreq' => 'monthly', 'priority' => '0.6'],
@@ -309,7 +346,7 @@ class PublicSeoService
         $body = trim(preg_replace('/\s+/', ' ', strip_tags((string) $job->description)) ?? '');
 
         if ($body === '') {
-            return Str::limit($lead.' Open role at OurNear Talent. Apply directly — no candidate account is required.', 160);
+            return Str::limit($lead.' Open role at OurNear Talent. Candidates apply with their profile and resume.', 160);
         }
 
         return Str::limit($lead.' '.$body, 160);

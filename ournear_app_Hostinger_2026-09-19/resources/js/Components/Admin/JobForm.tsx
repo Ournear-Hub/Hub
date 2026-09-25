@@ -9,15 +9,18 @@ type JobFormProps = {
     job: AdminJob | null;
     lookups: JobFormLookups;
     onCancel: () => void;
+    scope?: 'admin' | 'employer';
+    companyName?: string;
 };
 
 const visibleOptions = (options: MasterOption[], selectedId: string) =>
     options.filter((option) => option.selectable !== false || String(option.id) === selectedId);
 
-export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
+export default function JobForm({ job, lookups, onCancel, scope = 'admin', companyName = '' }: JobFormProps) {
+    const employerScope = scope === 'employer';
     const form = useForm({
         title: job?.title ?? '',
-        project: job?.project ?? '',
+        project: job?.project ?? companyName,
         industry_id: job?.industry_id ? String(job.industry_id) : '',
         job_category_id: job?.job_category_id ? String(job.job_category_id) : '',
         job_title_id: job?.job_title_id ? String(job.job_title_id) : '',
@@ -59,11 +62,12 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        const basePath = employerScope ? '/account/jobs' : '/admin/jobs';
         if (job) {
-            form.put(`/admin/jobs/${job.slug}`, { preserveScroll: true });
+            form.put(`${basePath}/${job.slug}`, { preserveScroll: true });
             return;
         }
-        form.post('/admin/jobs', { preserveScroll: true });
+        form.post(basePath, { preserveScroll: true });
     };
 
     return (
@@ -86,11 +90,12 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
                     <Input
                         id="project"
                         value={form.data.project}
+                        readOnly={employerScope}
                         onChange={(event) => form.setData('project', event.target.value)}
                     />
                     {fieldError('project')}
                 </div>
-                <div className="md:col-span-2">
+                {!employerScope ? <div className="md:col-span-2">
                     <Label htmlFor="employer_id">Employer</Label>
                     <Select
                         id="employer_id"
@@ -106,7 +111,7 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
                     </Select>
                     {fieldError('employer_id')}
                     <p className="mt-1 text-xs text-muted">Existing jobs can remain unassigned. Submissions require an employer.</p>
-                </div>
+                </div> : null}
                 <div>
                     <Label htmlFor="industry_id">Industry</Label>
                     <Select
@@ -255,7 +260,7 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
+            {!employerScope ? <div className="grid gap-4 md:grid-cols-3">
                 <label className="flex items-center gap-2 text-sm">
                     <input
                         type="checkbox"
@@ -284,7 +289,11 @@ export default function JobForm({ job, lookups, onCancel }: JobFormProps) {
                     </Select>
                     {fieldError('publishing_status')}
                 </div>
-            </div>
+            </div> : (
+                <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-muted">
+                    Employer jobs are active when posted. Basic and trial jobs are never marked Featured without a verified payment.
+                </p>
+            )}
 
             <div>
                 <Label htmlFor="description">Description</Label>

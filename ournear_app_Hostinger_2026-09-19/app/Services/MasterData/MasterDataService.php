@@ -300,10 +300,12 @@ class MasterDataService
                 ['employer_profiles', 'industry_id'],
                 ['employer_enquiries', 'industry_id'],
                 ['job_categories', 'industry_id'],
+                ['freelancers', 'industry_id'],
             ],
             MasterEntityType::Categories => [
                 ['job_titles', 'job_category_id'],
                 ['job_listings', 'job_category_id'],
+                ['freelancers', 'job_category_id'],
             ],
             MasterEntityType::JobTitles => [
                 ['job_listings', 'job_title_id'],
@@ -313,14 +315,18 @@ class MasterDataService
                 ['applications', 'location_id'],
                 ['candidate_profiles', 'location_id'],
                 ['employer_enquiries', 'location_id'],
+                ['freelancers', 'current_location_id'],
+                ['freelancer_preferred_location', 'location_id'],
             ],
             MasterEntityType::EmploymentTypes => [
                 ['job_listings', 'employment_type_id'],
+                ['freelancers', 'employment_type_id'],
             ],
             MasterEntityType::ExperienceRanges => [
                 ['job_listings', 'experience_range_id'],
                 ['applications', 'experience_range_id'],
                 ['candidate_profiles', 'experience_range_id'],
+                ['freelancers', 'experience_range_id'],
             ],
             MasterEntityType::Qualifications => [
                 ['applications', 'qualification_id'],

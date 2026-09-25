@@ -80,12 +80,14 @@ class UsersRolesSecurityTest extends TestCase
         $this->actingAs($recruiter)->get(route('admin.finance.index'))->assertForbidden();
         $this->actingAs($recruiter)->get(route('admin.users.index'))->assertForbidden();
         $this->actingAs($recruiter)->get(route('admin.roles.index'))->assertForbidden();
+        $this->actingAs($recruiter)->get(route('admin.settings.edit'))->assertForbidden();
 
         $this->actingAs($finance)->get(route('admin.finance.index'))->assertOk();
         $this->actingAs($finance)->get(route('admin.jobs.index'))->assertForbidden();
         $this->actingAs($finance)->get(route('admin.users.index'))->assertForbidden();
         $this->actingAs($finance)->put(route('admin.jobs.update', $job), ['title' => 'Nope'])->assertForbidden();
         $this->actingAs($finance)->get(route('admin.website-content.index'))->assertForbidden();
+        $this->actingAs($finance)->get(route('admin.settings.edit'))->assertForbidden();
         $this->actingAs($finance)->get(route('admin.messages.index'))->assertForbidden();
         $this->actingAs($finance)->get(route('admin.notifications.index'))->assertOk();
 
@@ -93,6 +95,7 @@ class UsersRolesSecurityTest extends TestCase
         $this->actingAs($admin)->get(route('admin.roles.index'))->assertForbidden();
         $this->actingAs($admin)->get(route('admin.finance.index'))->assertOk();
         $this->actingAs($admin)->get(route('admin.jobs.index'))->assertOk();
+        $this->actingAs($admin)->get(route('admin.settings.edit'))->assertOk();
     }
 
     public function test_recruiter_can_manage_jobs_but_cannot_create_invoices_or_users(): void

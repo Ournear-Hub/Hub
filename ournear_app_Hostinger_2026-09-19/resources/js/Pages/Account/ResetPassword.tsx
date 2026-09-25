@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import PasswordStrength from '@/Components/Account/PasswordStrength';
 import FormField from '@/Components/Public/FormField';
 import PageContainer from '@/Components/Public/PageContainer';
 
@@ -50,6 +51,7 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
                             autoComplete="new-password"
                             onChange={(event) => setData('password', event.target.value)}
                         />
+                        <PasswordStrength password={data.password} />
                         {errors.password && <p className="-mt-2 text-sm text-danger">{errors.password}</p>}
                         <FormField
                             id="password_confirmation"

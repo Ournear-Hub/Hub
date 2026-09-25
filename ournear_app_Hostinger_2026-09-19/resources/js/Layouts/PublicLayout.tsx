@@ -1,7 +1,6 @@
 import { Head, usePage } from '@inertiajs/react';
 import Footer from '@/Components/Public/Footer';
 import Header from '@/Components/Public/Header';
-import SocialBar from '@/Components/Public/SocialBar';
 import type { LayoutProps } from '@/types/layout';
 import type { SharedPageProps } from '@/types/page';
 
@@ -53,7 +52,6 @@ export default function PublicLayout({ title, description, children }: LayoutPro
                     <meta head-key="twitter:image" name="twitter:image" content={pageSeo.twitter_image} />
                 ) : null}
             </Head>
-            <SocialBar />
             <Header />
             <main className="flex-1">{children}</main>
             <Footer />

@@ -158,7 +158,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
                             <p className="truncate px-2 py-1 text-sm font-medium text-ink">{user.name}</p>
                             <p className="truncate px-2 pb-2 text-xs text-muted">{user.email}</p>
                             <Link
-                                href="/admin/settings?tab=account"
+                                href="/admin/profile"
                                 className="block rounded-md px-2 py-2 text-sm text-ink hover:bg-surface"
                                 onClick={() => setMenuOpen(false)}
                             >

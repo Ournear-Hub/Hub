@@ -10,18 +10,28 @@ class DatabaseNotificationPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasPermission(PermissionName::NotificationsView->value);
+        return $user->isCandidate()
+            || $user->hasPermission(PermissionName::NotificationsView->value);
     }
 
     public function view(User $user, DatabaseNotification $notification): bool
     {
-        return $user->hasPermission(PermissionName::NotificationsView->value)
-            && (int) $notification->notifiable_id === (int) $user->id
-            && $notification->notifiable_type === $user->getMorphClass();
+        if ($this->owns($user, $notification)) {
+            return $user->isCandidate() || $user->hasPermission(PermissionName::NotificationsView->value);
+        }
+
+        return $user->isSuperAdmin() && $user->hasPermission(PermissionName::NotificationsView->value);
     }
 
     public function update(User $user, DatabaseNotification $notification): bool
     {
-        return $this->view($user, $notification);
+        return $this->owns($user, $notification)
+            && ($user->isCandidate() || $user->hasPermission(PermissionName::NotificationsView->value));
+    }
+
+    private function owns(User $user, DatabaseNotification $notification): bool
+    {
+        return (int) $notification->notifiable_id === (int) $user->id
+            && $notification->notifiable_type === $user->getMorphClass();
     }
 }

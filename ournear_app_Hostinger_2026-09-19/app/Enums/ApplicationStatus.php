@@ -33,4 +33,31 @@ enum ApplicationStatus: string
             self::Withdrawn => 'Withdrawn',
         };
     }
+
+    public function toCandidateStatusLabel(): string
+    {
+        return match ($this) {
+            self::New => 'Submitted',
+            self::Reviewing => 'Under review',
+            self::Shortlisted => 'Shortlisted',
+            self::Interview => 'Interview',
+            self::Selected => 'Selected',
+            self::Placed => 'Placed',
+            self::Rejected => 'Rejected',
+            self::Withdrawn => 'Withdrawn',
+        };
+    }
+
+    /**
+     * @return list<self>
+     */
+    public static function candidateFilterStatuses(string $filter): array
+    {
+        return match ($filter) {
+            'active' => [self::New, self::Reviewing, self::Shortlisted, self::Interview],
+            'completed' => [self::Selected, self::Placed, self::Withdrawn],
+            'rejected' => [self::Rejected],
+            default => [],
+        };
+    }
 }

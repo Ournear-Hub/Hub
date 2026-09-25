@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\CandidateProfile;
 use App\Models\Employee;
 use App\Models\EmployerProfile;
 use App\Models\Job;
@@ -62,6 +63,19 @@ class EmployeeQuery
             $query->where('job_id', $jobId);
         }
 
+        $candidateId = $request->integer('candidate_id');
+        if ($candidateId > 0) {
+            $query->where(function (Builder $inner) use ($candidateId) {
+                $inner->where('candidate_profile_id', $candidateId)
+                    ->orWhereHas('application.user.candidateProfile', fn (Builder $profile) => $profile->whereKey($candidateId));
+            });
+        }
+
+        $employmentStatus = trim((string) $request->query('employment_status', ''));
+        if ($employmentStatus !== '' && strcasecmp($employmentStatus, 'Joined') !== 0) {
+            $query->whereRaw('1 = 0');
+        }
+
         $from = trim((string) $request->query('date_from', ''));
         if ($from !== '') {
             $query->whereDate('joined_at', '>=', $from);
@@ -110,6 +124,8 @@ class EmployeeQuery
             'search' => $request->string('search')->toString(),
             'employer_id' => $request->string('employer_id')->toString(),
             'job_id' => $request->string('job_id')->toString(),
+            'candidate_id' => $request->string('candidate_id')->toString(),
+            'employment_status' => $request->string('employment_status')->toString(),
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
             'employee' => $selectedId > 0 ? (string) $selectedId : '',
@@ -133,6 +149,25 @@ class EmployeeQuery
                 'title' => $job->title,
                 'business_id' => $job->business_id,
             ])->all(),
+            'candidates' => CandidateProfile::query()
+                ->with('user')
+                ->whereHas('applications', fn (Builder $application) => $application->whereIn(
+                    'id',
+                    Employee::query()->select('application_id'),
+                ))
+                ->orderBy('id')
+                ->get()
+                ->map(fn (CandidateProfile $profile) => [
+                    'id' => $profile->id,
+                    'business_id' => $profile->business_id,
+                    'name' => $profile->user?->name,
+                    'label' => trim(implode(' · ', array_filter([
+                        $profile->business_id,
+                        $profile->user?->name,
+                    ]))),
+                ])
+                ->all(),
+            'employment_statuses' => ['Joined'],
         ];
     }
 }

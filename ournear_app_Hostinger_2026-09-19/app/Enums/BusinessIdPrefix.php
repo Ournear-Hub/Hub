@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum BusinessIdPrefix: string
 {
+    case User = 'ONT-U';
     case Candidate = 'ONT-C';
     case Job = 'ONT-J';
     case Application = 'ONT-A';
@@ -14,4 +15,7 @@ enum BusinessIdPrefix: string
     case Replacement = 'ONT-R';
     case Invoice = 'ONT-I';
     case Payment = 'ONT-M';
+    case Resume = 'ONT-V';
+    case Document = 'ONT-D';
+    case Freelancer = 'ONT-F';
 }

@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import StatCard from '@/Components/Admin/StatCard';
-import type { DashboardStats } from '@/types/page';
+import type { DashboardMetric, DashboardPipelineStage, DashboardStats } from '@/types/page';
 
 type DashboardProps = {
     stats: DashboardStats;
@@ -9,49 +9,104 @@ type DashboardProps = {
     recentEmployerEnquiries: Array<Record<string, unknown>>;
 };
 
+function metric(stats: DashboardStats['platform'] | DashboardStats['recruitment'], key: string): DashboardMetric {
+    const item = stats?.[key as keyof NonNullable<typeof stats>] as DashboardMetric | undefined;
+    return item ?? { value: null, href: null };
+}
+
 export default function Dashboard({
     stats,
     recentApplications,
     recentEmployerEnquiries,
 }: DashboardProps) {
+    const platformCards: Array<{ label: string; key: keyof NonNullable<DashboardStats['platform']> }> = [
+        { label: 'Total Users', key: 'total_users' },
+        { label: 'New Users', key: 'new_users' },
+        { label: 'Active Users', key: 'active_users' },
+        { label: 'Verified Users', key: 'verified_users' },
+        { label: 'Blocked/Suspended Users', key: 'blocked_users' },
+    ];
+    const recruitmentCards: Array<{ label: string; key: keyof NonNullable<DashboardStats['recruitment']> }> = [
+        { label: 'Active Jobs', key: 'active_jobs' },
+        { label: 'Applications', key: 'applications' },
+        { label: 'Candidates', key: 'candidates' },
+        { label: 'Screening Pending', key: 'screening_pending' },
+        { label: 'Shortlisted', key: 'shortlisted' },
+        { label: 'Employer Submissions', key: 'employer_submissions' },
+        { label: 'Selected', key: 'selected' },
+        { label: 'Placements', key: 'placements' },
+        { label: 'Joined Employees', key: 'joined_employees' },
+        { label: 'Replacement Cases', key: 'replacement_cases' },
+    ];
+    const pipeline = stats.recruitment_pipeline ?? [];
+    const pending = stats.pending_actions ?? [];
+
     return (
         <AdminLayout title="Dashboard">
-            <div className="space-y-6">
+            <div className="space-y-8">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-ink">Dashboard</h1>
-                    <p className="mt-1 text-sm text-muted">Live counts from the database. Empty modules show an em dash.</p>
+                    <p className="mt-1 text-sm text-muted">Live counts from existing records. Cards open the matching Admin workspace.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
-                    <StatCard label="Total jobs" value={stats.jobs} />
-                    <StatCard label="Active jobs" value={stats.active_jobs} />
-                    <StatCard label="Applications" value={stats.applications} />
-                    <StatCard label="Employer enquiries" value={stats.employer_enquiries} />
-                    <StatCard label="Contact enquiries" value={stats.contact_enquiries} />
-                </div>
-                {stats.pipeline && (
-                    <div>
-                        <h2 className="text-base font-semibold text-ink">Recruitment pipeline</h2>
-                        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                            <StatCard label="New" value={stats.pipeline.new} />
-                            <StatCard label="Reviewing" value={stats.pipeline.reviewing} />
-                            <StatCard label="Shortlisted" value={stats.pipeline.shortlisted} />
-                            <StatCard label="Interview" value={stats.pipeline.interview} />
-                            <StatCard label="Selected" value={stats.pipeline.selected} />
-                            <StatCard label="Placed" value={stats.pipeline.placed} />
-                            <StatCard label="Open published jobs" value={stats.pipeline.published_open_jobs} />
-                            <StatCard label="Jobs closing in 7 days" value={stats.pipeline.jobs_closing_soon} />
-                            <StatCard label="Employer enquiries · New" value={stats.pipeline.employer_enquiries_new} />
-                            <StatCard
-                                label="Employer enquiries · Contacted"
-                                value={stats.pipeline.employer_enquiries_contacted}
-                            />
-                            <StatCard
-                                label="Employer enquiries · In progress"
-                                value={stats.pipeline.employer_enquiries_in_progress}
-                            />
-                        </div>
+
+                <section>
+                    <h2 className="text-base font-semibold text-ink">Platform</h2>
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                        {platformCards.map((card) => {
+                            const item = metric(stats.platform, card.key);
+                            return <StatCard key={card.key} label={card.label} value={item.value} href={item.href} />;
+                        })}
                     </div>
-                )}
+                </section>
+
+                <section>
+                    <h2 className="text-base font-semibold text-ink">Recruitment</h2>
+                    <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+                        {recruitmentCards.map((card) => {
+                            const item = metric(stats.recruitment, card.key);
+                            return <StatCard key={card.key} label={card.label} value={item.value} href={item.href} />;
+                        })}
+                    </div>
+                </section>
+
+                {pipeline.length > 0 ? (
+                    <section>
+                        <h2 className="text-base font-semibold text-ink">Recruitment pipeline</h2>
+                        <div className="mt-3 flex flex-wrap items-stretch gap-2">
+                            {pipeline.map((stage: DashboardPipelineStage, index) => (
+                                <div key={stage.key} className="flex items-stretch gap-2">
+                                    <StatCard label={stage.label} value={stage.value} href={stage.href} />
+                                    {index < pipeline.length - 1 ? (
+                                        <p className="hidden self-center text-lg text-muted xl:block" aria-hidden>
+                                            →
+                                        </p>
+                                    ) : null}
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                ) : null}
+
+                {pending.length > 0 ? (
+                    <section className="rounded-xl border border-line bg-white p-5">
+                        <h2 className="text-base font-semibold text-ink">Pending actions</h2>
+                        <ul className="mt-3 divide-y divide-line">
+                            {pending.map((item) => (
+                                <li key={item.key} className="flex items-center justify-between gap-3 py-2 text-sm">
+                                    {item.href ? (
+                                        <Link href={item.href} className="font-medium text-brand hover:underline">
+                                            {item.label}
+                                        </Link>
+                                    ) : (
+                                        <span className="text-ink">{item.label}</span>
+                                    )}
+                                    <span className="font-semibold text-ink">{item.value === null ? '—' : item.value}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
+
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                     <section className="overflow-x-auto rounded-xl border border-line bg-white p-5">
                         <h2 className="text-base font-semibold text-ink">Recent applications</h2>

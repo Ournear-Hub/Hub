@@ -68,6 +68,10 @@ class PlacementOffer extends Model
             'decline_notes' => $this->decline_notes,
             'withdrawn_at' => $this->withdrawn_at?->toDateTimeString(),
             'created_by' => $this->creator?->name,
+            'reference' => null,
+            'document_url' => null,
+            'reference_available' => false,
+            'document_available' => false,
         ];
     }
 }

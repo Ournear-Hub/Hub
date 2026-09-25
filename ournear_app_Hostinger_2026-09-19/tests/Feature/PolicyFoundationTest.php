@@ -54,7 +54,7 @@ class PolicyFoundationTest extends TestCase
         $this->assertFalse($candidate->canManageMasterData());
     }
 
-    public function test_employer_cannot_manage_jobs_or_applications(): void
+    public function test_employer_cannot_manage_other_employer_jobs_or_applications(): void
     {
         $employer = $this->makeEmployer();
         $job = Job::factory()->create();

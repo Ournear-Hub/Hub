@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\EmployerSubmissionStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -126,6 +127,14 @@ class EmployerSubmission extends Model
         return ! $this->status->isTerminal();
     }
 
+    public function canReview(): bool
+    {
+        return in_array($this->status, [
+            EmployerSubmissionStatus::Submitted,
+            EmployerSubmissionStatus::OnHold,
+        ], true);
+    }
+
     public function canCreatePlacement(): bool
     {
         return $this->status === EmployerSubmissionStatus::Selected && $this->placement === null;
@@ -141,6 +150,7 @@ class EmployerSubmission extends Model
             'job',
             'application.user.candidateProfile',
             'placement',
+            'submitter:id,name',
         ]);
 
         $application = $this->application;
@@ -150,7 +160,10 @@ class EmployerSubmission extends Model
             'id' => $this->id,
             'business_id' => $this->business_id,
             'status' => $this->status->value,
+            'response_status' => RecruitmentWorkspace::responseLabel($this->status),
+            'selection_outcome' => RecruitmentWorkspace::selectionOutcome($this->status),
             'submitted_at' => $this->submitted_at?->toDateTimeString(),
+            'submitted_by' => $this->submitter?->name,
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'employer' => $this->employer?->toAdminSummary(),
             'job' => $this->job ? [
@@ -173,6 +186,17 @@ class EmployerSubmission extends Model
                 'business_id' => $this->placement->business_id,
                 'status' => $this->placement->status->value,
             ] : null,
+            'links' => [
+                'employer' => RecruitmentWorkspace::employerUrl($this->employer),
+                'job' => RecruitmentWorkspace::jobUrl($this->job),
+                'candidate' => RecruitmentWorkspace::candidateUrl($profile),
+                'application' => RecruitmentWorkspace::applicationUrl($application),
+                'screening' => RecruitmentWorkspace::screeningUrl($this->job ?? $application?->job, $application),
+                'shortlist' => RecruitmentWorkspace::shortlistUrl($application, $this->job ?? $application?->job),
+                'submission' => RecruitmentWorkspace::submissionUrl($this),
+                'selection' => RecruitmentWorkspace::submissionUrl($this),
+                'placement' => RecruitmentWorkspace::placementUrl($this->placement),
+            ],
         ];
     }
 
@@ -203,7 +227,10 @@ class EmployerSubmission extends Model
         $payload['can_select'] = $this->canSelect();
         $payload['can_reject'] = $this->canReject();
         $payload['can_hold'] = $this->canHold();
+        $payload['can_review'] = $this->canReview();
         $payload['can_create_placement'] = $this->canCreatePlacement();
+        $payload['can_request_interview'] = false;
+        $payload['interview_requested_available'] = false;
         $payload['employer'] = $this->employer?->toAdminArray();
         $payload['job'] = $this->job?->toAdminArray();
         $payload['application'] = $this->application?->toAdminArray(true);
@@ -213,6 +240,21 @@ class EmployerSubmission extends Model
         $payload['has_resume'] = $this->application
             ? filled($this->application->getRawOriginal('resume_path') ?? $this->application->getAttributes()['resume_path'] ?? null)
             : false;
+        $payload['package'] = [
+            [
+                'label' => 'Resume',
+                'available' => $payload['has_resume'],
+                'href' => $payload['has_resume'] ? $payload['resume_url'] : null,
+                'note' => $payload['has_resume'] ? null : RecruitmentWorkspace::NOT_RECORDED,
+            ],
+            [
+                'label' => 'Additional submission documents',
+                'available' => false,
+                'href' => null,
+                'note' => RecruitmentWorkspace::NOT_AVAILABLE,
+            ],
+        ];
+        $payload['chain'] = RecruitmentWorkspace::submissionChain($this);
         $payload['activities'] = $this->timeline();
 
         return $payload;

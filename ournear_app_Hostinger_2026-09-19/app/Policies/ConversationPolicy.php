@@ -15,8 +15,11 @@ class ConversationPolicy
 
     public function view(User $user, Conversation $conversation): bool
     {
-        return $user->hasPermission(PermissionName::MessagesManage->value)
-            && $conversation->hasParticipant($user);
+        if (! $user->hasPermission(PermissionName::MessagesManage->value)) {
+            return false;
+        }
+
+        return $user->isSuperAdmin() || $conversation->hasParticipant($user);
     }
 
     public function create(User $user): bool
@@ -26,6 +29,7 @@ class ConversationPolicy
 
     public function update(User $user, Conversation $conversation): bool
     {
-        return $this->view($user, $conversation);
+        return $user->hasPermission(PermissionName::MessagesManage->value)
+            && $conversation->hasParticipant($user);
     }
 }

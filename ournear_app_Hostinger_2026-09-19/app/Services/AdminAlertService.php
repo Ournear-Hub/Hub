@@ -8,6 +8,7 @@ use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\Employee;
 use App\Models\EmployerSubmission;
+use App\Models\Freelancer;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Placement;
@@ -30,6 +31,17 @@ class AdminAlertService
             trim($application->full_name.' applied for '.($application->job?->title ?? 'a job').'.'),
             '/admin/applications?application='.$application->id,
             ['application_id' => $application->id],
+        );
+    }
+
+    public function freelancerReceived(Freelancer $freelancer): void
+    {
+        $this->send(
+            AdminNotificationEvent::FreelancerReceived,
+            'New freelancer enquiry',
+            trim($freelancer->name.' applied as a freelancer. Freelancer ID '.($freelancer->business_id ?? '').'.'),
+            '/admin/freelancers/'.$freelancer->id,
+            ['freelancer_id' => $freelancer->id],
         );
     }
 

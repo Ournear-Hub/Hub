@@ -7,6 +7,7 @@ type ButtonProps = PropsWithChildren<{
     variant?: 'accent' | 'brand' | 'light' | 'outline';
     className?: string;
     onClick?: () => void;
+    disabled?: boolean;
 }>;
 
 const variants: Record<NonNullable<ButtonProps['variant']>, string> = {
@@ -22,9 +23,10 @@ export default function Button({
     variant = 'accent',
     className = '',
     onClick,
+    disabled = false,
     children,
 }: ButtonProps) {
-    const classes = `inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold transition ${variants[variant]} ${className}`;
+    const classes = `inline-flex items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold transition ${variants[variant]} ${className} ${disabled ? 'pointer-events-none opacity-60' : ''}`;
 
     if (href) {
         if (href.startsWith('/')) {
@@ -43,7 +45,7 @@ export default function Button({
     }
 
     return (
-        <button type={type} className={classes} onClick={onClick}>
+        <button type={type} className={classes} onClick={onClick} disabled={disabled}>
             {children}
         </button>
     );

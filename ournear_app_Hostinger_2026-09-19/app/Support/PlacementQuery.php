@@ -3,9 +3,11 @@
 namespace App\Support;
 
 use App\Enums\PlacementStatus;
+use App\Models\CandidateProfile;
 use App\Models\EmployerProfile;
 use App\Models\Job;
 use App\Models\Placement;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -64,9 +66,24 @@ class PlacementQuery
             $query->where('job_id', $jobId);
         }
 
+        $candidateId = $request->integer('candidate_id');
+        if ($candidateId > 0) {
+            $query->whereHas('application.user.candidateProfile', fn (Builder $profile) => $profile->whereKey($candidateId));
+        }
+
         $status = trim((string) $request->query('status', ''));
         if ($status !== '') {
             $query->where('status', $status);
+        }
+
+        $joiningStatus = trim((string) $request->query('joining_status', ''));
+        if ($joiningStatus !== '') {
+            $mapped = RecruitmentWorkspace::placementStatusesForJoiningFilter($joiningStatus);
+            if ($mapped === []) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('status', $mapped);
+            }
         }
 
         $from = trim((string) $request->query('date_from', ''));
@@ -124,7 +141,9 @@ class PlacementQuery
             'search' => $request->string('search')->toString(),
             'employer_id' => $request->string('employer_id')->toString(),
             'job_id' => $request->string('job_id')->toString(),
+            'candidate_id' => $request->string('candidate_id')->toString(),
             'status' => $request->string('status')->toString(),
+            'joining_status' => $request->string('joining_status')->toString(),
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
             'placement' => $selectedId > 0 ? (string) $selectedId : '',
@@ -148,7 +167,28 @@ class PlacementQuery
                 'title' => $job->title,
                 'business_id' => $job->business_id,
             ])->all(),
+            'candidates' => CandidateProfile::query()
+                ->with('user')
+                ->whereHas('applications.placements')
+                ->orderBy('id')
+                ->get()
+                ->map(fn (CandidateProfile $profile) => [
+                    'id' => $profile->id,
+                    'business_id' => $profile->business_id,
+                    'name' => $profile->user?->name,
+                    'label' => trim(implode(' · ', array_filter([
+                        $profile->business_id,
+                        $profile->user?->name,
+                    ]))),
+                ])
+                ->all(),
             'statuses' => array_map(fn (PlacementStatus $status) => $status->value, PlacementStatus::cases()),
+            'joining_statuses' => [
+                ['value' => 'pending', 'label' => 'Pending'],
+                ['value' => 'joined', 'label' => 'Joined'],
+                ['value' => 'did_not_join', 'label' => 'Did not join'],
+                ['value' => 'cancelled', 'label' => 'Cancelled'],
+            ],
         ];
     }
 }

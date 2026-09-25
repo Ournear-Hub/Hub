@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Enums\EmployerSubmissionStatus;
 use App\Enums\UserRole;
 use App\Models\EmployerProfile;
 use App\Models\Industry;
@@ -16,11 +17,7 @@ class EmployerQuery
      */
     public function adminIndex(Request $request): LengthAwarePaginator
     {
-        $query = EmployerProfile::query()
-            ->with(['user', 'classifiedIndustry'])
-            ->withCount(['jobs', 'submissions'])
-            ->whereHas('user', fn ($user) => $user->where('role', UserRole::Employer->value))
-            ->latest();
+        $query = $this->baseQuery();
 
         $search = trim((string) $request->query('search', ''));
         if ($search !== '') {
@@ -36,6 +33,21 @@ class EmployerQuery
             });
         }
 
+        $employerId = trim((string) $request->query('employer_id', ''));
+        if ($employerId !== '') {
+            $query->where(function (Builder $inner) use ($employerId) {
+                $inner->where('business_id', $employerId);
+                if (ctype_digit($employerId)) {
+                    $inner->orWhereKey((int) $employerId);
+                }
+            });
+        }
+
+        $company = trim((string) $request->query('company', ''));
+        if ($company !== '') {
+            $query->where('company_name', 'like', '%'.$company.'%');
+        }
+
         $industryId = $request->integer('industry_id');
         if ($industryId > 0) {
             $name = Industry::query()->whereKey($industryId)->value('name');
@@ -47,6 +59,26 @@ class EmployerQuery
                     });
                 }
             });
+        }
+
+        $location = trim((string) $request->query('location', ''));
+        if ($location !== '') {
+            $query->whereHas('jobs', function (Builder $job) use ($location) {
+                $job->where('location', 'like', '%'.$location.'%')
+                    ->orWhereHas('classifiedLocation', fn (Builder $classified) => $classified->where('name', 'like', '%'.$location.'%'));
+            });
+        }
+
+        $status = trim((string) $request->query('status', ''));
+        if ($status !== '') {
+            $query->whereHas('user', fn (Builder $user) => $user->where('account_status', $status));
+        }
+
+        $verification = trim((string) $request->query('verification', ''));
+        if ($verification === 'verified') {
+            $query->whereHas('user', fn (Builder $user) => $user->whereNotNull('email_verified_at'));
+        } elseif ($verification === 'unverified') {
+            $query->whereHas('user', fn (Builder $user) => $user->whereNull('email_verified_at'));
         }
 
         $from = trim((string) $request->query('date_from', ''));
@@ -69,9 +101,49 @@ class EmployerQuery
             return null;
         }
 
+        return $this->baseQuery()->find($id);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function filters(Request $request): array
+    {
+        $selectedId = $request->integer('employer');
+
+        return [
+            'search' => $request->string('search')->toString(),
+            'employer_id' => $request->string('employer_id')->toString(),
+            'company' => $request->string('company')->toString(),
+            'industry_id' => $request->string('industry_id')->toString(),
+            'location' => $request->string('location')->toString(),
+            'status' => $request->string('status')->toString(),
+            'verification' => $request->string('verification')->toString(),
+            'date_from' => $request->string('date_from')->toString(),
+            'date_to' => $request->string('date_to')->toString(),
+            'employer' => $selectedId > 0 ? (string) $selectedId : '',
+        ];
+    }
+
+    /**
+     * @return Builder<EmployerProfile>
+     */
+    private function baseQuery(): Builder
+    {
         return EmployerProfile::query()
             ->with(['user', 'classifiedIndustry'])
-            ->withCount(['jobs', 'submissions'])
-            ->find($id);
+            ->withCount([
+                'jobs',
+                'jobs as active_jobs_count' => fn (Builder $jobs) => $jobs->where('active', true),
+                'applications',
+                'submissions',
+                'submissions as selections_count' => fn (Builder $submissions) => $submissions
+                    ->where('status', EmployerSubmissionStatus::Selected->value),
+                'placements',
+                'employees',
+                'replacements',
+            ])
+            ->whereHas('user', fn ($user) => $user->where('role', UserRole::Employer->value))
+            ->latest();
     }
 }

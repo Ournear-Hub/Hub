@@ -1,17 +1,99 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BrandMark from '@/Components/BrandMark';
-import Button from '@/Components/Public/Button';
 import PageContainer from '@/Components/Public/PageContainer';
 import { isNavActive, primaryNav } from '@/content/navigation';
-import type { SharedPageProps } from '@/types/page';
+import type { AuthUser, SharedPageProps } from '@/types/page';
+
+type AccountLink = {
+    href: string;
+    label: string;
+};
+
+function shortName(user: AuthUser): string {
+    return user.name.trim().split(/\s+/)[0] || user.username || 'Account';
+}
+
+function initials(user: AuthUser): string {
+    const source = user.name.trim() || user.username || 'User';
+
+    return source
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((part) => part.charAt(0))
+        .join('')
+        .toUpperCase();
+}
+
+function ProfileAvatar({ user, className }: { user: AuthUser; className: string }) {
+    return user.photo_url ? (
+        <img src={user.photo_url} alt={`${user.name} profile`} className={`${className} rounded-full object-cover`} />
+    ) : (
+        <span
+            aria-label={`${user.name} initials`}
+            className={`${className} inline-flex items-center justify-center rounded-full bg-brand text-xs font-semibold text-white`}
+        >
+            {initials(user)}
+        </span>
+    );
+}
 
 export default function Header() {
     const { url, props } = usePage<SharedPageProps>();
     const user = props.auth.user;
-    const isMember = user?.role === 'candidate' || user?.role === 'employer';
     const [open, setOpen] = useState(false);
     const [servicesOpen, setServicesOpen] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
+    const profileRef = useRef<HTMLDivElement>(null);
+    const accountLinks: AccountLink[] = user?.role === 'candidate'
+        ? props.candidateNav ?? []
+        : user?.role === 'employer'
+          ? [
+                { href: '/account', label: 'Dashboard' },
+                { href: '/account/profile', label: 'Company Profile' },
+                { href: '/account/jobs', label: 'Job Management' },
+                { href: '/account/enquiries', label: 'Enquiries' },
+                { href: '/account/settings', label: 'Settings' },
+            ]
+          : user?.role === 'admin'
+            ? [
+                  { href: '/admin', label: 'Admin Panel' },
+                  { href: '/admin/profile', label: 'Profile' },
+              ]
+            : [];
+    const visiblePrimaryNav = user?.role === 'employer'
+        ? primaryNav.filter((item) => item.href !== '/for-employers')
+        : primaryNav;
+
+    useEffect(() => {
+        if (!profileOpen) {
+            return;
+        }
+
+        const closeOutside = (event: MouseEvent) => {
+            if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+                setProfileOpen(false);
+            }
+        };
+        const closeOnEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setProfileOpen(false);
+            }
+        };
+
+        window.addEventListener('mousedown', closeOutside);
+        window.addEventListener('keydown', closeOnEscape);
+
+        return () => {
+            window.removeEventListener('mousedown', closeOutside);
+            window.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [profileOpen]);
+
+    useEffect(() => {
+        setOpen(false);
+        setProfileOpen(false);
+    }, [url]);
 
     return (
         <header className="sticky top-0 z-40 border-b border-line bg-white/95 backdrop-blur">
@@ -21,7 +103,7 @@ export default function Header() {
                 </Link>
 
                 <nav className="hidden items-center gap-5 lg:flex" aria-label="Primary">
-                    {primaryNav.map((item) => {
+                    {visiblePrimaryNav.map((item) => {
                         const active = isNavActive(url, item.href);
 
                         if (item.children) {
@@ -72,33 +154,80 @@ export default function Header() {
                     })}
                 </nav>
 
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-2 lg:gap-3">
                     {!user ? (
                         <>
-                            <Link href="/login" className="hidden text-sm font-medium text-muted hover:text-ink sm:inline">
+                            <Link
+                                href="/login"
+                                className="hidden min-h-10 items-center whitespace-nowrap rounded-md border border-line px-3 text-sm font-semibold text-ink hover:border-brand hover:text-brand sm:inline-flex"
+                            >
                                 Log in
                             </Link>
-                            <Link href="/register" className="hidden text-sm font-medium text-brand hover:text-ink sm:inline">
+                            <Link
+                                href="/register"
+                                className="hidden min-h-10 items-center whitespace-nowrap rounded-md bg-brand px-3 text-sm font-semibold text-white shadow-sm hover:bg-brand/90 sm:inline-flex"
+                            >
                                 Register
                             </Link>
                         </>
-                    ) : isMember ? (
-                        <>
-                            <Link href="/account" className="hidden text-sm font-medium text-muted hover:text-ink sm:inline">
-                                Account
-                            </Link>
+                    ) : (
+                        <div className="relative hidden lg:block" ref={profileRef}>
                             <button
                                 type="button"
-                                className="hidden text-sm font-medium text-muted hover:text-ink sm:inline"
-                                onClick={() => router.post('/logout')}
+                                className="flex min-h-11 items-center gap-2 rounded-full border border-line bg-white py-1 pl-1 pr-3 text-left shadow-sm hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                                aria-haspopup="menu"
+                                aria-expanded={profileOpen}
+                                aria-label={`Open account menu for ${shortName(user)}`}
+                                onClick={() => setProfileOpen((value) => !value)}
                             >
-                                Log out
+                                <ProfileAvatar user={user} className="h-9 w-9 shrink-0" />
+                                <span className="max-w-28 truncate text-sm font-medium text-ink">{shortName(user)}</span>
+                                <span aria-hidden="true" className="text-xs text-muted">
+                                    ▾
+                                </span>
                             </button>
-                        </>
-                    ) : null}
-                    <div className="hidden sm:block">
-                        <Button href="/jobs">Find Jobs</Button>
-                    </div>
+                            {profileOpen ? (
+                                <div
+                                    role="menu"
+                                    aria-label="Account menu"
+                                    className="absolute right-0 z-50 mt-2 w-64 overflow-hidden rounded-xl border border-line bg-white shadow-lg"
+                                >
+                                    <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+                                        <ProfileAvatar user={user} className="h-11 w-11 shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="truncate text-sm font-semibold text-ink">{user.name}</p>
+                                            <p className="text-xs text-muted">Your account</p>
+                                        </div>
+                                    </div>
+                                    <nav className="max-h-[min(26rem,calc(100vh-8rem))] overflow-y-auto p-2" aria-label="Account menu links">
+                                        {accountLinks.map((item) => (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                role="menuitem"
+                                                className="block rounded-md px-3 py-2 text-sm text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+                                                onClick={() => setProfileOpen(false)}
+                                            >
+                                                {item.label}
+                                            </Link>
+                                        ))}
+                                    </nav>
+                                    <div className="border-t border-line p-2">
+                                        <Link
+                                            href="/logout"
+                                            method="post"
+                                            as="button"
+                                            role="menuitem"
+                                            className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-danger hover:bg-danger/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
+                                            onClick={() => setProfileOpen(false)}
+                                        >
+                                            Log out
+                                        </Link>
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
                     <button
                         type="button"
                         className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line text-ink lg:hidden"
@@ -119,7 +248,7 @@ export default function Header() {
             {open && (
                 <div id="public-mobile-nav" className="border-t border-line bg-white lg:hidden">
                     <PageContainer className="flex flex-col gap-1 py-3">
-                        {primaryNav.map((item) => (
+                        {visiblePrimaryNav.map((item) => (
                             <div key={item.href}>
                                 <Link
                                     href={item.href}
@@ -140,13 +269,6 @@ export default function Header() {
                                 ))}
                             </div>
                         ))}
-                        <Link
-                            href="/jobs"
-                            className="mt-2 rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold text-white"
-                            onClick={() => setOpen(false)}
-                        >
-                            Find Jobs
-                        </Link>
                         {!user ? (
                             <>
                                 <Link
@@ -164,18 +286,28 @@ export default function Header() {
                                     Register
                                 </Link>
                             </>
-                        ) : isMember ? (
-                            <>
-                                <Link
-                                    href="/account"
-                                    className="rounded-md px-2 py-2 text-sm font-medium text-ink hover:bg-surface"
-                                    onClick={() => setOpen(false)}
-                                >
-                                    Account
-                                </Link>
+                        ) : (
+                            <div className="mt-2 border-t border-line pt-3">
+                                <div className="mb-2 flex items-center gap-3 rounded-lg bg-surface px-3 py-3">
+                                    <ProfileAvatar user={user} className="h-11 w-11 shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-ink">{shortName(user)}</p>
+                                        <p className="text-xs text-muted">Your account</p>
+                                    </div>
+                                </div>
+                                {accountLinks.map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className="block min-h-11 rounded-md px-3 py-2.5 text-sm font-medium text-ink hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/30"
+                                        onClick={() => setOpen(false)}
+                                    >
+                                        {item.label}
+                                    </Link>
+                                ))}
                                 <button
                                     type="button"
-                                    className="rounded-md px-2 py-2 text-left text-sm font-medium text-ink hover:bg-surface"
+                                    className="mt-1 min-h-11 w-full border-t border-line px-3 py-2.5 text-left text-sm font-medium text-danger hover:bg-danger/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger/30"
                                     onClick={() => {
                                         setOpen(false);
                                         router.post('/logout');
@@ -183,8 +315,8 @@ export default function Header() {
                                 >
                                     Log out
                                 </button>
-                            </>
-                        ) : null}
+                            </div>
+                        )}
                     </PageContainer>
                 </div>
             )}

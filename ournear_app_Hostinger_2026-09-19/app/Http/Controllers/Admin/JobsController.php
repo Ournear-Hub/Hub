@@ -43,9 +43,21 @@ class JobsController extends Controller
             $selected = null;
         }
 
+        $selectedPayload = $selected?->toAdminArray();
+        if (is_array($selectedPayload) && $selected) {
+            $selectedPayload['links'] = [
+                'applications' => route('admin.applications.index', ['job_id' => $selected->id], false),
+                'candidates' => route('admin.candidates.index', ['job_id' => $selected->id], false),
+                'screening' => route('admin.screening.index', ['job_id' => $selected->id], false),
+                'shortlisted' => route('admin.shortlisted.index', ['job_id' => $selected->id], false),
+                'submissions' => route('admin.submissions.index', ['job_id' => $selected->id], false),
+                'placements' => route('admin.placements.index', ['job_id' => $selected->id], false),
+            ];
+        }
+
         return Inertia::render('Admin/Jobs/Index', [
             'jobs' => $listings,
-            'selected' => $selected?->toAdminArray(),
+            'selected' => $selectedPayload,
             'applications' => $selected
                 ? $selected->applications()->with(['job', 'screening'])->latest()->limit(10)->get()->map->toAdminListArray()->values()->all()
                 : [],
@@ -61,6 +73,7 @@ class JobsController extends Controller
                 'experience_range_id' => $request->string('experience_range_id')->toString(),
                 'featured' => $request->string('featured')->toString(),
                 'active' => $request->string('active')->toString(),
+                'employer_id' => $request->string('employer_id')->toString(),
                 'job' => $selected?->slug ?? '',
                 'mode' => $mode === 'view' ? '' : $mode,
             ],

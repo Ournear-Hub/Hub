@@ -9,7 +9,6 @@ use App\Services\LoginLogService;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -37,8 +36,10 @@ class NewPasswordController extends Controller
             $request->only('email', 'password', 'password_confirmation', 'token'),
             function ($user) use ($request, $logs) {
                 $user->forceFill([
-                    'password' => Hash::make($request->string('password')->toString()),
+                    'password' => $request->string('password')->toString(),
                     'remember_token' => Str::random(40),
+                    'must_change_password' => false,
+                    'password_changed_at' => now(),
                 ])->save();
 
                 event(new PasswordReset($user));

@@ -1,11 +1,13 @@
 import { Link, usePage } from '@inertiajs/react';
 import BrandMark from '@/Components/BrandMark';
 import PageContainer from '@/Components/Public/PageContainer';
+import SocialIcons from '@/Components/Public/SocialIcons';
 import type { SharedPageProps } from '@/types/page';
 
 const quickLinks = [
     { label: 'Home', href: '/' },
     { label: 'Jobs', href: '/jobs' },
+    { label: 'Freelancers', href: '/freelancers' },
     { label: 'About Us', href: '/about' },
     { label: 'Contact Us', href: '/contact' },
 ];
@@ -25,6 +27,9 @@ export default function Footer() {
     const page = usePage<SharedPageProps>().props;
     const contact = page.publicContent?.contact;
     const socials = page.socialLinks ?? [];
+    const visibleEmployerLinks = page.auth.user?.role === 'employer'
+        ? employerLinks.filter((item) => item.href !== '/for-employers')
+        : employerLinks;
     return (
         <footer className="mt-auto bg-brand text-white">
             <PageContainer className="grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
@@ -59,7 +64,7 @@ export default function Footer() {
                 <div>
                     <h2 className="text-sm font-semibold">Employers</h2>
                     <ul className="mt-3 space-y-2 text-sm text-white/80">
-                        {employerLinks.map((item) => (
+                        {visibleEmployerLinks.map((item) => (
                             <li key={item.href}>
                                 <Link href={item.href} className="hover:text-white">
                                     {item.label}
@@ -72,15 +77,9 @@ export default function Footer() {
                         <br />
                         {contact?.phone}
                     </p>
-                    {socials.length > 0 ? (
-                        <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/80">
-                            {socials.map((item) => (
-                                <a key={item.platform} href={item.href} className="hover:text-white" target="_blank" rel="noreferrer">
-                                    {item.label}
-                                </a>
-                            ))}
-                        </div>
-                    ) : null}
+                    <div className="mt-4">
+                        <SocialIcons links={socials} />
+                    </div>
                 </div>
             </PageContainer>
             <div className="border-t border-white/10">

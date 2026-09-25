@@ -12,6 +12,8 @@ enum SecurityActivityType: string
     case RoleRemoved = 'role_removed';
     case PermissionChanged = 'permission_changed';
     case PasswordResetSent = 'password_reset_sent';
+    case UserBlocked = 'user_blocked';
+    case UserSuspended = 'user_suspended';
     case InvoiceCancelled = 'invoice_cancelled';
 
     public function label(): string
@@ -25,6 +27,8 @@ enum SecurityActivityType: string
             self::RoleRemoved => 'Role removed',
             self::PermissionChanged => 'Permissions changed',
             self::PasswordResetSent => 'Password reset sent',
+            self::UserBlocked => 'User blocked',
+            self::UserSuspended => 'User suspended',
             self::InvoiceCancelled => 'Invoice cancelled',
         };
     }

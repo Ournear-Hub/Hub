@@ -7,6 +7,12 @@ export type AuthUser = {
     id: number;
     name: string;
     email: string;
+    username?: string | null;
+    photo_url?: string | null;
+    must_change_password?: boolean;
+    preferred_language?: 'en' | 'te' | 'hi';
+    email_verified?: boolean;
+    profile_completion?: number;
     role?: 'admin' | 'candidate' | 'employer';
     permissions?: string[];
 };
@@ -15,6 +21,22 @@ export type FlashProps = {
     success: string | null;
     error: string | null;
     status: string | null;
+    registered_email?: string | null;
+    freelancer_confirmation?: {
+        business_id: string;
+        name: string;
+        email: string;
+        preferred_location: string;
+        primary_skill: string;
+        submitted_at: string | null;
+    } | null;
+    application_confirmation?: {
+        business_id: string | null;
+        job_title: string;
+        company: string | null;
+        location: string | null;
+        href: string | null;
+    } | null;
 };
 
 export type SharedPageProps = {
@@ -26,6 +48,13 @@ export type SharedPageProps = {
         unread: number;
         recent: AdminAlertItem[];
     } | null;
+    accountAlerts?: {
+        unread: number;
+    } | null;
+    candidateNav?: Array<{
+        href: string;
+        label: string;
+    }> | null;
     errors?: Record<string, string>;
     publicContent?: SiteContent;
     socialLinks?: PublicSocialLink[];
@@ -40,6 +69,18 @@ export type SharedPageProps = {
         icon_url: string | null;
         favicon_url: string | null;
     };
+};
+
+export type DashboardMetric = {
+    value: number | null;
+    href?: string | null;
+};
+
+export type DashboardPipelineStage = {
+    key: string;
+    label: string;
+    value: number | null;
+    href?: string | null;
 };
 
 export type DashboardStats = {
@@ -61,4 +102,25 @@ export type DashboardStats = {
         employer_enquiries_in_progress: number | null;
         jobs_closing_soon: number | null;
     };
+    platform?: {
+        total_users: DashboardMetric;
+        new_users: DashboardMetric;
+        active_users: DashboardMetric;
+        verified_users: DashboardMetric;
+        blocked_users: DashboardMetric;
+    };
+    recruitment?: {
+        active_jobs: DashboardMetric;
+        applications: DashboardMetric;
+        candidates: DashboardMetric;
+        screening_pending: DashboardMetric;
+        shortlisted: DashboardMetric;
+        employer_submissions: DashboardMetric;
+        selected: DashboardMetric;
+        placements: DashboardMetric;
+        joined_employees: DashboardMetric;
+        replacement_cases: DashboardMetric;
+    };
+    recruitment_pipeline?: DashboardPipelineStage[];
+    pending_actions?: DashboardPipelineStage[];
 };

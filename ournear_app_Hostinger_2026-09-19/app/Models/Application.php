@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ApplicationStatus;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\ScreeningDecision;
+use App\Enums\ScreeningStage;
 use App\Models\Concerns\HasBusinessId;
 use Database\Factories\ApplicationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -223,7 +224,8 @@ class Application extends Model
             'applied_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'has_resume' => filled($this->getRawOriginal('resume_path') ?? $this->attributes['resume_path'] ?? null),
-            'resume_url' => route('admin.applications.resume', $this),
+            'resume_url' => $this->adminResumeUrl(),
+            'resume_view_url' => $this->adminResumeViewUrl(),
             'screening_decision' => $this->screeningDecision()->value,
             'screening_decision_label' => $this->screeningDecision()->label(),
             'shortlisted_at' => $this->screening?->shortlisted_at?->toDateTimeString(),
@@ -242,6 +244,7 @@ class Application extends Model
                 'industry' => $this->job->displayIndustry(),
                 'location' => $this->job->displayLocation(),
             ] : null,
+            'employer' => $this->job?->employer?->toAdminSummary(),
         ];
     }
 
@@ -263,6 +266,11 @@ class Application extends Model
         $payload['can_shortlist'] = $this->canShortlist();
         $payload['can_mark_suitable'] = $this->canMarkSuitable();
         $payload['can_mark_not_suitable'] = $this->canMarkNotSuitable();
+        $payload['can_start_screening'] = $this->canStartScreening();
+        $payload['can_contact'] = $this->canRecordScreeningProgress();
+        $payload['can_mark_called'] = $this->canRecordScreeningProgress();
+        $payload['can_mark_interviewed'] = $this->canRecordScreeningProgress();
+        $payload['can_hold'] = $this->canHoldScreening();
         $payload['candidate'] = [
             'id' => $profile?->id,
             'business_id' => $profile?->business_id,
@@ -277,12 +285,24 @@ class Application extends Model
         $payload['job'] = $this->jobSummary();
 
         if ($detailed) {
-            $this->loadMissing(['interview', 'activities.actor', 'screening.rejectionReason', 'screening.screener', 'screening.shortlister']);
+            $this->loadMissing([
+                'interview',
+                'activities.actor',
+                'screening.rejectionReason',
+                'screening.screener',
+                'screening.shortlister',
+                'submissions.employer.user',
+                'submissions.placement',
+                'placements.employee',
+                'job.employer.user',
+            ]);
             $payload['internal_notes'] = $this->notes();
             $payload['interview'] = $this->interview?->toAdminArray();
             $payload['screening'] = $this->screening?->toAdminArray() ?? [
                 'decision' => ScreeningDecision::Pending->value,
                 'decision_label' => ScreeningDecision::Pending->label(),
+                'stage' => $this->screeningStage()->value,
+                'stage_label' => $this->screeningStage()->label(),
                 'notes' => null,
                 'rejection_reason_id' => null,
                 'rejection_reason' => null,
@@ -290,11 +310,37 @@ class Application extends Model
                 'screened_at' => null,
                 'shortlisted_by' => null,
                 'shortlisted_at' => null,
+                'held_by' => null,
+                'held_at' => null,
             ];
             $payload['activities'] = $this->activities
                 ->map(fn (RecruitmentActivity $activity) => $activity->toAdminArray())
                 ->values()
                 ->all();
+            $payload['employer'] = $this->job?->employer?->toAdminSummary();
+            $payload['submissions'] = $this->submissions
+                ->map(fn (EmployerSubmission $submission) => $submission->toAdminListArray())
+                ->values()
+                ->all();
+            $payload['placements'] = $this->placements
+                ->map(fn (Placement $placement) => $placement->toAdminListArray())
+                ->values()
+                ->all();
+            $payload['links'] = [
+                'candidate' => $profile ? route('admin.candidates.index', ['candidate' => $profile->id], false) : null,
+                'job' => $this->job ? route('admin.jobs.index', ['job' => $this->job->slug], false) : null,
+                'employer' => $this->job?->employer
+                    ? route('admin.employers.index', ['employer' => $this->job->employer->id], false)
+                    : null,
+                'screening' => route('admin.screening.index', ['application' => $this->id], false),
+                'shortlist' => route('admin.shortlisted.index', ['application' => $this->id], false),
+                'submissions' => $this->job
+                    ? route('admin.submissions.index', ['job_id' => $this->job->id], false)
+                    : route('admin.submissions.index', [], false),
+                'placements' => $this->job
+                    ? route('admin.placements.index', ['job_id' => $this->job->id], false)
+                    : route('admin.placements.index', [], false),
+            ];
         }
 
         return $payload;
@@ -318,6 +364,53 @@ class Application extends Model
     public function screeningDecision(): ScreeningDecision
     {
         return $this->screening?->decision ?? ScreeningDecision::Pending;
+    }
+
+    public function screeningStage(): ScreeningStage
+    {
+        if ($this->screening?->stage instanceof ScreeningStage) {
+            return $this->screening->stage;
+        }
+
+        return match ($this->screeningDecision()) {
+            ScreeningDecision::Shortlisted => ScreeningStage::Shortlisted,
+            ScreeningDecision::NotSuitable => ScreeningStage::Rejected,
+            ScreeningDecision::Suitable => ScreeningStage::Matched,
+            default => match ($this->status) {
+                ApplicationStatus::Shortlisted => ScreeningStage::Shortlisted,
+                ApplicationStatus::Rejected => ScreeningStage::Rejected,
+                default => ScreeningStage::Pending,
+            },
+        };
+    }
+
+    public function screeningIsClosed(): bool
+    {
+        return in_array($this->status, [
+            ApplicationStatus::Rejected,
+            ApplicationStatus::Withdrawn,
+            ApplicationStatus::Placed,
+        ], true) || $this->screeningDecision() === ScreeningDecision::NotSuitable;
+    }
+
+    public function canStartScreening(): bool
+    {
+        if ($this->screeningIsClosed()) {
+            return false;
+        }
+
+        return $this->screeningStage() === ScreeningStage::Pending;
+    }
+
+    public function canRecordScreeningProgress(): bool
+    {
+        return ! $this->screeningIsClosed();
+    }
+
+    public function canHoldScreening(): bool
+    {
+        return $this->canRecordScreeningProgress()
+            && $this->screeningStage() !== ScreeningStage::Held;
     }
 
     public function canShortlist(): bool
@@ -425,5 +518,15 @@ class Application extends Model
             'employer' => $job['employer'],
             'workspace_url' => route('admin.jobs.index', ['job' => $this->job->slug], false),
         ];
+    }
+
+    public function adminResumeUrl(): string
+    {
+        return route('admin.applications.resume', $this);
+    }
+
+    public function adminResumeViewUrl(): string
+    {
+        return route('admin.applications.resume', ['application' => $this, 'disposition' => 'inline']);
     }
 }

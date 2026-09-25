@@ -8,7 +8,7 @@ import type { SharedPageProps } from '@/types/page';
 export default function Login() {
     const { flash } = usePage<SharedPageProps>().props;
     const { data, setData, post, processing, errors } = useForm({
-        email: '',
+        login: '',
         password: '',
         remember: false,
     });
@@ -36,14 +36,13 @@ export default function Login() {
                     )}
                     <form onSubmit={submit} className="space-y-4 rounded-xl border border-line bg-white p-6">
                         <FormField
-                            id="email"
-                            label="Email"
-                            type="email"
-                            value={data.email}
+                            id="login"
+                            label="Username or Email"
+                            value={data.login}
                             autoComplete="username"
-                            onChange={(event) => setData('email', event.target.value)}
+                            onChange={(event) => setData('login', event.target.value)}
                         />
-                        {errors.email && <p className="-mt-2 text-sm text-danger">{errors.email}</p>}
+                        {errors.login && <p className="-mt-2 text-sm text-danger">{errors.login}</p>}
                         <FormField
                             id="password"
                             label="Password"

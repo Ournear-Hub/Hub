@@ -31,7 +31,11 @@ class UserManagementService
                 'password' => Str::password(32),
                 'role' => UserRole::Admin,
             ]);
-            $user->forceFill(['is_active' => true])->save();
+            $user->forceFill([
+                'is_active' => true,
+                'account_status' => \App\Enums\AccountStatus::Active,
+                'must_change_password' => true,
+            ])->save();
 
             $this->syncRoles($actor, $user, $roleIds, audit: false);
 
@@ -165,12 +169,35 @@ class UserManagementService
     {
         Password::sendResetLink(['email' => $target->email]);
 
+        $target->forceFill(['must_change_password' => true])->save();
+
         $this->loginLogs->passwordResetRequest(request(), $target, $target->email);
         $this->audit->record(
             SecurityActivityType::PasswordResetSent,
             'A password reset was sent to '.$target->email.'.',
             $actor,
             $target,
+        );
+        app(UserActivityService::class)->record(
+            $target,
+            \App\Enums\UserActivityType::SecurityEvent,
+            'A password reset was requested.',
+            $actor,
+        );
+    }
+
+    public function markPasswordChanged(User $user): void
+    {
+        $user->forceFill([
+            'must_change_password' => false,
+            'password_changed_at' => now(),
+        ])->save();
+
+        app(UserActivityService::class)->record(
+            $user,
+            \App\Enums\UserActivityType::ChangedPassword,
+            'Password was changed.',
+            $user,
         );
     }
 

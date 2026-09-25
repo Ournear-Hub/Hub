@@ -8,6 +8,7 @@ use App\Http\Requests\Account\WithdrawApplicationRequest;
 use App\Models\Application;
 use App\Services\ApplicationPipelineService;
 use App\Services\ApplicationSubmissionService;
+use App\Services\CandidateApplicationViewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -17,17 +18,31 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CandidateApplicationsController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, CandidateApplicationViewService $applications): Response
     {
-        $applications = $request->user()
-            ->applications()
-            ->with('job')
-            ->latest()
-            ->paginate(10)
-            ->through(fn (Application $application) => $application->toAccountArray());
+        $page = $applications->paginate($request->user(), $request)->through(
+            fn (Application $application) => $applications->listItem($application)
+        );
 
         return Inertia::render('Account/Applications', [
-            'applications' => $applications,
+            'applications' => $page,
+            'filters' => [
+                'filter' => trim((string) $request->query('filter', 'all')) ?: 'all',
+            ],
+        ]);
+    }
+
+    public function show(Request $request, Application $application, CandidateApplicationViewService $applications): Response
+    {
+        $this->authorize('view', $application);
+
+        abort_unless(
+            $request->user()?->isCandidate() && (int) $application->user_id === (int) $request->user()->id,
+            403
+        );
+
+        return Inertia::render('Account/Applications/Show', [
+            'application' => $applications->detail($application),
         ]);
     }
 
@@ -68,6 +83,8 @@ class CandidateApplicationsController extends Controller
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $downloadName = 'application-'.$application->id.'.'.$extension;
 
-        return Storage::disk('resumes')->download($path, $downloadName);
+        return Storage::disk('resumes')->download($path, $downloadName, [
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 }

@@ -1,30 +1,74 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import type { FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import FormField from '@/Components/Public/FormField';
 import PageContainer from '@/Components/Public/PageContainer';
+import PasswordStrength from '@/Components/Account/PasswordStrength';
 
-export default function Register() {
+type LanguageOption = {
+    value: string;
+    label: string;
+};
+
+type RegisterProps = {
+    languages?: LanguageOption[];
+};
+
+export default function Register({ languages = [] }: RegisterProps) {
     const { data, setData, post, processing, errors } = useForm({
         name: '',
+        username: '',
         email: '',
+        mobile: '',
         password: '',
         password_confirmation: '',
+        preferred_language: 'en',
         role: 'candidate',
     });
+    const [availability, setAvailability] = useState<'idle' | 'available' | 'taken' | 'invalid'>('idle');
+
+    useEffect(() => {
+        const username = data.username.trim();
+        if (username.length < 3) {
+            setAvailability('idle');
+            return;
+        }
+
+        const handle = window.setTimeout(() => {
+            fetch(`/register/check-username?username=${encodeURIComponent(username)}`, {
+                headers: { Accept: 'application/json' },
+            })
+                .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
+                .then(({ ok, payload }) => {
+                    if (!ok) {
+                        setAvailability('invalid');
+                        return;
+                    }
+                    setAvailability(payload.available ? 'available' : 'taken');
+                })
+                .catch(() => setAvailability('idle'));
+        }, 350);
+
+        return () => window.clearTimeout(handle);
+    }, [data.username]);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
         post('/register');
     };
 
+    const passwordsMatch =
+        data.password_confirmation.length > 0 && data.password === data.password_confirmation;
+
     return (
-        <PublicLayout title="Register">
-            <Head title="Register" />
+        <PublicLayout title="Create Account">
+            <Head title="Create Account" />
             <section className="bg-brand py-14 text-white">
                 <PageContainer>
-                    <h1 className="text-4xl font-semibold">Register</h1>
-                    <p className="mt-3 max-w-2xl text-white/80">Create a candidate or employer account. You can still apply for jobs without an account.</p>
+                    <h1 className="text-4xl font-semibold">Create Account</h1>
+                    <p className="mt-3 max-w-2xl text-white/80">
+                        Register with a unique username to apply for jobs using your profile and resume.
+                    </p>
                 </PageContainer>
             </section>
             <section className="py-12">
@@ -65,14 +109,39 @@ export default function Register() {
                         />
                         {errors.name && <p className="-mt-2 text-sm text-danger">{errors.name}</p>}
                         <FormField
+                            id="username"
+                            label="Username"
+                            value={data.username}
+                            autoComplete="username"
+                            onChange={(event) => setData('username', event.target.value)}
+                        />
+                        {availability === 'available' ? (
+                            <p className="-mt-2 text-sm text-success">✓ Username available</p>
+                        ) : null}
+                        {availability === 'taken' ? (
+                            <p className="-mt-2 text-sm text-danger">✕ Username not available. Try another username.</p>
+                        ) : null}
+                        {availability === 'invalid' ? (
+                            <p className="-mt-2 text-sm text-danger">Use 3–64 letters, numbers, dashes, or underscores.</p>
+                        ) : null}
+                        {errors.username && <p className="-mt-2 text-sm text-danger">{errors.username}</p>}
+                        <FormField
                             id="email"
                             label="Email"
                             type="email"
                             value={data.email}
-                            autoComplete="username"
+                            autoComplete="email"
                             onChange={(event) => setData('email', event.target.value)}
                         />
                         {errors.email && <p className="-mt-2 text-sm text-danger">{errors.email}</p>}
+                        <FormField
+                            id="mobile"
+                            label="Mobile"
+                            value={data.mobile}
+                            autoComplete="tel"
+                            onChange={(event) => setData('mobile', event.target.value)}
+                        />
+                        {errors.mobile && <p className="-mt-2 text-sm text-danger">{errors.mobile}</p>}
                         <FormField
                             id="password"
                             label="Password"
@@ -81,6 +150,7 @@ export default function Register() {
                             autoComplete="new-password"
                             onChange={(event) => setData('password', event.target.value)}
                         />
+                        <PasswordStrength password={data.password} />
                         {errors.password && <p className="-mt-2 text-sm text-danger">{errors.password}</p>}
                         <FormField
                             id="password_confirmation"
@@ -90,6 +160,30 @@ export default function Register() {
                             autoComplete="new-password"
                             onChange={(event) => setData('password_confirmation', event.target.value)}
                         />
+                        {data.password_confirmation ? (
+                            <p className={`-mt-2 text-sm ${passwordsMatch ? 'text-success' : 'text-danger'}`}>
+                                {passwordsMatch ? '✓ Passwords match' : '✕ Passwords do not match'}
+                            </p>
+                        ) : null}
+                        {languages.length > 0 ? (
+                            <div>
+                                <label htmlFor="preferred_language" className="mb-1 block text-sm font-medium text-ink">
+                                    Language
+                                </label>
+                                <select
+                                    id="preferred_language"
+                                    className="w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink"
+                                    value={data.preferred_language}
+                                    onChange={(event) => setData('preferred_language', event.target.value)}
+                                >
+                                    {languages.map((language) => (
+                                        <option key={language.value} value={language.value}>
+                                            {language.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : null}
                         <button
                             type="submit"
                             disabled={processing}

@@ -23,6 +23,27 @@ class UserPolicy
         return (int) $user->id === (int) $model->id;
     }
 
+    public function viewPhoto(User $user, User $model): bool
+    {
+        if ((int) $user->id === (int) $model->id) {
+            return true;
+        }
+
+        if (! $user->isAdmin()) {
+            return false;
+        }
+
+        if ($this->viewAny($user)) {
+            return true;
+        }
+
+        if ($model->isCandidate() && $user->hasPermission(PermissionName::CandidatesView->value)) {
+            return true;
+        }
+
+        return $model->isEmployer() && $user->hasPermission(PermissionName::EmployersView->value);
+    }
+
     public function create(User $user): bool
     {
         return $user->hasPermission(PermissionName::UsersManage->value);

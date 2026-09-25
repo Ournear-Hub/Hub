@@ -14,11 +14,20 @@ use Illuminate\Support\Facades\Mail;
 
 class RecruitmentNotificationService
 {
+    public function __construct(private CandidateNotificationService $candidates) {}
+
+    public function notifyApplicationSubmitted(Application $application): void
+    {
+        $this->candidates->notifyApplicationReceived($application);
+    }
+
     public function notifyStatusChanged(Application $application, ApplicationStatus $from, ApplicationStatus $to): void
     {
         if ($from === $to) {
             return;
         }
+
+        $this->candidates->notifyStatusChanged($application, $from, $to);
 
         $mailable = match ($to) {
             ApplicationStatus::Rejected => new ApplicationRejectedMail($application),
@@ -35,6 +44,7 @@ class RecruitmentNotificationService
 
     public function notifyInterviewScheduled(Application $application, ApplicationInterview $interview): void
     {
+        $this->candidates->notifyInterviewScheduled($application, $interview);
         $this->queueToApplicationEmail($application, new InterviewScheduledMail($application, $interview));
     }
 

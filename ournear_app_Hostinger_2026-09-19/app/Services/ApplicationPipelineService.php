@@ -6,7 +6,9 @@ use App\Enums\ApplicationStatus;
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
 use App\Enums\RecruitmentActivityType;
+use App\Enums\ScreeningAction;
 use App\Enums\ScreeningDecision;
+use App\Enums\ScreeningStage;
 use App\Models\Application;
 use App\Models\ApplicationInterview;
 use App\Models\ApplicationScreening;
@@ -51,6 +53,197 @@ class ApplicationPipelineService
         $this->notifications->notifyStatusChanged($fresh, $from, $status);
 
         return $fresh;
+    }
+
+    public function recordScreeningAction(
+        Application $application,
+        ScreeningAction $action,
+        User $actor,
+        ?string $remarks = null,
+    ): Application {
+        $remarks = $this->normalizedRemarks($remarks);
+
+        return match ($action) {
+            ScreeningAction::Start => $this->startScreening($application, $actor, $remarks),
+            ScreeningAction::Match => $this->markSuitable($application, $actor, $remarks),
+            ScreeningAction::Contact => $this->advanceScreeningStage(
+                $application,
+                $actor,
+                ScreeningStage::Contacted,
+                RecruitmentActivityType::CandidateContacted,
+                $remarks,
+                'Candidate contacted.',
+            ),
+            ScreeningAction::Called => $this->advanceScreeningStage(
+                $application,
+                $actor,
+                ScreeningStage::Called,
+                RecruitmentActivityType::CandidateCalled,
+                $remarks,
+                'Call completed.',
+            ),
+            ScreeningAction::Interviewed => $this->advanceScreeningStage(
+                $application,
+                $actor,
+                ScreeningStage::Interviewed,
+                RecruitmentActivityType::CandidateInterviewed,
+                $remarks,
+                'Interview completed.',
+            ),
+            ScreeningAction::Hold => $this->holdScreening($application, $actor, $remarks),
+        };
+    }
+
+    public function startScreening(Application $application, User $actor, ?string $remarks = null): Application
+    {
+        $application->loadMissing('screening');
+
+        if (! $application->canStartScreening()) {
+            throw ValidationException::withMessages([
+                'action' => 'Screening has already started for this application.',
+            ]);
+        }
+
+        DB::transaction(function () use ($application, $actor, $remarks) {
+            $this->writeScreeningStage(
+                $application,
+                $actor,
+                ScreeningStage::Started,
+                ScreeningDecision::Pending,
+                $remarks,
+            );
+
+            $this->activities->record(
+                actor: $actor,
+                type: RecruitmentActivityType::ScreeningStarted,
+                application: $application,
+                body: $remarks ?: 'Screening started.',
+            );
+        });
+
+        $fresh = $application->fresh() ?? $application;
+
+        if ($fresh->status === ApplicationStatus::New) {
+            return $this->changeStatus($fresh, ApplicationStatus::Reviewing, $actor);
+        }
+
+        return $fresh;
+    }
+
+    public function holdScreening(Application $application, User $actor, ?string $remarks = null): Application
+    {
+        $application->loadMissing('screening');
+
+        if (! $application->canHoldScreening()) {
+            throw ValidationException::withMessages([
+                'action' => 'This application cannot be put on hold in its current status.',
+            ]);
+        }
+
+        DB::transaction(function () use ($application, $actor, $remarks) {
+            $this->writeScreeningStage(
+                $application,
+                $actor,
+                ScreeningStage::Held,
+                $application->screeningDecision(),
+                $remarks,
+                hold: true,
+            );
+
+            $this->activities->record(
+                actor: $actor,
+                type: RecruitmentActivityType::ScreeningHeld,
+                application: $application,
+                body: $remarks ?: 'Put on hold.',
+            );
+        });
+
+        return $application->fresh() ?? $application;
+    }
+
+    private function advanceScreeningStage(
+        Application $application,
+        User $actor,
+        ScreeningStage $stage,
+        RecruitmentActivityType $activityType,
+        ?string $remarks,
+        string $defaultBody,
+    ): Application {
+        $application->loadMissing('screening');
+
+        if (! $application->canRecordScreeningProgress()) {
+            throw ValidationException::withMessages([
+                'action' => 'This application cannot be progressed in its current status.',
+            ]);
+        }
+
+        $body = $remarks ?: $defaultBody;
+
+        DB::transaction(function () use ($application, $actor, $stage, $activityType, $body, $remarks) {
+            $this->writeScreeningStage(
+                $application,
+                $actor,
+                $stage,
+                $application->screening?->decision ?? ScreeningDecision::Pending,
+                $remarks,
+            );
+
+            $this->activities->record(
+                actor: $actor,
+                type: $activityType,
+                application: $application,
+                body: $body,
+            );
+        });
+
+        return $application->fresh() ?? $application;
+    }
+
+    private function writeScreeningStage(
+        Application $application,
+        User $actor,
+        ScreeningStage $stage,
+        ScreeningDecision $decision,
+        ?string $remarks,
+        bool $hold = false,
+    ): ApplicationScreening {
+        $existing = $application->screening;
+        $attributes = [
+            'decision' => $decision,
+            'stage' => $stage,
+            'screened_by' => $existing?->screened_by ?? $actor->id,
+            'screened_at' => $existing?->screened_at ?? now(),
+            'held_by' => $hold ? $actor->id : null,
+            'held_at' => $hold ? now() : null,
+        ];
+
+        if ($remarks !== null && $remarks !== '') {
+            $attributes['notes'] = $remarks;
+        }
+
+        if ($existing === null) {
+            $saved = ApplicationScreening::query()->create([
+                'application_id' => $application->id,
+                'rejection_reason_id' => null,
+                'shortlisted_by' => null,
+                'shortlisted_at' => null,
+                ...$attributes,
+            ]);
+        } else {
+            $existing->fill($attributes)->save();
+            $saved = $existing;
+        }
+
+        $application->setRelation('screening', $saved);
+
+        return $saved;
+    }
+
+    private function normalizedRemarks(?string $remarks): ?string
+    {
+        $remarks = trim((string) $remarks);
+
+        return $remarks === '' ? null : $remarks;
     }
 
     public function withdrawByCandidate(Application $application, User $candidate): Application
@@ -272,10 +465,18 @@ class ApplicationPipelineService
     ): ApplicationScreening {
         $attributes = [
             'decision' => $decision,
+            'stage' => match ($decision) {
+                ScreeningDecision::Shortlisted => ScreeningStage::Shortlisted,
+                ScreeningDecision::NotSuitable => ScreeningStage::Rejected,
+                ScreeningDecision::Suitable => ScreeningStage::Matched,
+                default => ScreeningStage::Pending,
+            },
             'notes' => $notes,
             'rejection_reason_id' => $decision === ScreeningDecision::NotSuitable ? $rejectionReasonId : null,
             'screened_by' => $actor->id,
             'screened_at' => now(),
+            'held_by' => null,
+            'held_at' => null,
         ];
 
         if ($isShortlist) {

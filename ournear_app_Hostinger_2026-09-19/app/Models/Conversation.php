@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ConversationContextType;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -122,12 +123,25 @@ class Conversation extends Model
         return $this->context_type->value.' #'.$this->context_id;
     }
 
+    public function unreadCountFor(User $user): int
+    {
+        $this->loadMissing('participantRecords');
+        $participant = $this->participantRecords->firstWhere('user_id', $user->id);
+        $lastRead = $participant?->last_read_message_id;
+
+        return (int) $this->messages()
+            ->where('sender_id', '!=', $user->id)
+            ->when($lastRead, fn ($query) => $query->where('id', '>', $lastRead))
+            ->count();
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function toAdminListArray(User $viewer): array
     {
-        $this->loadMissing(['latestMessage.sender:id,name', 'participants:id,name']);
+        $this->loadMissing(['latestMessage.sender:id,name', 'participants:id,name', 'participantRecords']);
+        $unreadCount = $this->unreadCountFor($viewer);
 
         return [
             'id' => $this->id,
@@ -136,11 +150,14 @@ class Conversation extends Model
             'context_id' => $this->context_id,
             'context_url' => $this->contextUrl(),
             'context_label' => $this->contextLabel(),
+            'chain' => RecruitmentWorkspace::conversationChain($this->context_type, $this->context_id ? (int) $this->context_id : null),
             'is_unread' => $this->isUnreadFor($viewer),
+            'unread_count' => $unreadCount,
             'updated_at' => $this->latestMessage?->created_at?->toDateTimeString() ?? $this->updated_at?->toDateTimeString(),
             'latest_preview' => $this->latestMessage?->body
                 ? \Illuminate\Support\Str::limit($this->latestMessage->body, 120)
                 : null,
+            'attachments_available' => false,
             'participants' => $this->participants
                 ->map(fn (User $user) => [
                     'id' => $user->id,
@@ -156,11 +173,15 @@ class Conversation extends Model
      */
     public function toAdminArray(User $viewer): array
     {
-        $this->loadMissing(['messages.sender:id,name', 'creator:id,name']);
+        $this->loadMissing(['messages.sender:id,name', 'creator:id,name', 'participantRecords']);
         $payload = $this->toAdminListArray($viewer);
         $payload['created_by'] = $this->creator?->name;
+        $payload['can_reply'] = $this->hasParticipant($viewer);
+        $payload['viewer_last_read_at'] = $this->participantRecords
+            ->firstWhere('user_id', $viewer->id)
+            ?->last_read_at?->toDateTimeString();
         $payload['messages'] = $this->messages
-            ->map(fn (Message $message) => $message->toAdminArray())
+            ->map(fn (Message $message) => $message->toAdminTimelineArray($this->participantRecords))
             ->values()
             ->all();
 

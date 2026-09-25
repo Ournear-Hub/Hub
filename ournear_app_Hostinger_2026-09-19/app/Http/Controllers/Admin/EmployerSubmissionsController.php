@@ -81,4 +81,14 @@ class EmployerSubmissionsController extends Controller
 
         return back()->with('success', 'Submission put on hold.');
     }
+
+    public function review(
+        DecideEmployerSubmissionRequest $request,
+        EmployerSubmission $submission,
+        EmployerSubmissionService $service,
+    ): RedirectResponse {
+        $service->review($submission, $request->user(), $request->input('notes'));
+
+        return back()->with('success', 'Submission marked as under review.');
+    }
 }

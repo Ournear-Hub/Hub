@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     DataTable,
@@ -12,12 +13,15 @@ import {
     Modal,
     SearchBar,
     Select,
+    StatusBadge,
     Tabs,
     Textarea,
     Timeline,
 } from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
+import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
+import type { RecruitmentChainStep } from '@/Components/Admin/RecruitmentChain';
 import type { EmployeeListItem } from '@/types/placements';
 
 type EmployeeDetail = EmployeeListItem & {
@@ -27,6 +31,9 @@ type EmployeeDetail = EmployeeListItem & {
     joining_notes: string | null;
     can_request_replacement?: boolean;
     can_create_invoice?: boolean;
+    chain?: RecruitmentChainStep[];
+    offer?: { offered_at: string | null; salary: string | null; notes: string | null } | null;
+    documents?: Array<{ label: string; available: boolean; href: string | null; note: string | null }>;
     activities: Array<{
         id: number;
         type: string;
@@ -45,6 +52,8 @@ type Props = {
         search: string;
         employer_id: string;
         job_id: string;
+        candidate_id?: string;
+        employment_status?: string;
         date_from: string;
         date_to: string;
         employee: string;
@@ -52,6 +61,8 @@ type Props = {
     options: {
         employers: Array<{ id: number; label: string }>;
         jobs: Array<{ id: number; title: string; business_id: string | null }>;
+        candidates?: Array<{ id: number; label: string }>;
+        employment_statuses?: string[];
     };
     replacementReasons: string[];
 };
@@ -75,8 +86,8 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
     const [billedAt, setBilledAt] = useState(new Date().toISOString().slice(0, 10));
     const [dueAt, setDueAt] = useState(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
 
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -97,12 +108,18 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
     };
 
     const columns: Array<DataTableColumn<EmployeeListItem>> = [
-        { key: 'id', header: 'Employee ID', className: 'font-medium text-ink', render: (row) => row.business_id ?? '—' },
-        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => row.candidate.name ?? '—' },
-        { key: 'employer', header: 'Employer', render: (row) => row.employer?.company_name ?? '—' },
-        { key: 'job', header: 'Job', render: (row) => row.job?.title ?? '—' },
-        { key: 'placement', header: 'Placement', render: (row) => row.placement?.business_id ?? '—' },
-        { key: 'joined', header: 'Joined', render: (row) => row.joined_at ?? '—' },
+        { key: 'id', header: 'Employee ID', className: 'font-medium text-ink', render: (row) => recorded(row.business_id) },
+        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => recorded(row.candidate.name) },
+        { key: 'employer', header: 'Employer', render: (row) => recorded(row.employer?.company_name) },
+        { key: 'job', header: 'Job', render: (row) => recorded(row.job?.title) },
+        { key: 'placement', header: 'Placement', render: (row) => recorded(row.placement?.business_id) },
+        { key: 'joined', header: 'Joining date', render: (row) => recorded(row.joined_at) },
+        {
+            key: 'status',
+            header: 'Employment status',
+            render: (row) => <StatusBadge status={row.employment_status ?? 'Joined'} />,
+        },
+        { key: 'created', header: 'Created date', render: (row) => recorded(row.created_at) },
         {
             key: 'actions',
             header: 'Actions',
@@ -127,7 +144,7 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                         Employees are created when a candidate joins a specific placement. This does not globally convert the candidate.
                     </p>
                 </div>
-                <FilterBar onSubmit={filter}>
+                <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Employee, placement, employer, job, candidate ID" />
                     <Select name="employer_id" defaultValue={filters.employer_id} aria-label="Employer">
                         <option value="">All employers</option>
@@ -145,9 +162,30 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                             </option>
                         ))}
                     </Select>
+                    <Select name="candidate_id" defaultValue={filters.candidate_id ?? ''} aria-label="Candidate">
+                        <option value="">All candidates</option>
+                        {(options.candidates ?? []).map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                                {candidate.label}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="employment_status" defaultValue={filters.employment_status ?? ''} aria-label="Employment status">
+                        <option value="">Any employment status</option>
+                        {(options.employment_statuses ?? ['Joined']).map((status) => (
+                            <option key={status} value={status}>
+                                {status}
+                            </option>
+                        ))}
+                    </Select>
                     <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="Joined from" />
                     <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="Joined to" />
-                    <Button type="submit">Filter</Button>
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit">Filter</Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset
+                        </Button>
+                    </div>
                 </FilterBar>
                 <DataTable
                     columns={columns}
@@ -167,10 +205,12 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                         <Tabs
                             tabs={[
                                 { id: 'overview', label: 'Overview' },
+                                { id: 'identity', label: 'Identity' },
                                 { id: 'lineage', label: 'Lineage' },
+                                { id: 'documents', label: 'Documents' },
                                 { id: 'replacement', label: 'Replacement' },
                                 { id: 'finance', label: 'Finance' },
-                                { id: 'timeline', label: 'Timeline' },
+                                { id: 'timeline', label: 'Activity' },
                             ]}
                             active={tab}
                             onChange={setTab}
@@ -178,13 +218,17 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                         {tab === 'overview' ? (
                             <dl className="grid gap-2 text-sm">
                                 {[
-                                    ['Employee ID', selected.business_id ?? '—'],
-                                    ['Candidate', selected.candidate.name ?? '—'],
-                                    ['Employer', selected.employer?.company_name ?? '—'],
-                                    ['Job', selected.job?.title ?? '—'],
-                                    ['Joined', selected.joined_at ?? '—'],
-                                    ['Expected joining', selected.expected_joining_date ?? '—'],
-                                    ['Actual joining', selected.actual_joining_date ?? '—'],
+                                    ['Employee ID', recorded(selected.business_id)],
+                                    ['Candidate', recorded(selected.candidate.name)],
+                                    ['Employer', recorded(selected.employer?.company_name)],
+                                    ['Job', recorded(selected.job?.title)],
+                                    ['Placement', recorded(selected.placement?.business_id)],
+                                    ['Offer', recorded(selected.offer?.offered_at)],
+                                    ['Joined', recorded(selected.joined_at)],
+                                    ['Expected joining', recorded(selected.expected_joining_date)],
+                                    ['Actual joining', recorded(selected.actual_joining_date)],
+                                    ['Employment status', recorded(selected.employment_status)],
+                                    ['Created', recorded(selected.created_at)],
                                 ].map(([label, value]) => (
                                     <div key={label} className="grid grid-cols-3 gap-2">
                                         <dt className="text-muted">{label}</dt>
@@ -192,6 +236,12 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                                     </div>
                                 ))}
                             </dl>
+                        ) : null}
+                        {tab === 'identity' ? (
+                            <div className="space-y-3 text-sm">
+                                <p>This employee is the joined record of the same candidate/user. It is not a separate person.</p>
+                                <RecruitmentChain steps={selected.chain ?? []} />
+                            </div>
                         ) : null}
                         {tab === 'lineage' ? (
                             <ul className="space-y-2 text-sm">
@@ -255,6 +305,22 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
                                     )}
                                 </li>
                             </ul>
+                        ) : null}
+                        {tab === 'documents' ? (
+                            <div className="space-y-3 text-sm">
+                                {(selected.documents ?? []).map((item) => (
+                                    <div key={item.label} className="rounded-md bg-surface px-3 py-2">
+                                        <p className="font-medium text-ink">{item.label}</p>
+                                        {item.available && item.href ? (
+                                            <a href={item.href} className="font-medium text-brand">
+                                                Download
+                                            </a>
+                                        ) : (
+                                            <p className="text-muted">{item.note ?? 'Not recorded yet'}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         ) : null}
                         {tab === 'replacement' ? (
                             <div className="space-y-3 text-sm">

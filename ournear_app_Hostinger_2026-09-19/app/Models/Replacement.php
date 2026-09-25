@@ -8,6 +8,7 @@ use App\Enums\PlacementStatus;
 use App\Enums\ReplacementReason;
 use App\Enums\ReplacementStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -181,21 +182,31 @@ class Replacement extends Model
         $this->loadMissing([
             'employer.user',
             'job',
-            'originalEmployee.application',
+            'originalEmployee.application.user.candidateProfile',
+            'originalPlacement',
+            'originalApplication.user.candidateProfile',
             'replacementEmployee.application',
             'replacementApplication.user.candidateProfile',
+            'replacementSubmission',
+            'replacementPlacement',
         ]);
 
-        $original = $this->originalEmployee?->application;
+        $original = $this->originalApplication ?? $this->originalEmployee?->application;
+        $originalProfile = $original?->user?->candidateProfile
+            ?? $this->originalEmployee?->candidateProfile;
         $current = $this->replacementApplication;
+        $replacementProfile = $current?->user?->candidateProfile;
 
         return [
             'id' => $this->id,
             'business_id' => $this->business_id,
             'status' => $this->status->value,
+            'operational_stage' => RecruitmentWorkspace::replacementOperationalStage($this),
             'reason' => $this->reason->value,
             'requested_at' => $this->requested_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
+            'eligibility' => RecruitmentWorkspace::replacementEligibility($this),
+            'closure_date' => $this->completed_at?->toDateTimeString() ?? $this->cancelled_at?->toDateTimeString(),
             'employer' => $this->employer?->toAdminSummary(),
             'job' => $this->job ? [
                 'id' => $this->job->id,
@@ -208,7 +219,19 @@ class Replacement extends Model
                 'business_id' => $this->originalEmployee->business_id,
                 'name' => $original?->full_name,
             ] : null,
+            'original_candidate' => [
+                'id' => $originalProfile?->id,
+                'business_id' => $originalProfile?->business_id,
+                'name' => $original?->full_name,
+            ],
+            'original_placement' => $this->originalPlacement ? [
+                'id' => $this->originalPlacement->id,
+                'business_id' => $this->originalPlacement->business_id,
+                'status' => $this->originalPlacement->status->value,
+            ] : null,
             'replacement_candidate' => [
+                'id' => $replacementProfile?->id,
+                'business_id' => $replacementProfile?->business_id,
                 'name' => $current?->full_name,
                 'application_id' => $current?->business_id,
             ],
@@ -217,6 +240,16 @@ class Replacement extends Model
                 'business_id' => $this->replacementEmployee->business_id,
                 'name' => $this->replacementEmployee->application?->full_name,
             ] : null,
+            'links' => [
+                'original_placement' => RecruitmentWorkspace::placementUrl($this->originalPlacement),
+                'original_candidate' => RecruitmentWorkspace::candidateUrl($originalProfile),
+                'original_employee' => RecruitmentWorkspace::employeeUrl($this->originalEmployee),
+                'employer' => RecruitmentWorkspace::employerUrl($this->employer),
+                'job' => RecruitmentWorkspace::jobUrl($this->job),
+                'replacement_candidate' => RecruitmentWorkspace::candidateUrl($replacementProfile),
+                'replacement_placement' => RecruitmentWorkspace::placementUrl($this->replacementPlacement),
+                'replacement' => RecruitmentWorkspace::replacementUrl($this),
+            ],
         ];
     }
 
@@ -276,6 +309,8 @@ class Replacement extends Model
             'business_id' => $this->replacementPlacement->business_id,
             'status' => $this->replacementPlacement->status->value,
         ] : null;
+        $payload['chain'] = RecruitmentWorkspace::replacementChain($this);
+        $payload['workflow'] = RecruitmentWorkspace::replacementWorkflow($this);
         $payload['activities'] = $this->timeline();
 
         return $payload;

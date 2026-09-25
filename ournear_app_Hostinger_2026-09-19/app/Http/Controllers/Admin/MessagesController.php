@@ -31,8 +31,10 @@ class MessagesController extends Controller
         }
 
         if ($selected) {
-            app(MessageService::class)->markRead($selected, $user);
-            $selected->refresh()->load(['messages.sender:id,name', 'participants:id,name', 'participantRecords', 'creator:id,name', 'latestMessage']);
+            if ($selected->hasParticipant($user)) {
+                app(MessageService::class)->markRead($selected, $user);
+                $selected->refresh()->load(['messages.sender:id,name', 'participants:id,name', 'participantRecords', 'creator:id,name', 'latestMessage']);
+            }
         }
 
         return Inertia::render('Admin/Messages/Index', [

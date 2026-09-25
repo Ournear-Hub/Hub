@@ -28,6 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'password.change' => \App\Http\Middleware\EnsurePasswordChanged::class,
             'account.member' => \App\Http\Middleware\EnsureAccountMember::class,
             'account.candidate' => \App\Http\Middleware\EnsureCandidate::class,
             'account.employer' => \App\Http\Middleware\EnsureEmployer::class,

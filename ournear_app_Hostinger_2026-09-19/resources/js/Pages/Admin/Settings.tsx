@@ -1,7 +1,6 @@
-import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import type { SharedPageProps } from '@/types/page';
 
 type WebsiteSettings = {
     company_name: string;
@@ -23,7 +22,7 @@ type BrandingSettings = {
 };
 
 type Props = {
-    tab?: 'website' | 'branding' | 'account';
+    tab?: 'website' | 'branding';
     websiteSettings: WebsiteSettings;
     branding: BrandingSettings;
 };
@@ -32,8 +31,6 @@ const inputClass =
     'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink outline-none focus:border-brand';
 
 export default function Settings({ tab = 'website', websiteSettings, branding }: Props) {
-    const user = usePage<SharedPageProps>().props.auth.user;
-
     const websiteForm = useForm(websiteSettings);
     const brandingForm = useForm({
         website_name: branding.website_name,
@@ -44,17 +41,8 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
         remove_icon: false,
         remove_favicon: false,
     });
-    const profileForm = useForm({
-        name: user?.name ?? '',
-        email: user?.email ?? '',
-    });
-    const passwordForm = useForm({
-        current_password: '',
-        password: '',
-        password_confirmation: '',
-    });
 
-    const openTab = (next: 'website' | 'branding' | 'account') => {
+    const openTab = (next: 'website' | 'branding') => {
         router.get('/admin/settings', { tab: next }, { preserveState: false });
     };
 
@@ -68,26 +56,13 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
         brandingForm.put('/admin/settings/branding', { forceFormData: true });
     };
 
-    const submitProfile = (event: FormEvent) => {
-        event.preventDefault();
-        profileForm.put('/admin/settings/profile');
-    };
-
-    const submitPassword = (event: FormEvent) => {
-        event.preventDefault();
-        passwordForm.put('/admin/settings/password', {
-            onSuccess: () => passwordForm.reset('current_password', 'password', 'password_confirmation'),
-        });
-    };
-
     return (
-        <AdminLayout title="Settings">
+        <AdminLayout title="Website Settings">
             <div className="space-y-6">
                 <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Settings</h1>
+                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Website Settings</h1>
                     <p className="mt-1 text-sm text-muted">
-                        Global website details and administrator account. Brand colours and the header tagline cannot be
-                        changed here.
+                        Website name, company details, logo, and public branding. Admin profile is managed separately.
                     </p>
                 </div>
 
@@ -110,15 +85,12 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                     >
                         Branding
                     </button>
-                    <button
-                        type="button"
-                        onClick={() => openTab('account')}
-                        className={`rounded-md px-4 py-2 text-sm font-semibold ${
-                            tab === 'account' ? 'bg-brand text-white' : 'bg-white text-ink ring-1 ring-line'
-                        }`}
+                    <Link
+                        href="/admin/profile"
+                        className="rounded-md px-4 py-2 text-sm font-semibold text-ink ring-1 ring-line hover:bg-surface"
                     >
-                        Account
-                    </button>
+                        Admin profile
+                    </Link>
                 </div>
 
                 {tab === 'website' ? (
@@ -197,11 +169,11 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                             </button>
                         </form>
                     </section>
-                ) : tab === 'branding' ? (
+                ) : (
                     <section className="rounded-xl border border-line bg-white p-6">
                         <h2 className="text-lg font-semibold text-ink">Branding</h2>
                         <p className="mt-1 text-sm text-muted">
-                            These assets appear on the public website. Admin screens keep the original OurNear Talent mark.
+                            These assets appear on the public website. Logo and website name are independent.
                         </p>
                         <form onSubmit={submitBranding} className="mt-4 max-w-lg space-y-6">
                             <div>
@@ -218,7 +190,6 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                                     <p className="mt-1 text-sm text-danger">{brandingForm.errors.website_name}</p>
                                 )}
                             </div>
-
                             <BrandingAssetField
                                 label="Horizontal logo"
                                 hint="Used in the public header and footer. PNG, JPG, or WEBP, max 5 MB."
@@ -230,7 +201,6 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                                 onRemoveChange={(checked) => brandingForm.setData('remove_logo', checked)}
                                 canRemove={Boolean(branding.logo_url)}
                             />
-
                             <BrandingAssetField
                                 label="Logo icon"
                                 hint="Used where an icon-only mark is needed. PNG, JPG, or WEBP, max 5 MB."
@@ -242,7 +212,6 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                                 onRemoveChange={(checked) => brandingForm.setData('remove_icon', checked)}
                                 canRemove={Boolean(branding.icon_url)}
                             />
-
                             <BrandingAssetField
                                 label="Favicon"
                                 hint="Browser tab icon. PNG, JPG, or WEBP, max 5 MB."
@@ -254,7 +223,6 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                                 onRemoveChange={(checked) => brandingForm.setData('remove_favicon', checked)}
                                 canRemove={Boolean(branding.favicon_url)}
                             />
-
                             <button
                                 type="submit"
                                 disabled={brandingForm.processing}
@@ -264,125 +232,6 @@ export default function Settings({ tab = 'website', websiteSettings, branding }:
                             </button>
                         </form>
                     </section>
-                ) : (
-                    <>
-                        <section className="rounded-xl border border-line bg-white p-6">
-                            <h2 className="text-lg font-semibold text-ink">Profile</h2>
-                            <form onSubmit={submitProfile} className="mt-4 max-w-lg space-y-4">
-                                <div>
-                                    <label htmlFor="name" className="mb-1 block text-sm font-medium text-ink">
-                                        Name
-                                    </label>
-                                    <input
-                                        id="name"
-                                        value={profileForm.data.name}
-                                        className={inputClass}
-                                        onChange={(event) => profileForm.setData('name', event.target.value)}
-                                    />
-                                    {profileForm.errors.name && (
-                                        <p className="mt-1 text-sm text-danger">{profileForm.errors.name}</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
-                                        Email
-                                    </label>
-                                    <input
-                                        id="email"
-                                        type="email"
-                                        value={profileForm.data.email}
-                                        className={inputClass}
-                                        onChange={(event) => profileForm.setData('email', event.target.value)}
-                                    />
-                                    {profileForm.errors.email && (
-                                        <p className="mt-1 text-sm text-danger">{profileForm.errors.email}</p>
-                                    )}
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={profileForm.processing}
-                                    className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled"
-                                >
-                                    Save profile
-                                </button>
-                            </form>
-                        </section>
-
-                        <section className="rounded-xl border border-line bg-white p-6">
-                            <h2 className="text-lg font-semibold text-ink">Change password</h2>
-                            <form onSubmit={submitPassword} className="mt-4 max-w-lg space-y-4">
-                                <div>
-                                    <label htmlFor="current_password" className="mb-1 block text-sm font-medium text-ink">
-                                        Current password
-                                    </label>
-                                    <input
-                                        id="current_password"
-                                        type="password"
-                                        value={passwordForm.data.current_password}
-                                        autoComplete="current-password"
-                                        className={inputClass}
-                                        onChange={(event) =>
-                                            passwordForm.setData('current_password', event.target.value)
-                                        }
-                                    />
-                                    {passwordForm.errors.current_password && (
-                                        <p className="mt-1 text-sm text-danger">{passwordForm.errors.current_password}</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink">
-                                        New password
-                                    </label>
-                                    <input
-                                        id="password"
-                                        type="password"
-                                        value={passwordForm.data.password}
-                                        autoComplete="new-password"
-                                        className={inputClass}
-                                        onChange={(event) => passwordForm.setData('password', event.target.value)}
-                                    />
-                                    {passwordForm.errors.password && (
-                                        <p className="mt-1 text-sm text-danger">{passwordForm.errors.password}</p>
-                                    )}
-                                </div>
-                                <div>
-                                    <label htmlFor="password_confirmation" className="mb-1 block text-sm font-medium text-ink">
-                                        Confirm new password
-                                    </label>
-                                    <input
-                                        id="password_confirmation"
-                                        type="password"
-                                        value={passwordForm.data.password_confirmation}
-                                        autoComplete="new-password"
-                                        className={inputClass}
-                                        onChange={(event) =>
-                                            passwordForm.setData('password_confirmation', event.target.value)
-                                        }
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={passwordForm.processing}
-                                    className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled"
-                                >
-                                    Update password
-                                </button>
-                            </form>
-                        </section>
-
-                        <section className="rounded-xl border border-line bg-white p-6">
-                            <h2 className="text-lg font-semibold text-ink">Session</h2>
-                            <p className="mt-2 text-sm text-muted">Sign out of the administrator panel on this device.</p>
-                            <Link
-                                href="/admin/logout"
-                                method="post"
-                                as="button"
-                                className="mt-4 rounded-md border border-line px-4 py-2 text-sm font-medium text-ink hover:bg-surface"
-                            >
-                                Logout
-                            </Link>
-                        </section>
-                    </>
                 )}
             </div>
         </AdminLayout>

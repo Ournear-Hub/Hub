@@ -44,6 +44,15 @@ class LoginLogService
         $this->record(LoginEvent::LoginSuccess, $request, $user, $user->email, true, [
             'guard' => $guard,
         ]);
+
+        $user->forceFill(['last_login_at' => now()])->saveQuietly();
+        app(\App\Services\UserActivityService::class)->record(
+            $user,
+            \App\Enums\UserActivityType::LoggedIn,
+            'Logged in.',
+            $user,
+            ['guard' => $guard],
+        );
     }
 
     public function failure(Request $request, ?User $user = null, string $reason = 'invalid_credentials'): void
@@ -60,6 +69,12 @@ class LoginLogService
         }
 
         $this->record(LoginEvent::Logout, $request, $user, $user->email, true);
+        app(\App\Services\UserActivityService::class)->record(
+            $user,
+            \App\Enums\UserActivityType::LoggedOut,
+            'Logged out.',
+            $user,
+        );
     }
 
     public function passwordResetRequest(Request $request, ?User $user, string $email): void

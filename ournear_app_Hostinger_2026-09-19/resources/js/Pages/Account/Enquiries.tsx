@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import PublicLayout from '@/Layouts/PublicLayout';
+import AccountLayout from '@/Layouts/AccountLayout';
 import PageContainer from '@/Components/Public/PageContainer';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
@@ -19,16 +19,8 @@ type EnquiriesProps = {
 
 export default function Enquiries({ enquiries }: EnquiriesProps) {
     return (
-        <PublicLayout title="Enquiries">
-            <Head title="Enquiries" />
-            <section className="bg-brand py-14 text-white">
-                <PageContainer>
-                    <h1 className="text-4xl font-semibold">Employer enquiries</h1>
-                    <p className="mt-3 max-w-2xl text-white/80">Enquiries submitted while you were logged in.</p>
-                </PageContainer>
-            </section>
-            <section className="py-12">
-                <PageContainer>
+        <AccountLayout title="Enquiries">
+            
                     {enquiries.data.length === 0 ? (
                         <p className="text-sm text-muted">No enquiries are linked to this account yet.</p>
                     ) : (
@@ -55,8 +47,6 @@ export default function Enquiries({ enquiries }: EnquiriesProps) {
                             Back to account
                         </Link>
                     </p>
-                </PageContainer>
-            </section>
-        </PublicLayout>
+                </AccountLayout>
     );
 }

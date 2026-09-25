@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Account;
 
+use App\Support\AccountPassword;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rules\Password;
 
 class ResetPasswordRequest extends FormRequest
 {
@@ -20,7 +20,7 @@ class ResetPasswordRequest extends FormRequest
         return [
             'token' => ['required'],
             'email' => ['required', 'string', 'email'],
-            'password' => ['required', 'confirmed', Password::defaults()],
+            'password' => ['required', 'confirmed', AccountPassword::rules()],
         ];
     }
 }

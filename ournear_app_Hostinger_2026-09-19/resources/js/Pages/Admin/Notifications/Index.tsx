@@ -3,15 +3,19 @@ import type { FormEvent } from 'react';
 import { useCallback } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     DataTable,
     Drawer,
     FilterBar,
+    Input,
     SearchBar,
     Select,
+    StatusBadge,
 } from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
+import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { AdminAlertItem } from '@/types/communication';
 
@@ -22,15 +26,32 @@ type Props = {
     filters: {
         search: string;
         event: string;
+        category: string;
+        read_state: string;
         unread: string;
+        recipient_id: string;
+        date_from: string;
+        date_to: string;
         notification: string;
     };
     events: string[];
+    categories: string[];
+    recipients: Array<{ id: number; name: string; email: string; label: string }>;
+    can_view_recipients: boolean;
 };
 
-export default function NotificationsIndex({ notifications, selected, unreadCount, filters, events }: Props) {
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+export default function NotificationsIndex({
+    notifications,
+    selected,
+    unreadCount,
+    filters,
+    events,
+    categories,
+    recipients,
+    can_view_recipients,
+}: Props) {
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -47,16 +68,34 @@ export default function NotificationsIndex({ notifications, selected, unreadCoun
         const data = Object.fromEntries(new FormData(event.currentTarget).entries()) as Record<string, string>;
         visit({
             ...data,
-            unread: data.unread ? '1' : '',
+            unread: data.read_state === 'unread' ? '1' : '',
             notification: filters.notification,
         });
     };
 
     const columns: Array<DataTableColumn<AdminAlertItem>> = [
-        { key: 'title', header: 'Notification', className: 'font-medium text-ink', render: (row) => row.title },
-        { key: 'body', header: 'Detail', render: (row) => row.body },
-        { key: 'status', header: 'Status', render: (row) => (row.is_unread ? 'Unread' : 'Read') },
-        { key: 'created', header: 'When', render: (row) => row.created_at ?? '—' },
+        { key: 'category', header: 'Type', className: 'font-medium text-ink', render: (row) => recorded(row.category ?? row.event_label ?? row.event) },
+        { key: 'title', header: 'Notification', render: (row) => row.title },
+        { key: 'recipient', header: 'Recipient', render: (row) => recorded(row.recipient?.name) },
+        {
+            key: 'related',
+            header: 'Related',
+            render: (row) =>
+                recorded(
+                    row.related?.application?.business_id
+                        ?? row.related?.submission?.business_id
+                        ?? row.related?.placement?.business_id
+                        ?? row.related?.invoice?.business_id
+                        ?? row.related?.job?.title
+                        ?? row.related?.candidate?.name,
+                ),
+        },
+        {
+            key: 'status',
+            header: 'Read / unread',
+            render: (row) => <StatusBadge status={row.is_unread ? 'Unread' : 'Read'} />,
+        },
+        { key: 'created', header: 'Created date', render: (row) => recorded(row.created_at) },
         {
             key: 'actions',
             header: 'Actions',
@@ -82,14 +121,38 @@ export default function NotificationsIndex({ notifications, selected, unreadCoun
                             System alerts for recruitment and finance events. Reading a notification does not change the
                             underlying record.
                         </p>
+                        <p className="mt-1 text-sm text-ink">Unread: {unreadCount}</p>
                     </div>
                     <Button disabled={unreadCount === 0} onClick={() => router.post('/admin/notifications/read-all')}>
                         Mark all read
                     </Button>
                 </div>
+                <div className="mb-4 flex flex-wrap gap-2">
+                    {[
+                        ['all', 'All'],
+                        ['unread', 'Unread'],
+                        ['read', 'Read'],
+                    ].map(([value, label]) => (
+                        <Button
+                            key={value}
+                            variant={filters.read_state === value || (value === 'all' && !filters.read_state) ? 'primary' : 'secondary'}
+                            onClick={() => visit({ read_state: value, unread: value === 'unread' ? '1' : '' })}
+                        >
+                            {label}
+                        </Button>
+                    ))}
+                </div>
                 <FilterBar onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Search notifications" />
-                    <Select name="event" defaultValue={filters.event} aria-label="Event">
+                    <Select name="category" defaultValue={filters.category} aria-label="Notification category">
+                        <option value="">All categories</option>
+                        {categories.map((item) => (
+                            <option key={item} value={item}>
+                                {item}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="event" defaultValue={filters.event} aria-label="Notification type">
                         <option value="">All events</option>
                         {events.map((item) => (
                             <option key={item} value={item}>
@@ -97,11 +160,27 @@ export default function NotificationsIndex({ notifications, selected, unreadCoun
                             </option>
                         ))}
                     </Select>
-                    <label className="flex items-center gap-2 text-sm text-ink">
-                        <input type="checkbox" name="unread" value="1" defaultChecked={filters.unread === '1'} />
-                        Unread only
-                    </label>
-                    <Button type="submit">Filter</Button>
+                    <Select name="read_state" defaultValue={filters.read_state || 'all'} aria-label="Read state">
+                        <option value="all">All</option>
+                        <option value="unread">Unread</option>
+                        <option value="read">Read</option>
+                    </Select>
+                    <Select name="recipient_id" defaultValue={filters.recipient_id} aria-label="Recipient">
+                        <option value="">{can_view_recipients ? 'My inbox' : 'Current recipient'}</option>
+                        {recipients.map((recipient) => (
+                            <option key={recipient.id} value={recipient.id}>
+                                {recipient.label}
+                            </option>
+                        ))}
+                    </Select>
+                    <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="From date" />
+                    <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="To date" />
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit">Filter</Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset
+                        </Button>
+                    </div>
                 </FilterBar>
                 <DataTable
                     columns={columns}
@@ -118,24 +197,46 @@ export default function NotificationsIndex({ notifications, selected, unreadCoun
             <Drawer open={selected !== null} title={selected?.title ?? 'Notification'} onClose={closeDrawer}>
                 {selected ? (
                     <div className="space-y-4 text-sm">
-                        <p>{selected.body}</p>
-                        <p className="text-muted">{selected.created_at}</p>
-                        <p className="text-muted">{selected.is_unread ? 'Unread' : 'Read'}</p>
+                        <dl className="grid gap-2">
+                            {[
+                                ['Recipient', recorded(selected.recipient?.name)],
+                                ['Type', recorded(selected.event_label ?? selected.event)],
+                                ['Category', recorded(selected.category)],
+                                ['Title', selected.title],
+                                ['Message', selected.body],
+                                ['Created date', recorded(selected.created_at)],
+                                ['Read date', recorded(selected.read_at)],
+                            ].map(([label, value]) => (
+                                <div key={label} className="grid grid-cols-3 gap-2">
+                                    <dt className="text-muted">{label}</dt>
+                                    <dd className="col-span-2 text-ink">{value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+                        {selected.chain && selected.chain.length > 0 ? (
+                            <div>
+                                <p className="mb-2 text-xs uppercase tracking-wide text-muted">Related records</p>
+                                <RecruitmentChain steps={selected.chain} />
+                            </div>
+                        ) : (
+                            <p className="text-muted">No related recruitment record stored on this notification.</p>
+                        )}
                         <div className="flex flex-wrap gap-2">
                             {selected.url ? (
                                 <Button onClick={() => router.visit(selected.url ?? '/admin/notifications')}>
                                     Open related record
                                 </Button>
                             ) : null}
-                            {selected.is_unread ? (
+                            {selected.can_toggle_read !== false && selected.is_unread ? (
                                 <Button onClick={() => router.post(`/admin/notifications/${selected.id}/read`)}>
                                     Mark read
                                 </Button>
-                            ) : (
+                            ) : null}
+                            {selected.can_toggle_read !== false && !selected.is_unread ? (
                                 <Button variant="secondary" onClick={() => router.post(`/admin/notifications/${selected.id}/unread`)}>
                                     Mark unread
                                 </Button>
-                            )}
+                            ) : null}
                         </div>
                     </div>
                 ) : null}

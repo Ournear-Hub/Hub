@@ -9,6 +9,7 @@ import {
     ConfirmDialog,
     DataTable,
     Drawer,
+    EmptyState,
     FilterBar,
     SearchBar,
     Select,
@@ -30,6 +31,7 @@ type Filters = {
     experience_range_id: string;
     featured: string;
     active: string;
+    employer_id: string;
     job: string;
     mode: string;
 };
@@ -43,6 +45,14 @@ type Props = {
     lookups: JobFormLookups;
 };
 
+function recorded(value: string | number | null | undefined): string {
+    if (value === null || value === undefined || value === '') {
+        return 'Not recorded yet';
+    }
+
+    return String(value);
+}
+
 export default function JobsIndex({ jobs, selected, applications, mode, filters, lookups }: Props) {
     const [tab, setTab] = useState('overview');
     const [confirm, setConfirm] = useState<'deactivate' | 'delete' | null>(null);
@@ -51,8 +61,8 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
     const editing = mode === 'edit' && selected !== null;
     const viewing = selected !== null && !editing;
 
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -91,7 +101,7 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
         },
         {
             key: 'title',
-            header: 'Job Title',
+            header: 'Job title',
             className: 'text-ink',
             render: (row) => (
                 <div>
@@ -100,23 +110,30 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                 </div>
             ),
         },
-        { key: 'industry', header: 'Industry', render: (row) => row.industry },
-        { key: 'category', header: 'Category', render: (row) => row.category ?? '—' },
+        { key: 'employer', header: 'Employer', render: (row) => row.employer?.company_name ?? 'Unassigned' },
         { key: 'location', header: 'Location', render: (row) => row.location },
-        { key: 'type', header: 'Employment Type', render: (row) => row.employment_type },
-        { key: 'experience', header: 'Experience', render: (row) => row.experience },
+        {
+            key: 'industry',
+            header: 'Industry / category',
+            render: (row) => [row.industry, row.category].filter(Boolean).join(' · ') || '—',
+        },
+        { key: 'vacancy', header: 'Vacancies', render: (row) => row.vacancy },
         {
             key: 'status',
             header: 'Status',
+            render: (row) => <StatusBadge status={row.active ? 'Active' : 'Inactive'} />,
+        },
+        {
+            key: 'publish',
+            header: 'Publish status',
             render: (row) => (
                 <div className="flex flex-wrap gap-1">
-                    <StatusBadge status={row.status_label} />
+                    <StatusBadge status={row.publishing_status === 'published' ? 'Published' : 'Draft'} />
                     {row.featured ? <StatusBadge status="Featured" /> : null}
                 </div>
             ),
         },
-        { key: 'apps', header: 'Applications', render: (row) => row.applications_count },
-        { key: 'updated', header: 'Updated', render: (row) => row.updated_at ?? '—' },
+        { key: 'created', header: 'Created date', render: (row) => row.created_at ?? '—' },
         {
             key: 'actions',
             header: 'Actions',
@@ -130,33 +147,35 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
 
     const drawerTitle = creating ? 'Create job' : editing ? `Edit ${selected?.business_id ?? 'job'}` : selected?.business_id ?? 'Job';
 
-    const detailRows = useMemo(() => {
+    const informationRows = useMemo(() => {
         if (!selected) {
             return [];
         }
 
         return [
             ['Job ID', selected.business_id ?? '—'],
-            ['Job title', selected.title],
-            ['Project / company', selected.project],
-            ['Employer ID', selected.employer?.business_id ?? 'Unassigned'],
+            ['Title', selected.title],
             ['Employer', selected.employer?.company_name ?? 'Unassigned'],
-            ['Employer contact', selected.employer?.contact_person ?? '—'],
             ['Industry', selected.industry],
-            ['Job category', selected.category ?? '—'],
-            ['Classified title', selected.classified_title ?? '—'],
+            ['Category', selected.category ?? '—'],
             ['Location', selected.location],
             ['Employment type', selected.employment_type],
             ['Experience', selected.experience],
+            ['Qualification', recorded(selected.qualification)],
+            ['Skills', recorded(selected.skills)],
             ['Salary', selected.salary ?? '—'],
+            ['Notice period', recorded(selected.notice_period)],
             ['Vacancies', String(selected.vacancy)],
-            ['Published', selected.publishing_status === 'published' ? 'Published' : 'Draft'],
-            ['Active', selected.active ? 'Yes' : 'No'],
-            ['Featured', selected.featured ? 'Yes' : 'No'],
-            ['Created', selected.created_at ?? '—'],
-            ['Updated', selected.updated_at ?? '—'],
+            ['Keywords', recorded(selected.keywords)],
+            ['Status', selected.active ? 'Active' : 'Inactive'],
+            ['Publish status', selected.publishing_status === 'published' ? 'Published' : 'Draft'],
+            ['Featured status', selected.featured ? 'Featured' : 'Not featured'],
+            ['Created by / source', recorded(selected.created_by ?? selected.source)],
+            ['Created date', selected.created_at ?? '—'],
         ];
     }, [selected]);
+
+    const relatedLinks = selected?.links;
 
     return (
         <AdminLayout title="Jobs">
@@ -168,27 +187,22 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-2xl font-semibold tracking-tight text-ink">Jobs</h1>
-                        <p className="mt-1 text-sm text-muted">Recruitment listings. Legacy free-text values still display when master data is not linked.</p>
+                        <p className="mt-1 text-sm text-muted">Recruitment listings. Open a row for job information, publishing actions, and related recruitment work.</p>
                     </div>
                     <Button onClick={() => visit({ mode: 'create', job: '' })}>Create job</Button>
                 </div>
 
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
-                    <SearchBar defaultValue={filters.search} placeholder="Job ID, title, company, location" />
+                    <SearchBar defaultValue={filters.search} placeholder="Job ID, title, employer, location" />
                     <Select name="status" defaultValue={filters.status} aria-label="Published">
-                        <option value="">Published: any</option>
+                        <option value="">Publish status: any</option>
                         <option value="published">Published</option>
                         <option value="draft">Draft</option>
                     </Select>
-                    <Select name="active" defaultValue={filters.active} aria-label="Active">
-                        <option value="">Active: any</option>
+                    <Select name="active" defaultValue={filters.active} aria-label="Status">
+                        <option value="">Status: any</option>
                         <option value="1">Active</option>
                         <option value="0">Inactive</option>
-                    </Select>
-                    <Select name="featured" defaultValue={filters.featured} aria-label="Featured">
-                        <option value="">Featured: any</option>
-                        <option value="1">Featured</option>
-                        <option value="0">Not featured</option>
                     </Select>
                     <Select name="industry_id" defaultValue={filters.industry_id} aria-label="Industry">
                         <option value="">All industries</option>
@@ -206,19 +220,32 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                             </option>
                         ))}
                     </Select>
-                    <Select name="job_title_id" defaultValue={filters.job_title_id} aria-label="Job title">
-                        <option value="">All job titles</option>
-                        {titles.map((title) => (
-                            <option key={title.id} value={title.id}>
-                                {title.name}
-                            </option>
-                        ))}
-                    </Select>
                     <Select name="location_id" defaultValue={filters.location_id} aria-label="Location">
                         <option value="">All locations</option>
                         {lookups.locations.map((location) => (
                             <option key={location.id} value={location.id}>
                                 {location.name}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="employer_id" defaultValue={filters.employer_id} aria-label="Employer">
+                        <option value="">All employers</option>
+                        {(lookups.employers ?? []).map((employer) => (
+                            <option key={employer.id} value={employer.id}>
+                                {employer.label}
+                            </option>
+                        ))}
+                    </Select>
+                    <Select name="featured" defaultValue={filters.featured} aria-label="Featured">
+                        <option value="">Featured: any</option>
+                        <option value="1">Featured</option>
+                        <option value="0">Not featured</option>
+                    </Select>
+                    <Select name="job_title_id" defaultValue={filters.job_title_id} aria-label="Job title">
+                        <option value="">All job titles</option>
+                        {titles.map((title) => (
+                            <option key={title.id} value={title.id}>
+                                {title.name}
                             </option>
                         ))}
                     </Select>
@@ -238,9 +265,14 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                             </option>
                         ))}
                     </Select>
-                    <Button type="submit" variant="secondary">
-                        Apply
-                    </Button>
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit" variant="secondary">
+                            Apply
+                        </Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset filters
+                        </Button>
+                    </div>
                 </FilterBar>
 
                 <DataTable
@@ -248,7 +280,7 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                     rows={jobs.data}
                     rowKey={(row) => row.slug}
                     emptyTitle="No jobs match these filters"
-                    emptyDescription="Create a job or clear filters to see listings."
+                    emptyDescription="Create a job or reset filters to see listings."
                     onRowClick={openJob}
                     selectedKey={selected?.slug ?? null}
                 />
@@ -265,9 +297,49 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                     <JobForm job={editing ? selected : null} lookups={lookups} onCancel={closeDrawer} />
                 ) : viewing && selected ? (
                     <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => visit({ job: selected.slug, mode: 'edit' })}>Edit</Button>
+                            <Button variant="secondary" onClick={() => router.patch(`/admin/jobs/${selected.slug}/publish`)}>
+                                {selected.publishing_status === 'published' ? 'Unpublish' : 'Publish'}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={() => (selected.active ? setConfirm('deactivate') : router.patch(`/admin/jobs/${selected.slug}/active`))}
+                            >
+                                {selected.active ? 'Deactivate' : 'Activate'}
+                            </Button>
+                            <Button variant="secondary" onClick={() => router.patch(`/admin/jobs/${selected.slug}/featured`)}>
+                                {selected.featured ? 'Unfeature' : 'Feature'}
+                            </Button>
+                            <Button variant="danger" onClick={() => setConfirm('delete')}>
+                                Delete
+                            </Button>
+                        </div>
+                        {relatedLinks ? (
+                            <div className="flex flex-wrap gap-3 text-sm">
+                                <Link href={relatedLinks.applications ?? `/admin/applications?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Applications
+                                </Link>
+                                <Link href={relatedLinks.candidates ?? `/admin/candidates?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Candidates
+                                </Link>
+                                <Link href={relatedLinks.screening ?? `/admin/screening?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Screening
+                                </Link>
+                                <Link href={relatedLinks.shortlisted ?? `/admin/shortlisted?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Shortlisted
+                                </Link>
+                                <Link href={relatedLinks.submissions ?? `/admin/submissions?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Employer Submission
+                                </Link>
+                                <Link href={relatedLinks.placements ?? `/admin/placements?job_id=${selected.id}`} className="font-medium text-brand">
+                                    Placement
+                                </Link>
+                            </div>
+                        ) : null}
                         <Tabs
                             tabs={[
-                                { id: 'overview', label: 'Overview' },
+                                { id: 'overview', label: 'Job information' },
                                 { id: 'applications', label: `Applications (${selected.applications_count})` },
                             ]}
                             active={tab}
@@ -276,8 +348,9 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
 
                         {tab === 'overview' ? (
                             <div className="space-y-4">
+                                <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Job information</h3>
                                 <dl className="grid gap-2 text-sm">
-                                    {detailRows.map(([label, value]) => (
+                                    {informationRows.map(([label, value]) => (
                                         <div key={label} className="grid grid-cols-3 gap-2">
                                             <dt className="text-muted">{label}</dt>
                                             <dd className="col-span-2 text-ink">{value}</dd>
@@ -291,43 +364,23 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                                 ) : null}
                                 <div>
                                     <h3 className="text-sm font-medium text-ink">Description</h3>
-                                    <p className="mt-1 whitespace-pre-line text-sm text-muted">{selected.description}</p>
+                                    <p className="mt-1 whitespace-pre-line text-sm text-muted">{selected.description || 'Not recorded yet'}</p>
                                 </div>
-                                {selected.requirements ? (
-                                    <div>
-                                        <h3 className="text-sm font-medium text-ink">Requirements</h3>
-                                        <p className="mt-1 whitespace-pre-line text-sm text-muted">{selected.requirements}</p>
-                                    </div>
-                                ) : null}
+                                <div>
+                                    <h3 className="text-sm font-medium text-ink">Requirements</h3>
+                                    <p className="mt-1 whitespace-pre-line text-sm text-muted">{selected.requirements || 'Not recorded yet'}</p>
+                                </div>
                                 {selected.responsibilities ? (
                                     <div>
                                         <h3 className="text-sm font-medium text-ink">Responsibilities</h3>
                                         <p className="mt-1 whitespace-pre-line text-sm text-muted">{selected.responsibilities}</p>
                                     </div>
                                 ) : null}
-                                <div className="flex flex-wrap gap-2">
-                                    <Button onClick={() => visit({ job: selected.slug, mode: 'edit' })}>Edit</Button>
-                                    <Button variant="secondary" onClick={() => router.patch(`/admin/jobs/${selected.slug}/publish`)}>
-                                        {selected.publishing_status === 'published' ? 'Unpublish' : 'Publish'}
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => (selected.active ? setConfirm('deactivate') : router.patch(`/admin/jobs/${selected.slug}/active`))}
-                                    >
-                                        {selected.active ? 'Deactivate' : 'Activate'}
-                                    </Button>
-                                    <Button variant="secondary" onClick={() => router.patch(`/admin/jobs/${selected.slug}/featured`)}>
-                                        {selected.featured ? 'Unfeature' : 'Feature'}
-                                    </Button>
-                                    <Button variant="danger" onClick={() => setConfirm('delete')}>
-                                        Delete
-                                    </Button>
-                                </div>
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 {applications.length === 0 ? (
-                                    <p className="text-sm text-muted">No applications for this job yet.</p>
+                                    <EmptyState title="No applications for this job yet" description="Applications submitted against this listing will appear here." />
                                 ) : (
                                     <ul className="space-y-2">
                                         {applications.map((application) => (
@@ -350,14 +403,6 @@ export default function JobsIndex({ jobs, selected, applications, mode, filters,
                                         ))}
                                     </ul>
                                 )}
-                                <div className="flex flex-wrap gap-3">
-                                    <Link href={`/admin/applications?job_id=${selected.id}`} className="inline-block text-sm font-medium text-brand">
-                                        View Applications
-                                    </Link>
-                                    <Link href={`/admin/screening?job_id=${selected.id}`} className="inline-block text-sm font-medium text-brand">
-                                        Screen applications
-                                    </Link>
-                                </div>
                             </div>
                         )}
                     </div>

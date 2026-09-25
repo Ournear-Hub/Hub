@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\EmployerSubmissionStatus;
 use App\Enums\RecruitmentActivityType;
+use App\Enums\ScreeningStage;
 use App\Models\Application;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
@@ -48,6 +49,12 @@ class EmployerSubmissionService
                 submission: $submission,
                 employer: $employer,
             );
+
+            if ($application->screening) {
+                $application->screening->update([
+                    'stage' => ScreeningStage::Submitted,
+                ]);
+            }
 
             $this->replacements->syncSubmissionCreated($submission->fresh() ?? $submission, $actor);
 
@@ -116,6 +123,18 @@ class EmployerSubmissionService
             EmployerSubmissionStatus::OnHold,
             RecruitmentActivityType::SubmissionStatusChanged,
             'Employer put this submission on hold.',
+            $notes,
+        );
+    }
+
+    public function review(EmployerSubmission $submission, User $actor, ?string $notes = null): EmployerSubmission
+    {
+        return $this->decide(
+            $submission,
+            $actor,
+            EmployerSubmissionStatus::UnderReview,
+            RecruitmentActivityType::SubmissionStatusChanged,
+            'Employer marked this submission as under review.',
             $notes,
         );
     }

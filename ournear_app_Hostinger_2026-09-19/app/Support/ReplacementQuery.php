@@ -23,9 +23,14 @@ class ReplacementQuery
             ->with([
                 'employer.user',
                 'job',
-                'originalEmployee.application',
+                'originalEmployee.application.user.candidateProfile',
+                'originalEmployee.candidateProfile',
+                'originalPlacement',
+                'originalApplication.user.candidateProfile',
                 'replacementEmployee.application',
                 'replacementApplication.user.candidateProfile',
+                'replacementSubmission',
+                'replacementPlacement',
             ])
             ->latest('requested_at');
 

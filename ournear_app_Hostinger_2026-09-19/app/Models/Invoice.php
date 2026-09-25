@@ -6,6 +6,7 @@ use App\Enums\BusinessIdPrefix;
 use App\Enums\InvoiceStatus;
 use App\Models\Concerns\HasBusinessId;
 use App\Support\Money;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -190,19 +191,50 @@ class Invoice extends Model
     /**
      * @return array<string, mixed>
      */
+    public function invoiceType(): string
+    {
+        return $this->replacement_id !== null ? 'Replacement billing' : 'Recruitment fee';
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    public function candidateSummary(): ?array
+    {
+        $this->loadMissing(['application.user.candidateProfile']);
+        $application = $this->application;
+        if ($application === null) {
+            return null;
+        }
+
+        $profile = $application->user?->candidateProfile;
+
+        return [
+            'id' => $profile?->id,
+            'business_id' => $profile?->business_id,
+            'name' => $application->full_name,
+            'url' => RecruitmentWorkspace::candidateUrl($profile),
+        ];
+    }
+
     public function toAdminListArray(): array
     {
         $this->loadMissing([
             'employer.user',
             'job',
+            'application.user.candidateProfile',
+            'placement',
             'employee.application',
             'payments',
         ]);
+
+        $candidate = $this->candidateSummary();
 
         return [
             'id' => $this->id,
             'business_id' => $this->business_id,
             'status' => $this->status->value,
+            'invoice_type' => $this->invoiceType(),
             'currency' => $this->currency,
             'amount' => (string) $this->amount,
             'gst_rate' => (string) $this->gst_rate,
@@ -213,7 +245,9 @@ class Invoice extends Model
             'is_overdue' => $this->isOverdue(),
             'billed_at' => $this->billed_at?->toDateString(),
             'due_at' => $this->due_at?->toDateString(),
+            'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
+            'candidate' => $candidate,
             'employer' => $this->employer?->toAdminSummary(),
             'job' => $this->job ? [
                 'id' => $this->job->id,
@@ -221,10 +255,19 @@ class Invoice extends Model
                 'title' => $this->job->title,
                 'slug' => $this->job->slug,
             ] : null,
+            'application' => $this->application ? [
+                'id' => $this->application->id,
+                'business_id' => $this->application->business_id,
+            ] : null,
+            'placement' => $this->placement ? [
+                'id' => $this->placement->id,
+                'business_id' => $this->placement->business_id,
+                'status' => $this->placement->status->value,
+            ] : null,
             'employee' => $this->employee ? [
                 'id' => $this->employee->id,
                 'business_id' => $this->employee->business_id,
-                'name' => $this->employee->application?->full_name,
+                'name' => $this->employee->application?->full_name ?? $candidate['name'] ?? null,
             ] : null,
             'is_replacement_billing' => $this->replacement_id !== null,
         ];
@@ -238,7 +281,7 @@ class Invoice extends Model
         $this->loadMissing([
             'employer.user',
             'job',
-            'application',
+            'application.user.candidateProfile',
             'submission',
             'placement',
             'employee.application',
@@ -256,6 +299,7 @@ class Invoice extends Model
         $payload['can_issue'] = $this->canIssue();
         $payload['can_cancel'] = $this->canCancel();
         $payload['can_record_payment'] = $this->canRecordPayment();
+        $payload['chain'] = RecruitmentWorkspace::invoiceChain($this);
         $payload['application'] = $this->application ? [
             'id' => $this->application->id,
             'business_id' => $this->application->business_id,

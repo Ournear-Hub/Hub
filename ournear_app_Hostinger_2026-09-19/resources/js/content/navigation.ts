@@ -3,6 +3,7 @@ import type { NavItem } from '@/types/layout';
 export const primaryNav: NavItem[] = [
     { label: 'Home', href: '/' },
     { label: 'Jobs', href: '/jobs' },
+    { label: 'Freelancers', href: '/freelancers' },
     { label: 'About Us', href: '/about' },
     {
         label: 'Services',
@@ -26,6 +27,10 @@ export function isNavActive(url: string, href: string): boolean {
 
     if (href === '/jobs') {
         return path === '/jobs' || path.startsWith('/jobs/');
+    }
+
+    if (href === '/freelancers') {
+        return path === '/freelancers' || path.startsWith('/freelancers/');
     }
 
     return path === href || path.startsWith(`${href}/`);

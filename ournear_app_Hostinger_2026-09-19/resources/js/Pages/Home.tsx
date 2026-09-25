@@ -1,5 +1,6 @@
 import type { FormEvent } from 'react';
-import { router } from '@inertiajs/react';
+import { router, usePage } from '@inertiajs/react';
+import type { SharedPageProps } from '@/types/page';
 import PublicLayout from '@/Layouts/PublicLayout';
 import Button from '@/Components/Public/Button';
 import CtaSection from '@/Components/Public/CtaSection';
@@ -20,6 +21,7 @@ type HomeProps = {
 };
 
 export default function Home({ content, cms, featuredJobs }: HomeProps) {
+    const guest = !usePage<SharedPageProps>().props.auth.user;
     const hero = cmsSection(cms, 'hero');
     const whatWeDo = cmsSection(cms, 'what_we_do');
     const coreServices = cmsSection(cms, 'core_services');
@@ -62,6 +64,16 @@ export default function Home({ content, cms, featuredJobs }: HomeProps) {
                         <Button href="/for-employers" variant="light">
                             {hero?.secondary_button_label || 'For Employers'}
                         </Button>
+                        {guest ? (
+                            <>
+                                <Button href="/login" variant="light">
+                                    Log in
+                                </Button>
+                                <Button href="/register" variant="light">
+                                    Register
+                                </Button>
+                            </>
+                        ) : null}
                     </div>
                 </PageContainer>
             </section>

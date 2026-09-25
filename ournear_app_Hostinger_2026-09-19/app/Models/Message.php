@@ -45,6 +45,25 @@ class Message extends Model
             'sender_name' => $this->sender?->name,
             'body' => $this->body,
             'created_at' => $this->created_at?->toDateTimeString(),
+            'attachments_available' => false,
         ];
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, ConversationParticipant>|iterable<int, ConversationParticipant>  $participants
+     * @return array<string, mixed>
+     */
+    public function toAdminTimelineArray(iterable $participants): array
+    {
+        $payload = $this->toAdminArray();
+        $others = collect($participants)->filter(
+            fn (ConversationParticipant $participant) => (int) $participant->user_id !== (int) $this->sender_id,
+        );
+        $payload['read_state'] = $others->isNotEmpty() && $others->every(
+            fn (ConversationParticipant $participant) => $participant->last_read_message_id !== null
+                && (int) $participant->last_read_message_id >= (int) $this->id,
+        ) ? 'Read by recipients' : 'Unread by recipients';
+
+        return $payload;
     }
 }

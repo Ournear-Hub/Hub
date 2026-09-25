@@ -15,13 +15,19 @@ use Inertia\Response;
 
 class SettingsController extends Controller
 {
-    public function edit(Request $request, WebsiteSettingService $settings): Response
+    public function edit(Request $request, WebsiteSettingService $settings): Response|RedirectResponse
     {
         $tab = match ($request->string('tab')->toString()) {
-            'account' => 'account',
             'branding' => 'branding',
+            'account' => 'account',
             default => 'website',
         };
+
+        if ($tab === 'account') {
+            return redirect()->route('admin.profile.show');
+        }
+
+        abort_unless($request->user()?->canManageWebsite() === true, 403);
 
         $current = $settings->current();
 
@@ -55,7 +61,7 @@ class SettingsController extends Controller
         $request->user()?->update($request->validated());
 
         return redirect()
-            ->route('admin.settings.edit', ['tab' => 'account'])
+            ->route('admin.profile.show')
             ->with('success', 'Profile updated.');
     }
 
@@ -64,9 +70,10 @@ class SettingsController extends Controller
         $request->user()?->update([
             'password' => $request->validated('password'),
         ]);
+        app(\App\Services\UserManagementService::class)->markPasswordChanged($request->user());
 
         return redirect()
-            ->route('admin.settings.edit', ['tab' => 'account'])
+            ->route('admin.profile.show')
             ->with('success', 'Password updated.');
     }
 }

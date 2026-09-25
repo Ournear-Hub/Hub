@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\LoginRequest;
 use App\Models\User;
 use App\Services\LoginLogService;
+use App\Support\IntendedUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,8 +15,13 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    public function create(): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        $user = $request->user();
+        if ($user instanceof User && $user->isAdmin()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return Inertia::render('Admin/Auth/Login');
     }
 
@@ -24,7 +30,11 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
-        return redirect()->intended(route('admin.dashboard'));
+        return redirect()->to(IntendedUrl::pullAllowed(
+            $request,
+            ['/admin'],
+            route('admin.dashboard'),
+        ));
     }
 
     public function destroy(Request $request, LoginLogService $logs): RedirectResponse

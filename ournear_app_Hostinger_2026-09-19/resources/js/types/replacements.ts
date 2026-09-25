@@ -12,6 +12,11 @@ export type ReplacementListItem = {
     reason: string;
     requested_at: string | null;
     updated_at: string | null;
+    eligibility?: string | null;
+    closure_date?: string | null;
+    operational_stage?: string | null;
+    original_candidate?: { id: number | null; business_id: string | null; name: string | null } | null;
+    original_placement?: ReplacementLineage | null;
     employer: {
         id: number;
         business_id: string | null;
@@ -37,6 +42,9 @@ export type ReplacementDetail = ReplacementListItem & {
     replacement_application: ReplacementLineage | null;
     replacement_submission: ReplacementLineage | null;
     replacement_placement: ReplacementLineage | null;
+    chain?: Array<{ key: string; label: string; value?: string | null; href?: string | null; status?: string | null }>;
+    workflow?: Array<{ key: string; label: string; value?: string | null; complete?: boolean; current?: boolean; maps_to?: string }>;
+    links?: Record<string, string | null | undefined>;
     activities: Array<{
         id: number;
         type: string;

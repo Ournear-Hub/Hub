@@ -6,10 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignUserRolesRequest;
 use App\Http\Requests\Admin\SendUserPasswordResetRequest;
 use App\Http\Requests\Admin\StoreStaffUserRequest;
+use App\Http\Requests\Admin\UpdateCommunicationPreferencesRequest;
+use App\Http\Requests\Admin\UpdatePlatformUserRequest;
 use App\Http\Requests\Admin\UpdateStaffUserRequest;
 use App\Http\Requests\Admin\UpdateUserStatusRequest;
 use App\Models\User;
+use App\Services\UserCrmService;
 use App\Services\UserManagementService;
+use App\Support\User360Assembler;
+use App\Support\UserActivityQuery;
 use App\Support\UserQuery;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,18 +30,38 @@ class UsersController extends Controller
         $page = $users->adminIndex($request)
             ->through(fn (User $user) => $user->toAdminListArray());
 
-        $selected = $users->selected($request);
-        if ($selected && $request->user()?->cannot('view', $selected)) {
-            $selected = null;
-        }
-
         return Inertia::render('Admin/Users/Index', [
             'users' => $page,
-            'selected' => $selected?->toAdminArray(),
             'filters' => $users->filters($request),
             'options' => $users->options(),
             'can_manage' => $request->user()?->can('create', User::class) === true,
+        ]);
+    }
+
+    public function activity(Request $request, UserActivityQuery $activities): Response
+    {
+        $this->authorize('viewAny', User::class);
+
+        $page = $activities->adminIndex($request)
+            ->through(fn ($activity) => $activity->toAdminArray());
+
+        return Inertia::render('Admin/Users/Activity', [
+            'activities' => $page,
+            'filters' => $activities->filters($request),
+            'options' => $activities->options(),
+        ]);
+    }
+
+    public function show(Request $request, User $user, User360Assembler $assembler, UserQuery $users): Response
+    {
+        $this->authorize('view', $user);
+
+        return Inertia::render('Admin/Users/Show', [
+            'record' => $assembler->payload($user),
+            'can_manage' => $request->user()?->can('update', $user) === true,
+            'can_change_status' => $request->user()?->can('deactivate', $user) === true,
             'actor_is_super_admin' => $request->user()?->isSuperAdmin() === true,
+            'options' => $users->options(),
         ]);
     }
 
@@ -50,8 +75,8 @@ class UsersController extends Controller
         );
 
         return redirect()
-            ->route('admin.users.index', ['user' => $user->id])
-            ->with('success', 'Staff user created. A password reset email was sent.');
+            ->route('admin.staff.index', ['user' => $user->id])
+            ->with('success', 'Staff user created. A password reset email was sent. The password is never displayed.');
     }
 
     public function update(UpdateStaffUserRequest $request, User $user, UserManagementService $service): RedirectResponse
@@ -66,6 +91,19 @@ class UsersController extends Controller
         return back()->with('success', 'User updated.');
     }
 
+    public function updateProfile(UpdatePlatformUserRequest $request, User $user, UserCrmService $crm): RedirectResponse
+    {
+        $crm->updateIdentity(
+            $request->user(),
+            $user,
+            $request->identity(),
+            $request->file('photo'),
+            $request->boolean('remove_photo'),
+        );
+
+        return back()->with('success', 'User profile updated.');
+    }
+
     public function syncRoles(AssignUserRolesRequest $request, User $user, UserManagementService $service): RedirectResponse
     {
         $service->syncRoles(
@@ -77,17 +115,25 @@ class UsersController extends Controller
         return back()->with('success', 'Roles updated.');
     }
 
-    public function updateStatus(UpdateUserStatusRequest $request, User $user, UserManagementService $service): RedirectResponse
+    public function updateStatus(UpdateUserStatusRequest $request, User $user, UserCrmService $crm): RedirectResponse
     {
-        $service->setActive($request->user(), $user, $request->boolean('is_active'));
+        $status = $request->status();
+        $crm->setStatus($request->user(), $user, $status);
 
-        return back()->with('success', $request->boolean('is_active') ? 'User activated.' : 'User deactivated.');
+        return back()->with('success', 'Account status set to '.$status->label().'.');
     }
 
     public function sendPasswordReset(SendUserPasswordResetRequest $request, User $user, UserManagementService $service): RedirectResponse
     {
         $service->sendPasswordReset($request->user(), $user);
 
-        return back()->with('success', 'Password reset email sent.');
+        return back()->with('success', 'Password reset email sent. The password is never displayed.');
+    }
+
+    public function updatePreferences(UpdateCommunicationPreferencesRequest $request, User $user, UserCrmService $crm): RedirectResponse
+    {
+        $crm->updatePreferences($request->user(), $user, $request->channels());
+
+        return back()->with('success', 'Communication preferences saved.');
     }
 }

@@ -20,6 +20,8 @@ enum PermissionName: string
     case ReplacementsManage = 'replacements.manage';
     case EmployersView = 'employers.view';
     case EmployersManage = 'employers.manage';
+    case FreelancersView = 'freelancers.view';
+    case FreelancersManage = 'freelancers.manage';
     case FinanceView = 'finance.view';
     case FinanceManage = 'finance.manage';
     case NotificationsView = 'notifications.view';
@@ -40,7 +42,8 @@ enum PermissionName: string
             self::SubmissionsView, self::SubmissionsManage,
             self::PlacementsView, self::PlacementsManage,
             self::EmployeesView, self::EmployeesManage,
-            self::ReplacementsView, self::ReplacementsManage => 'Recruitment',
+            self::ReplacementsView, self::ReplacementsManage,
+            self::FreelancersView, self::FreelancersManage => 'Recruitment',
             self::EmployersView, self::EmployersManage => 'Employers',
             self::FinanceView, self::FinanceManage => 'Finance',
             self::NotificationsView, self::MessagesManage => 'Communication',
@@ -69,6 +72,8 @@ enum PermissionName: string
             self::ReplacementsManage => 'Manage replacements',
             self::EmployersView => 'View employers',
             self::EmployersManage => 'Manage employers',
+            self::FreelancersView => 'View freelancers',
+            self::FreelancersManage => 'Manage freelancers',
             self::FinanceView => 'View finance',
             self::FinanceManage => 'Manage finance',
             self::NotificationsView => 'View notifications',

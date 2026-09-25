@@ -8,9 +8,12 @@ use App\Mail\ContactEnquirySubmittedAdminMail;
 use App\Mail\ContactEnquirySubmittedSubmitterMail;
 use App\Mail\EmployerEnquirySubmittedAdminMail;
 use App\Mail\EmployerEnquirySubmittedEmployerMail;
+use App\Mail\FreelancerSubmittedAdminMail;
+use App\Mail\FreelancerSubmittedApplicantMail;
 use App\Models\Application;
 use App\Models\ContactEnquiry;
 use App\Models\EmployerEnquiry;
+use App\Models\Freelancer;
 use App\Support\MailOutcome;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
@@ -36,6 +39,15 @@ class SubmissionMailService
 
         return new MailOutcome(
             $this->sendToRecipient($enquiry->email, new EmployerEnquirySubmittedEmployerMail($enquiry))
+        );
+    }
+
+    public function notifyFreelancer(Freelancer $freelancer): MailOutcome
+    {
+        $this->sendToAdmins(new FreelancerSubmittedAdminMail($freelancer));
+
+        return new MailOutcome(
+            $this->sendToRecipient($freelancer->email, new FreelancerSubmittedApplicantMail($freelancer))
         );
     }
 

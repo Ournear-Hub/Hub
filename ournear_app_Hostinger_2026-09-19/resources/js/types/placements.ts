@@ -23,7 +23,13 @@ export type PlacementListItem = {
     candidate: { id: number | null; business_id: string | null; name: string | null };
     application: PlacementLineage | null;
     submission: PlacementLineage | null;
+    selection?: PlacementLineage | null;
     employee: PlacementLineage | null;
+    offer_status?: string | null;
+    joining_status?: string | null;
+    joining_status_key?: string | null;
+    links?: Record<string, string | null | undefined>;
+    chain?: Array<{ key: string; label: string; value?: string | null; href?: string | null; status?: string | null }>;
     replacement?: {
         as_original: {
             id: number;
@@ -63,6 +69,10 @@ export type PlacementOffer = {
     decline_notes: string | null;
     withdrawn_at: string | null;
     created_by: string | null;
+    reference?: string | null;
+    document_url?: string | null;
+    reference_available?: boolean;
+    document_available?: boolean;
 };
 
 export type PlacementDetail = PlacementListItem & {
@@ -96,6 +106,7 @@ export type EmployeeListItem = {
     business_id: string | null;
     joined_at: string | null;
     created_at: string | null;
+    employment_status?: string;
     employer: PlacementListItem['employer'];
     job: PlacementListItem['job'];
     candidate: PlacementListItem['candidate'];

@@ -6,6 +6,7 @@ use App\Enums\BusinessIdPrefix;
 use App\Enums\InvoiceStatus;
 use App\Enums\PlacementStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -259,6 +260,9 @@ class Placement extends Model
             'id' => $this->id,
             'business_id' => $this->business_id,
             'status' => $this->status->value,
+            'offer_status' => RecruitmentWorkspace::offerStatus($this->offer),
+            'joining_status' => RecruitmentWorkspace::joiningStatus($this->status),
+            'joining_status_key' => RecruitmentWorkspace::joiningStatusKey($this->status),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'expected_joining_date' => $this->expected_joining_date?->toDateString(),
@@ -284,12 +288,32 @@ class Placement extends Model
                 'business_id' => $this->submission->business_id,
                 'status' => $this->submission->status->value,
             ] : null,
+            'selection' => $this->submission ? [
+                'id' => $this->submission->id,
+                'business_id' => $this->submission->business_id,
+                'status' => $this->submission->status->value,
+            ] : null,
             'employee' => $this->employee ? [
                 'id' => $this->employee->id,
                 'business_id' => $this->employee->business_id,
             ] : null,
             'replacement' => $this->replacementContext(),
             'invoice' => $this->invoiceSummary(),
+            'links' => [
+                'employer' => RecruitmentWorkspace::employerUrl($this->employer),
+                'candidate' => RecruitmentWorkspace::candidateUrl($profile),
+                'application' => RecruitmentWorkspace::applicationUrl($application),
+                'job' => RecruitmentWorkspace::jobUrl($this->job),
+                'selection' => RecruitmentWorkspace::submissionUrl($this->submission),
+                'submission' => RecruitmentWorkspace::submissionUrl($this->submission),
+                'placement' => RecruitmentWorkspace::placementUrl($this),
+                'offer' => RecruitmentWorkspace::placementUrl($this),
+                'employee' => RecruitmentWorkspace::employeeUrl($this->employee),
+                'replacement' => RecruitmentWorkspace::replacementUrl(
+                    $this->originatingReplacements->sortByDesc('id')->first()
+                        ?? $this->resultingReplacement
+                ),
+            ],
         ];
     }
 
@@ -335,6 +359,7 @@ class Placement extends Model
         $payload['has_resume'] = $this->application
             ? filled($this->application->getRawOriginal('resume_path') ?? $this->application->getAttributes()['resume_path'] ?? null)
             : false;
+        $payload['chain'] = RecruitmentWorkspace::placementChain($this);
         $payload['activities'] = $this->timeline();
         $payload['replacement'] = $this->replacementContext();
 

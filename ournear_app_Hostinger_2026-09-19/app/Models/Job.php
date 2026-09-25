@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\JobPublishingStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Services\UserPhotoService;
 use Database\Factories\JobFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
@@ -58,6 +60,8 @@ class Job extends Model
         'responsibilities',
         'requirements',
         'what_we_offer',
+        'posting_tier',
+        'trial_expires_at',
     ];
 
     /**
@@ -72,6 +76,7 @@ class Job extends Model
             'posted_date' => 'date',
             'closing_date' => 'date',
             'publishing_status' => JobPublishingStatus::class,
+            'trial_expires_at' => 'datetime',
         ];
     }
 
@@ -100,6 +105,22 @@ class Job extends Model
     public function applications(): HasMany
     {
         return $this->hasMany(Application::class);
+    }
+
+    /**
+     * @return HasMany<SavedJob, $this>
+     */
+    public function savedJobs(): HasMany
+    {
+        return $this->hasMany(SavedJob::class);
+    }
+
+    /**
+     * @return BelongsToMany<User, $this>
+     */
+    public function savedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'saved_jobs')->withTimestamps();
     }
 
     /**
@@ -183,6 +204,11 @@ class Job extends Model
         return $query
             ->where('active', true)
             ->where('publishing_status', JobPublishingStatus::Published)
+            ->where(function (Builder $trial) {
+                $trial->where('posting_tier', '!=', 'trial')
+                    ->orWhereNull('trial_expires_at')
+                    ->orWhere('trial_expires_at', '>=', now());
+            })
             ->where(function (Builder $closing) {
                 $closing->whereNull('closing_date')
                     ->orWhereDate('closing_date', '>=', now()->toDateString());
@@ -196,6 +222,10 @@ class Job extends Model
         }
 
         if ($this->publishing_status !== JobPublishingStatus::Published) {
+            return false;
+        }
+
+        if ($this->posting_tier === 'trial' && $this->trial_expires_at?->isPast()) {
             return false;
         }
 
@@ -214,6 +244,62 @@ class Job extends Model
     public function acceptsApplications(): bool
     {
         return $this->isPubliclyVisible();
+    }
+
+    public function postedLabel(): string
+    {
+        if ($this->posted_date === null) {
+            return '—';
+        }
+
+        $days = (int) $this->posted_date->copy()->startOfDay()->diffInDays(now()->startOfDay());
+
+        if ($days <= 0) {
+            return 'Today';
+        }
+
+        if ($days === 1) {
+            return '1 day ago';
+        }
+
+        if ($days < 7) {
+            return $days.' days ago';
+        }
+
+        $weeks = intdiv($days, 7);
+
+        return $weeks === 1 ? '1 week ago' : $weeks.' weeks ago';
+    }
+
+    public function closingLabel(): string
+    {
+        if ($this->isClosed()) {
+            return 'Closed';
+        }
+
+        if ($this->closing_date === null) {
+            return 'Open';
+        }
+
+        $days = (int) now()->startOfDay()->diffInDays($this->closing_date->copy()->startOfDay());
+
+        if ($days <= 0) {
+            return '1 day left';
+        }
+
+        if ($days === 1) {
+            return '1 day left';
+        }
+
+        if ($days === 7) {
+            return '1 week left';
+        }
+
+        if ($days % 7 === 0 && $days <= 28) {
+            return intdiv($days, 7).' weeks left';
+        }
+
+        return $days.' days left';
     }
 
     public static function uniqueSlug(string $title, ?int $ignoreId = null): string
@@ -238,10 +324,15 @@ class Job extends Model
      */
     public function toPublicCard(): array
     {
+        $this->loadMissing('employer.user');
+
         return [
             'title' => $this->title,
             'slug' => $this->slug,
             'project' => $this->project,
+            'company_name' => $this->employer?->displayCompany() ?: $this->project,
+            'company_logo_url' => app(UserPhotoService::class)->publicUrl($this->employer?->user?->photo_path),
+            'company_url' => $this->employer ? route('companies.show', $this->employer, false) : null,
             'industry' => $this->industry,
             'category' => $this->category,
             'location' => $this->location,
@@ -251,7 +342,12 @@ class Job extends Model
             'vacancy' => $this->vacancy,
             'posted_date' => $this->posted_date?->toDateString(),
             'closing_date' => $this->closing_date?->toDateString(),
+            'posted_label' => $this->postedLabel(),
+            'closing_label' => $this->closingLabel(),
+            'is_closed' => $this->isClosed(),
             'featured' => $this->featured,
+            'posting_tier' => $this->posting_tier,
+            'trial_expires_at' => $this->trial_expires_at?->toIso8601String(),
         ];
     }
 
@@ -311,6 +407,8 @@ class Job extends Model
             'posted_date' => $this->posted_date?->toDateString(),
             'closing_date' => $this->closing_date?->toDateString(),
             'featured' => $this->featured,
+            'posting_tier' => $this->posting_tier,
+            'trial_expires_at' => $this->trial_expires_at?->toIso8601String(),
             'active' => $this->active,
             'publishing_status' => $this->publishing_status->value,
             'status_label' => $this->active
@@ -323,6 +421,12 @@ class Job extends Model
             'applications_count' => $this->applications_count ?? $this->applications()->count(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
+            'skills' => null,
+            'notice_period' => null,
+            'keywords' => null,
+            'qualification' => null,
+            'created_by' => null,
+            'source' => null,
         ];
     }
 

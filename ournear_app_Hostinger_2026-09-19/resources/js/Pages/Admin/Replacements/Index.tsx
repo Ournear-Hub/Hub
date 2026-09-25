@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     DataTable,
@@ -18,6 +19,7 @@ import {
     Timeline,
 } from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
+import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { EligibleReplacementApplication, ReplacementDetail, ReplacementListItem } from '@/types/replacements';
 
@@ -68,8 +70,8 @@ export default function ReplacementsIndex({
     const [applicationId, setApplicationId] = useState('');
     const [notes, setNotes] = useState('');
 
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -90,14 +92,17 @@ export default function ReplacementsIndex({
     };
 
     const columns: Array<DataTableColumn<ReplacementListItem>> = [
-        { key: 'id', header: 'Replacement ID', className: 'font-medium text-ink', render: (row) => row.business_id ?? '—' },
-        { key: 'original', header: 'Original employee', render: (row) => row.original_employee?.name ?? '—' },
-        { key: 'employer', header: 'Employer', render: (row) => row.employer?.company_name ?? '—' },
-        { key: 'job', header: 'Job', render: (row) => row.job?.title ?? '—' },
-        { key: 'candidate', header: 'Replacement candidate', render: (row) => row.replacement_candidate.name ?? '—' },
-        { key: 'reason', header: 'Reason', render: (row) => row.reason },
+        { key: 'id', header: 'Replacement ID', className: 'font-medium text-ink', render: (row) => recorded(row.business_id) },
+        { key: 'placement', header: 'Original Placement', render: (row) => recorded(row.original_placement?.business_id) },
+        { key: 'employer', header: 'Employer', render: (row) => recorded(row.employer?.company_name) },
+        { key: 'job', header: 'Job', render: (row) => recorded(row.job?.title) },
+        { key: 'original', header: 'Original Candidate', render: (row) => recorded(row.original_candidate?.name ?? row.original_employee?.name) },
+        { key: 'candidate', header: 'Replacement Candidate', render: (row) => recorded(row.replacement_candidate.name) },
         { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-        { key: 'requested', header: 'Requested', render: (row) => row.requested_at ?? '—' },
+        { key: 'reason', header: 'Reason', render: (row) => recorded(row.reason) },
+        { key: 'requested', header: 'Requested date', render: (row) => recorded(row.requested_at) },
+        { key: 'eligibility', header: 'Eligibility', render: (row) => recorded(row.eligibility) },
+        { key: 'closed', header: 'Closure date', render: (row) => recorded(row.closure_date) },
         {
             key: 'actions',
             header: 'Actions',
@@ -123,7 +128,7 @@ export default function ReplacementsIndex({
                         replacement candidate follows the existing recruitment workflow.
                     </p>
                 </div>
-                <FilterBar onSubmit={filter}>
+                <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Replacement, employee, employer, job, candidate ID" />
                     <Select name="employer_id" defaultValue={filters.employer_id} aria-label="Employer">
                         <option value="">All employers</option>
@@ -159,7 +164,12 @@ export default function ReplacementsIndex({
                     </Select>
                     <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="Requested from" />
                     <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="Requested to" />
-                    <Button type="submit">Filter</Button>
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit">Filter</Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset
+                        </Button>
+                    </div>
                 </FilterBar>
                 <DataTable
                     columns={columns}
@@ -179,6 +189,7 @@ export default function ReplacementsIndex({
                         <Tabs
                             tabs={[
                                 { id: 'overview', label: 'Overview' },
+                                { id: 'chain', label: 'History' },
                                 { id: 'original', label: 'Original' },
                                 { id: 'candidate', label: 'Replacement candidate' },
                                 { id: 'timeline', label: 'Timeline' },
@@ -190,16 +201,21 @@ export default function ReplacementsIndex({
                             <div className="space-y-4 text-sm">
                                 <dl className="grid gap-2">
                                     {[
-                                        ['Replacement ID', selected.business_id ?? '—'],
-                                        ['Status', selected.status],
-                                        ['Reason', selected.reason],
-                                        ['Employer', selected.employer?.company_name ?? '—'],
-                                        ['Job', selected.job?.title ?? '—'],
-                                        ['Requested', selected.requested_at ?? '—'],
-                                        ['Requested by', selected.requested_by ?? '—'],
-                                        ['Completed', selected.completed_at ?? '—'],
-                                        ['Cancelled', selected.cancelled_at ?? '—'],
-                                        ['Notes', selected.notes || '—'],
+                                        ['Replacement ID', recorded(selected.business_id)],
+                                        ['Stored status', selected.status],
+                                        ['Operational stage', recorded(selected.operational_stage)],
+                                        ['Reason', recorded(selected.reason)],
+                                        ['Eligibility', recorded(selected.eligibility)],
+                                        ['Employer', recorded(selected.employer?.company_name)],
+                                        ['Job', recorded(selected.job?.title)],
+                                        ['Original Placement', recorded(selected.original_placement?.business_id)],
+                                        ['Original Candidate', recorded(selected.original_candidate?.name ?? selected.original_employee?.name)],
+                                        ['Requested', recorded(selected.requested_at)],
+                                        ['Requested by', recorded(selected.requested_by)],
+                                        ['Closure date', recorded(selected.closure_date)],
+                                        ['Completed', recorded(selected.completed_at)],
+                                        ['Cancelled', recorded(selected.cancelled_at)],
+                                        ['Notes', recorded(selected.notes)],
                                     ].map(([label, value]) => (
                                         <div key={label} className="grid grid-cols-3 gap-2">
                                             <dt className="text-muted">{label}</dt>
@@ -215,6 +231,23 @@ export default function ReplacementsIndex({
                                         Cancel
                                     </Button>
                                 </div>
+                                <p className="text-xs text-muted">
+                                    V1.1 stored statuses: Requested, In Progress, Placed, Completed, Cancelled. Operational labels map onto
+                                    those statuses and do not replace the original placement.
+                                </p>
+                            </div>
+                        ) : null}
+                        {tab === 'chain' ? (
+                            <div className="space-y-4">
+                                <RecruitmentChain steps={selected.chain ?? []} />
+                                <ul className="space-y-2 text-sm">
+                                    {(selected.workflow ?? []).map((step) => (
+                                        <li key={step.key} className={`rounded-md px-3 py-2 ${step.current ? 'bg-brand/10' : 'bg-surface'}`}>
+                                            <span className="font-medium text-ink">{step.label}</span>
+                                            {step.value ? <span className="text-muted"> · {step.value}</span> : null}
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         ) : null}
                         {tab === 'original' ? (

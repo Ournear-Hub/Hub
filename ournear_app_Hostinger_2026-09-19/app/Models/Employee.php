@@ -7,6 +7,7 @@ use App\Enums\InvoiceStatus;
 use App\Enums\PlacementStatus;
 use App\Enums\ReplacementStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Support\RecruitmentWorkspace;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -248,6 +249,7 @@ class Employee extends Model
             'business_id' => $this->business_id,
             'joined_at' => $this->joined_at?->toDateTimeString(),
             'created_at' => $this->created_at?->toDateTimeString(),
+            'employment_status' => 'Joined',
             'employer' => $this->employer?->toAdminSummary(),
             'job' => $this->job ? [
                 'id' => $this->job->id,
@@ -275,6 +277,15 @@ class Employee extends Model
             ] : null,
             'replacement' => $this->replacementSummary(),
             'invoice' => $this->invoiceSummary(),
+            'links' => [
+                'candidate' => RecruitmentWorkspace::candidateUrl($profile),
+                'employer' => RecruitmentWorkspace::employerUrl($this->employer),
+                'job' => RecruitmentWorkspace::jobUrl($this->job),
+                'application' => RecruitmentWorkspace::applicationUrl($application),
+                'placement' => RecruitmentWorkspace::placementUrl($this->placement),
+                'offer' => RecruitmentWorkspace::placementUrl($this->placement),
+                'employee' => RecruitmentWorkspace::employeeUrl($this),
+            ],
         ];
     }
 
@@ -311,6 +322,33 @@ class Employee extends Model
         $payload['can_create_invoice'] = $this->canCreateInvoice();
         $payload['replacement'] = $this->replacementSummary();
         $payload['invoice'] = $this->invoiceSummary();
+        $payload['chain'] = RecruitmentWorkspace::employeeChain($this);
+        $payload['has_resume'] = $this->application
+            ? filled($this->application->getRawOriginal('resume_path') ?? $this->application->getAttributes()['resume_path'] ?? null)
+            : false;
+        $payload['resume_url'] = $this->application
+            ? route('admin.applications.resume', $this->application)
+            : null;
+        $payload['documents'] = [
+            [
+                'label' => 'Resume',
+                'available' => (bool) ($payload['has_resume'] ?? false),
+                'href' => ($payload['has_resume'] ?? false) ? $payload['resume_url'] : null,
+                'note' => ($payload['has_resume'] ?? false) ? null : RecruitmentWorkspace::NOT_RECORDED,
+            ],
+            [
+                'label' => 'Offer document',
+                'available' => false,
+                'href' => null,
+                'note' => RecruitmentWorkspace::NOT_AVAILABLE,
+            ],
+            [
+                'label' => 'Joining documents',
+                'available' => false,
+                'href' => null,
+                'note' => RecruitmentWorkspace::NOT_AVAILABLE,
+            ],
+        ];
 
         return $payload;
     }

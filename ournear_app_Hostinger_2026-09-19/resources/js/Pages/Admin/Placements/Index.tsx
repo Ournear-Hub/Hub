@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
+import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     ConfirmDialog,
@@ -19,6 +20,7 @@ import {
     Timeline,
 } from '@/Components/Admin/ui';
 import type { DataTableColumn } from '@/Components/Admin/ui';
+import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { PlacementDetail, PlacementListItem } from '@/types/placements';
 
@@ -29,7 +31,9 @@ type Props = {
         search: string;
         employer_id: string;
         job_id: string;
+        candidate_id: string;
         status: string;
+        joining_status: string;
         date_from: string;
         date_to: string;
         placement: string;
@@ -37,7 +41,9 @@ type Props = {
     options: {
         employers: Array<{ id: number; label: string }>;
         jobs: Array<{ id: number; title: string; business_id: string | null }>;
+        candidates?: Array<{ id: number; label: string }>;
         statuses: string[];
+        joining_statuses?: Array<{ value: string; label: string }>;
     };
     statuses: string[];
 };
@@ -63,8 +69,8 @@ export default function PlacementsIndex({ placements, selected, filters, options
     const [expectedJoiningDate, setExpectedJoiningDate] = useState('');
     const [actualJoiningDate, setActualJoiningDate] = useState('');
 
-    const visit = (overrides: Record<string, string | undefined> = {}) => {
-        const next = { ...filters, ...overrides };
+    const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
+        const next = replaceAll ? overrides : { ...filters, ...overrides };
         const params: Record<string, string> = {};
         Object.entries(next).forEach(([key, value]) => {
             if (value) {
@@ -85,13 +91,19 @@ export default function PlacementsIndex({ placements, selected, filters, options
     };
 
     const columns: Array<DataTableColumn<PlacementListItem>> = [
-        { key: 'id', header: 'Placement ID', className: 'font-medium text-ink', render: (row) => row.business_id ?? '—' },
-        { key: 'employer', header: 'Employer', render: (row) => row.employer?.company_name ?? '—' },
-        { key: 'job', header: 'Job', render: (row) => row.job?.title ?? '—' },
-        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => row.candidate.name ?? '—' },
-        { key: 'submission', header: 'Submission', render: (row) => row.submission?.business_id ?? '—' },
-        { key: 'status', header: 'Status', render: (row) => <StatusBadge status={row.status} /> },
-        { key: 'updated', header: 'Updated', render: (row) => row.updated_at ?? '—' },
+        { key: 'id', header: 'Placement ID', className: 'font-medium text-ink', render: (row) => recorded(row.business_id) },
+        { key: 'candidate', header: 'Candidate', className: 'font-medium text-ink', render: (row) => recorded(row.candidate.name) },
+        { key: 'application', header: 'Application', render: (row) => recorded(row.application?.business_id) },
+        { key: 'job', header: 'Job', render: (row) => recorded(row.job?.title) },
+        { key: 'employer', header: 'Employer', render: (row) => recorded(row.employer?.company_name) },
+        { key: 'selection', header: 'Selection', render: (row) => recorded(row.selection?.business_id ?? row.submission?.business_id) },
+        { key: 'status', header: 'Placement status', render: (row) => <StatusBadge status={row.status} /> },
+        { key: 'offer', header: 'Offer status', render: (row) => recorded(row.offer_status) },
+        { key: 'joining', header: 'Joining status', render: (row) => <StatusBadge status={row.joining_status ?? 'Pending'} /> },
+        { key: 'placed', header: 'Placement date', render: (row) => recorded(row.created_at) },
+        { key: 'expected', header: 'Expected joining', render: (row) => recorded(row.expected_joining_date) },
+        { key: 'actual', header: 'Actual joining', render: (row) => recorded(row.actual_joining_date) },
+        { key: 'created', header: 'Created date', render: (row) => recorded(row.created_at) },
         {
             key: 'actions',
             header: 'Actions',
@@ -116,7 +128,7 @@ export default function PlacementsIndex({ placements, selected, filters, options
                         Placement starts from an employer-selected submission for a specific job. This is not a global candidate selection.
                     </p>
                 </div>
-                <FilterBar onSubmit={filter}>
+                <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Placement, employer, job, candidate, submission ID" />
                     <Select name="employer_id" defaultValue={filters.employer_id} aria-label="Employer">
                         <option value="">All employers</option>
@@ -134,6 +146,14 @@ export default function PlacementsIndex({ placements, selected, filters, options
                             </option>
                         ))}
                     </Select>
+                    <Select name="candidate_id" defaultValue={filters.candidate_id} aria-label="Candidate">
+                        <option value="">All candidates</option>
+                        {(options.candidates ?? []).map((candidate) => (
+                            <option key={candidate.id} value={candidate.id}>
+                                {candidate.label}
+                            </option>
+                        ))}
+                    </Select>
                     <Select name="status" defaultValue={filters.status} aria-label="Placement status">
                         <option value="">All statuses</option>
                         {statuses.map((status) => (
@@ -142,9 +162,22 @@ export default function PlacementsIndex({ placements, selected, filters, options
                             </option>
                         ))}
                     </Select>
+                    <Select name="joining_status" defaultValue={filters.joining_status} aria-label="Joining status">
+                        <option value="">All joining statuses</option>
+                        {(options.joining_statuses ?? []).map((status) => (
+                            <option key={status.value} value={status.value}>
+                                {status.label}
+                            </option>
+                        ))}
+                    </Select>
                     <Input name="date_from" type="date" defaultValue={filters.date_from} aria-label="Created from" />
                     <Input name="date_to" type="date" defaultValue={filters.date_to} aria-label="Created to" />
-                    <Button type="submit">Filter</Button>
+                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                        <Button type="submit">Filter</Button>
+                        <Button type="button" variant="secondary" onClick={() => visit({}, true)}>
+                            Reset
+                        </Button>
+                    </div>
                 </FilterBar>
                 <DataTable
                     columns={columns}
@@ -164,6 +197,7 @@ export default function PlacementsIndex({ placements, selected, filters, options
                         <Tabs
                             tabs={[
                                 { id: 'overview', label: 'Overview' },
+                                { id: 'chain', label: 'Recruitment chain' },
                                 { id: 'candidate', label: 'Candidate' },
                                 { id: 'job', label: 'Job' },
                                 { id: 'employer', label: 'Employer' },
@@ -181,14 +215,19 @@ export default function PlacementsIndex({ placements, selected, filters, options
                         {tab === 'overview' ? (
                             <dl className="grid gap-2 text-sm">
                                 {[
-                                    ['Placement ID', selected.business_id ?? '—'],
+                                    ['Placement ID', recorded(selected.business_id)],
                                     ['Status', selected.status],
-                                    ['Employer', selected.employer?.company_name ?? '—'],
-                                    ['Job', selected.job?.title ?? '—'],
-                                    ['Candidate', selected.candidate.name ?? '—'],
-                                    ['Application', selected.application?.business_id ?? '—'],
-                                    ['Submission', selected.submission?.business_id ?? '—'],
-                                    ['Created', selected.created_at ?? '—'],
+                                    ['Offer status', recorded(selected.offer_status)],
+                                    ['Joining status', recorded(selected.joining_status)],
+                                    ['Employer', recorded(selected.employer?.company_name)],
+                                    ['Job', recorded(selected.job?.title)],
+                                    ['Candidate', recorded(selected.candidate.name)],
+                                    ['Application', recorded(selected.application?.business_id)],
+                                    ['Selection', recorded(selected.selection?.business_id ?? selected.submission?.business_id)],
+                                    ['Placement date', recorded(selected.created_at)],
+                                    ['Expected joining', recorded(selected.expected_joining_date)],
+                                    ['Actual joining', recorded(selected.actual_joining_date)],
+                                    ['Created', recorded(selected.created_at)],
                                 ].map(([label, value]) => (
                                     <div key={label} className="grid grid-cols-3 gap-2">
                                         <dt className="text-muted">{label}</dt>
@@ -197,6 +236,7 @@ export default function PlacementsIndex({ placements, selected, filters, options
                                 ))}
                             </dl>
                         ) : null}
+                        {tab === 'chain' ? <RecruitmentChain steps={selected.chain ?? []} /> : null}
                         {tab === 'candidate' ? (
                             <div className="space-y-3 text-sm">
                                 <p className="font-medium text-ink">{selected.candidate.name}</p>
@@ -248,12 +288,16 @@ export default function PlacementsIndex({ placements, selected, filters, options
                                 {selected.offer ? (
                                     <dl className="grid gap-2">
                                         {[
-                                            ['Offered', selected.offer.offered_at ?? '—'],
-                                            ['Salary / CTC', selected.offer.salary || '—'],
-                                            ['Accepted', selected.offer.accepted_at ?? '—'],
-                                            ['Declined', selected.offer.declined_at ?? '—'],
-                                            ['Withdrawn', selected.offer.withdrawn_at ?? '—'],
-                                            ['Notes', selected.offer.notes || '—'],
+                                            ['Offer status', recorded(selected.offer_status)],
+                                            ['Offered', recorded(selected.offer.offered_at)],
+                                            ['Offer reference', 'Not available in V1.1'],
+                                            ['Salary / CTC', recorded(selected.offer.salary)],
+                                            ['Joining date', recorded(selected.expected_joining_date)],
+                                            ['Offer document', 'Not available in V1.1'],
+                                            ['Accepted', recorded(selected.offer.accepted_at)],
+                                            ['Declined', recorded(selected.offer.declined_at)],
+                                            ['Withdrawn', recorded(selected.offer.withdrawn_at)],
+                                            ['Remarks', recorded(selected.offer.notes)],
                                         ].map(([label, value]) => (
                                             <div key={label} className="grid grid-cols-3 gap-2">
                                                 <dt className="text-muted">{label}</dt>
@@ -284,11 +328,12 @@ export default function PlacementsIndex({ placements, selected, filters, options
                             <div className="space-y-3 text-sm">
                                 <dl className="grid gap-2">
                                     {[
-                                        ['Expected joining', selected.expected_joining_date ?? '—'],
-                                        ['Confirmed', selected.joining_confirmed_at ?? '—'],
-                                        ['Confirmed by', selected.joining_confirmed_by ?? '—'],
-                                        ['Actual joining', selected.actual_joining_date ?? '—'],
-                                        ['Notes', selected.joining_notes || '—'],
+                                        ['Expected joining', recorded(selected.expected_joining_date)],
+                                        ['Confirmed', recorded(selected.joining_confirmed_at)],
+                                        ['Confirmed by', recorded(selected.joining_confirmed_by)],
+                                        ['Actual joining', recorded(selected.actual_joining_date)],
+                                        ['Joining status', recorded(selected.joining_status)],
+                                        ['Notes', recorded(selected.joining_notes)],
                                     ].map(([label, value]) => (
                                         <div key={label} className="grid grid-cols-3 gap-2">
                                             <dt className="text-muted">{label}</dt>

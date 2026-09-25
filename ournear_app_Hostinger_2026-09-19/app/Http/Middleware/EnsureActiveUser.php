@@ -26,7 +26,7 @@ class EnsureActiveUser
             : 'login';
 
         return redirect()->guest(route($login))->withErrors([
-            'email' => 'This account is inactive.',
+            'email' => $user->accountStatus()->loginError(),
         ]);
     }
 }

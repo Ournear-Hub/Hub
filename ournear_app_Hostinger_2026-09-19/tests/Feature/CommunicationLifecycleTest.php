@@ -27,8 +27,7 @@ class CommunicationLifecycleTest extends TestCase
         $admin = $this->makeAdmin();
         $job = Job::factory()->create(['title' => 'Site Engineer']);
 
-        $this->post(route('jobs.apply.store', $job), $this->applicationPayload('guest@example.com'))
-            ->assertRedirect();
+        $this->applyAsCandidate($this->makeCandidate(['email' => 'guest@example.com']), $job);
 
         $application = Application::query()->where('email', 'guest@example.com')->first();
         $this->assertNotNull($application);
@@ -200,29 +199,16 @@ class CommunicationLifecycleTest extends TestCase
         $this->assertSame(0, User::query()->where('role', 'admin')->count());
         $job = Job::factory()->create();
 
-        $this->post(route('jobs.apply.store', $job), $this->applicationPayload('solo@example.com'))
-            ->assertRedirect();
+        $this->applyAsCandidate($this->makeCandidate(['email' => 'solo@example.com']), $job);
 
         $this->assertSame(1, Application::query()->count());
-        $this->assertSame(0, DatabaseNotification::query()->count());
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function applicationPayload(string $email): array
-    {
-        return [
-            'full_name' => 'Guest Applicant',
-            'mobile' => '07700900123',
-            'email' => $email,
-            'current_location' => 'Manchester',
-            'experience' => '3-5 years',
-            'qualification' => 'Degree',
-            'resume' => $this->fakeResume(),
-            'additional_information' => 'Available immediately.',
-            'consent' => '1',
-        ];
+        $this->assertSame(0, User::query()->where('role', 'admin')->count());
+        $this->assertSame(
+            0,
+            DatabaseNotification::query()
+                ->where('type', '!=', \App\Notifications\CandidateLifecycleNotification::class)
+                ->count()
+        );
     }
 
     /**

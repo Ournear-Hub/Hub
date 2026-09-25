@@ -19,19 +19,32 @@ class NotificationsController extends Controller
 
         $user = $request->user();
         $page = $notifications->adminIndex($request, $user)
-            ->through(fn (DatabaseNotification $notification) => NotificationQuery::toAdminArray($notification));
+            ->through(function (DatabaseNotification $notification) use ($user) {
+                $payload = NotificationQuery::toAdminArray($notification);
+                $payload['can_toggle_read'] = $user->can('update', $notification);
+
+                return $payload;
+            });
 
         $selected = $notifications->selected($request, $user);
         if ($selected && $user->cannot('view', $selected)) {
             $selected = null;
         }
 
+        $selectedPayload = $selected ? NotificationQuery::toAdminArray($selected) : null;
+        if ($selectedPayload && $selected) {
+            $selectedPayload['can_toggle_read'] = $user->can('update', $selected);
+        }
+
         return Inertia::render('Admin/Notifications/Index', [
             'notifications' => $page,
-            'selected' => $selected ? NotificationQuery::toAdminArray($selected) : null,
+            'selected' => $selectedPayload,
             'filters' => $notifications->filters($request),
             'events' => $notifications->events(),
+            'categories' => $notifications->categories(),
+            'recipients' => $notifications->recipients($user),
             'unreadCount' => $user->unreadNotifications()->count(),
+            'can_view_recipients' => $user->isSuperAdmin(),
         ]);
     }
 

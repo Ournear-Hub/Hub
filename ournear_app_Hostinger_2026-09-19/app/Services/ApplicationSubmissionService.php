@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\FileLifecycleStatus;
 use App\Models\Application;
+use App\Models\CandidateResume;
 use App\Models\Job;
 use App\Models\User;
+use App\Services\CandidatePrivateFileService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +18,40 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationSubmissionService
 {
-    public function __construct(private AdminAlertService $alerts) {}
+    public function __construct(
+        private AdminAlertService $alerts,
+        private RecruitmentNotificationService $notifications,
+    ) {}
 
-    public function submit(Job $job, array $validated, UploadedFile $resume): Application
+    public function submitFromProfile(Job $job, User $candidate): Application
+    {
+        if (! $candidate->isCandidate()) {
+            abort(403);
+        }
+
+        $candidate->loadMissing(['candidateProfile.classifiedLocation', 'candidateProfile.classifiedExperienceRange', 'candidateProfile.classifiedQualification']);
+        $profile = $candidate->candidateProfile;
+        $resume = $this->usableLibraryResume($candidate);
+
+        if (! $resume instanceof CandidateResume) {
+            throw ValidationException::withMessages([
+                'resume' => 'Upload a resume to apply.',
+            ]);
+        }
+
+        return $this->submit($job, [
+            'full_name' => (string) $candidate->name,
+            'mobile' => (string) ($candidate->mobile ?: ($profile?->mobile ?: 'Not provided')),
+            'email' => (string) $candidate->email,
+            'current_location' => (string) ($candidate->location ?: ($profile?->classifiedLocation?->name ?: ($profile?->location ?: 'Not provided'))),
+            'experience' => (string) ($profile?->classifiedExperienceRange?->name ?: ($profile?->experience ?: 'Not provided')),
+            'qualification' => (string) ($profile?->classifiedQualification?->name ?: ($profile?->qualification ?: 'Not provided')),
+            'candidate_resume_id' => $resume->id,
+            'additional_information' => null,
+        ], null);
+    }
+
+    public function submit(Job $job, array $validated, ?UploadedFile $resume): Application
     {
         if (! $job->acceptsApplications()) {
             throw ValidationException::withMessages([
@@ -26,31 +60,27 @@ class ApplicationSubmissionService
         }
 
         $email = Str::lower($validated['email']);
+        $candidateId = $this->authenticatedCandidateId();
 
-        if (Application::query()->where('job_id', $job->id)->whereRaw('LOWER(email) = ?', [$email])->exists()) {
+        $duplicate = Application::query()
+            ->where('job_id', $job->id)
+            ->where(function ($query) use ($email, $candidateId) {
+                $query->whereRaw('LOWER(email) = ?', [$email]);
+                if ($candidateId) {
+                    $query->orWhere('user_id', $candidateId);
+                }
+            })
+            ->exists();
+
+        if ($duplicate) {
             throw ValidationException::withMessages([
-                'email' => 'An application for this role has already been submitted with this email address.',
+                'job' => 'You have already applied for this role.',
             ]);
         }
 
-        $extension = strtolower($resume->getClientOriginalExtension() ?: $resume->extension() ?: 'pdf');
-        if (! in_array($extension, ['pdf', 'doc', 'docx'], true)) {
-            throw ValidationException::withMessages([
-                'resume' => 'The resume must be a PDF, DOC, or DOCX file.',
-            ]);
-        }
+        $snapshot = $this->storeSnapshot($resume, $this->selectedLibraryResume($validated['candidate_resume_id'] ?? null));
 
-        $filename = Str::uuid()->toString().'.'.$extension;
-
-        $application = DB::transaction(function () use ($job, $validated, $resume, $filename, $email) {
-            $stored = $resume->storeAs('', $filename, 'resumes');
-
-            if ($stored === false) {
-                throw ValidationException::withMessages([
-                    'resume' => 'The resume could not be stored. Please try again.',
-                ]);
-            }
-
+        $application = DB::transaction(function () use ($job, $validated, $snapshot, $email) {
             return Application::query()->create([
                 'job_id' => $job->id,
                 'user_id' => $this->authenticatedCandidateId(),
@@ -60,7 +90,7 @@ class ApplicationSubmissionService
                 'current_location' => $validated['current_location'],
                 'experience' => $validated['experience'],
                 'qualification' => $validated['qualification'],
-                'resume_path' => $filename,
+                'resume_path' => $snapshot,
                 'additional_information' => $validated['additional_information'] ?? null,
                 'consent' => true,
                 'status' => ApplicationStatus::New,
@@ -69,6 +99,7 @@ class ApplicationSubmissionService
         });
 
         $this->alerts->applicationReceived($application);
+        $this->notifications->notifyApplicationSubmitted($application);
 
         return $application;
     }
@@ -104,6 +135,107 @@ class ApplicationSubmissionService
         }
 
         return $application->fresh() ?? $application;
+    }
+
+    private function storeSnapshot(?UploadedFile $resume, ?CandidateResume $library): string
+    {
+        if ($resume instanceof UploadedFile) {
+            $extension = strtolower($resume->getClientOriginalExtension() ?: $resume->extension() ?: 'pdf');
+            if (! in_array($extension, ['pdf', 'doc', 'docx'], true)) {
+                throw ValidationException::withMessages([
+                    'resume' => 'The resume must be a PDF, DOC, or DOCX file.',
+                ]);
+            }
+
+            $filename = Str::uuid()->toString().'.'.$extension;
+            $stored = $resume->storeAs('', $filename, 'resumes');
+
+            if ($stored === false) {
+                throw ValidationException::withMessages([
+                    'resume' => 'The resume could not be stored. Please try again.',
+                ]);
+            }
+
+            return $filename;
+        }
+
+        if ($library instanceof CandidateResume) {
+            $disk = (string) ($library->storage_disk ?: CandidatePrivateFileService::DISK);
+            $path = (string) $library->storage_path;
+            if ($path === '' || ! Storage::disk($disk)->exists($path)) {
+                throw ValidationException::withMessages([
+                    'candidate_resume_id' => 'The selected resume could not be used.',
+                ]);
+            }
+
+            $extension = strtolower((string) ($library->extension ?: pathinfo($path, PATHINFO_EXTENSION) ?: 'pdf'));
+            if (! in_array($extension, ['pdf', 'doc', 'docx'], true)) {
+                throw ValidationException::withMessages([
+                    'candidate_resume_id' => 'The selected resume must be a PDF, DOC, or DOCX file.',
+                ]);
+            }
+
+            $filename = Str::uuid()->toString().'.'.$extension;
+            $copied = Storage::disk('resumes')->put($filename, Storage::disk($disk)->get($path));
+
+            if ($copied === false) {
+                throw ValidationException::withMessages([
+                    'candidate_resume_id' => 'The selected resume could not be stored. Please try again.',
+                ]);
+            }
+
+            return $filename;
+        }
+
+        throw ValidationException::withMessages([
+            'resume' => 'Please upload a resume or choose one from your library.',
+        ]);
+    }
+
+    private function selectedLibraryResume(mixed $resumeId): ?CandidateResume
+    {
+        $id = (int) $resumeId;
+        if ($id <= 0) {
+            return null;
+        }
+
+        $user = Auth::user();
+        if (! $user instanceof User || ! $user->isCandidate()) {
+            throw ValidationException::withMessages([
+                'candidate_resume_id' => 'Sign in as a candidate to use a saved resume.',
+            ]);
+        }
+
+        $user->loadMissing('candidateProfile');
+        $resume = CandidateResume::query()
+            ->whereKey($id)
+            ->where('candidate_profile_id', $user->candidateProfile?->id)
+            ->where('status', FileLifecycleStatus::Active)
+            ->first();
+
+        if (! $resume instanceof CandidateResume) {
+            throw ValidationException::withMessages([
+                'candidate_resume_id' => 'Select one of your saved resumes.',
+            ]);
+        }
+
+        return $resume;
+    }
+
+    private function usableLibraryResume(User $candidate): ?CandidateResume
+    {
+        $candidate->loadMissing('candidateProfile');
+        $profile = $candidate->candidateProfile;
+        if ($profile === null) {
+            return null;
+        }
+
+        return CandidateResume::query()
+            ->where('candidate_profile_id', $profile->id)
+            ->where('status', FileLifecycleStatus::Active)
+            ->orderByDesc('is_primary')
+            ->orderByDesc('id')
+            ->first();
     }
 
     private function authenticatedCandidateId(): ?int
