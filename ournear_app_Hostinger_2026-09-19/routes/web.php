@@ -29,11 +29,11 @@ Route::post('/jobs/{job}/apply', [PublicSiteController::class, 'jobApplyStore'])
     ->where('job', '[A-Za-z0-9\-]+')
     ->name('jobs.apply.store');
 Route::post('/jobs/{job}/apply/resume', [PublicSiteController::class, 'jobApplyResume'])
-    ->middleware(['auth', 'account.member', 'account.candidate', 'throttle:account-files'])
+    ->middleware(['auth:account', 'account.member', 'account.candidate', 'throttle:account-files'])
     ->where('job', '[A-Za-z0-9\-]+')
     ->name('jobs.apply.resume');
 Route::get('/users/{user}/photo', [UserPhotoController::class, 'show'])
-    ->middleware('auth')
+    ->middleware('auth.either')
     ->whereNumber('user')
     ->name('users.photo.show');
 Route::get('/jobs/{job}', [PublicSiteController::class, 'jobShow'])

@@ -12,13 +12,13 @@ class EnsureActiveUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = $request->user();
+        $guard = $request->is('admin') || $request->is('admin/*') ? 'admin' : 'account';
+        $user = Auth::guard($guard)->user();
         if (! $user instanceof User || $user->isActive()) {
             return $next($request);
         }
 
-        Auth::guard('web')->logout();
-        $request->session()->invalidate();
+        Auth::guard($guard)->logout();
         $request->session()->regenerateToken();
 
         $login = $request->is('admin') || $request->is('admin/*')

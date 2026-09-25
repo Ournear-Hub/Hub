@@ -79,7 +79,7 @@ class LoginRequest extends FormRequest
             throw ValidationException::withMessages($this->loginErrors($user->accountStatus()->loginError()));
         }
 
-        Auth::login($user, $this->boolean('remember'));
+        Auth::guard('account')->login($user, $this->boolean('remember'));
         app(LoginLogService::class)->success($this, $user, 'account');
         RateLimiter::clear($this->throttleKey());
     }

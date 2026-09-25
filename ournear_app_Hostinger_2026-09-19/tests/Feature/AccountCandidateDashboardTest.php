@@ -75,7 +75,7 @@ class AccountCandidateDashboardTest extends TestCase
 
         $this->actingAs($admin)
             ->get(route('account.home'))
-            ->assertForbidden();
+            ->assertRedirect(route('login'));
 
         $this->actingAs($admin)
             ->get(route('admin.dashboard'))

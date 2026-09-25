@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         }
 
         $middleware->web(append: [
+            \App\Http\Middleware\UseAuthChannel::class,
             \App\Http\Middleware\EnsureActiveUser::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\SecurityHeaders::class,
@@ -28,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureAdmin::class,
+            'admin.auth' => \App\Http\Middleware\AuthenticateAdmin::class,
+            'auth.either' => \App\Http\Middleware\AuthenticateEitherGuard::class,
             'password.change' => \App\Http\Middleware\EnsurePasswordChanged::class,
             'account.member' => \App\Http\Middleware\EnsureAccountMember::class,
             'account.candidate' => \App\Http\Middleware\EnsureCandidate::class,
@@ -43,9 +46,7 @@ return Application::configure(basePath: dirname(__DIR__))
         });
 
         $middleware->redirectUsersTo(function (\Illuminate\Http\Request $request) {
-            $user = $request->user();
-
-            if ($user && method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            if ($request->is('admin') || $request->is('admin/*')) {
                 return route('admin.dashboard');
             }
 

@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
 Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
 
-Route::middleware('guest')->group(function () {
+Route::middleware('guest:account')->group(function () {
     Route::get('/register/check-username', UsernameAvailabilityController::class)
         ->middleware('throttle:60,1')
         ->name('register.check-username');
@@ -44,7 +44,7 @@ Route::middleware('guest')->group(function () {
         ->name('password.store');
 });
 
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:account')->group(function () {
     Route::post('/account/switch', [AuthenticatedSessionController::class, 'switch'])
         ->name('account.switch');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
@@ -55,7 +55,7 @@ Route::middleware('auth')->group(function () {
         ->name('verification.verify');
 });
 
-Route::middleware(['auth', 'account.member'])->prefix('account')->name('account.')->group(function () {
+Route::middleware(['auth:account', 'account.member'])->prefix('account')->name('account.')->group(function () {
     Route::get('/', [ProfileController::class, 'home'])->name('home');
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');

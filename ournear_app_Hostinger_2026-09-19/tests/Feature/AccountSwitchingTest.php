@@ -30,71 +30,50 @@ class AccountSwitchingTest extends TestCase
             'login' => $candidate->username,
             'password' => 'Password1!',
         ])->assertRedirect(route('account.home'));
-        $this->assertAuthenticatedAs($candidate);
+        $this->assertAuthenticatedAs($candidate, 'account');
 
         $this->post(route('logout'))->assertRedirect(route('home'));
+        $this->assertGuest('account');
+
         $this->post(route('admin.login.store'), [
             'email' => $admin->email,
             'password' => 'password',
         ])->assertRedirect(route('admin.dashboard'));
-        $this->assertAuthenticatedAs($admin);
+        $this->assertAuthenticatedAs($admin, 'admin');
     }
 
-    public function test_admin_must_explicitly_switch_before_account_login(): void
+    public function test_admin_can_open_account_login_without_replacing_admin(): void
     {
         $admin = $this->makeAdmin(['name' => 'Switch Admin']);
-        $candidate = $this->makeCandidate([
-            'username' => 'after-admin-switch',
-            'password' => Hash::make('Password1!'),
-        ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get(route('login'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Switch')
-                ->where('destination', 'login')
-                ->where('currentUserName', 'Switch Admin'));
-        $this->assertAuthenticatedAs($admin);
+                ->component('Account/Login')
+                ->where('auth.user', null)
+                ->where('auth.admin', null));
 
-        $this->post(route('account.switch'), ['destination' => 'login'])
-            ->assertRedirect(route('login'));
-        $this->assertGuest();
-
-        $this->get(route('login'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Account/Login'));
-
-        $this->post(route('login.store'), [
-            'login' => $candidate->username,
-            'password' => 'Password1!',
-        ])->assertRedirect(route('account.home'));
-        $this->assertAuthenticatedAs($candidate);
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('account');
     }
 
-    public function test_admin_must_explicitly_switch_before_registration(): void
+    public function test_admin_can_open_registration_without_replacing_admin(): void
     {
         $admin = $this->makeAdmin(['name' => 'Registration Admin']);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->get(route('register'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Switch')
-                ->where('destination', 'register')
-                ->where('currentUserName', 'Registration Admin'));
-        $this->assertAuthenticatedAs($admin);
+                ->component('Account/Register')
+                ->where('auth.user', null));
 
-        $this->post(route('account.switch'), ['destination' => 'register'])
-            ->assertRedirect(route('register'));
-        $this->assertGuest();
-
-        $this->get(route('register'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Account/Register'));
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('account');
     }
 
-    public function test_switching_preserves_only_safe_account_intended_urls(): void
+    public function test_account_login_keeps_admin_session_and_safe_intended_url(): void
     {
         $admin = $this->makeAdmin();
         $candidate = $this->makeCandidate([
@@ -102,39 +81,27 @@ class AccountSwitchingTest extends TestCase
             'password' => Hash::make('Password1!'),
         ]);
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->withSession(['url.intended' => '/jobs/safe-role'])
-            ->post(route('account.switch'), ['destination' => 'login'])
-            ->assertRedirect(route('login'))
-            ->assertSessionHas('url.intended', '/jobs/safe-role');
+            ->post(route('login.store'), [
+                'login' => $candidate->username,
+                'password' => 'Password1!',
+            ])->assertRedirect('/jobs/safe-role');
 
-        $this->post(route('login.store'), [
-            'login' => $candidate->username,
-            'password' => 'Password1!',
-        ])->assertRedirect('/jobs/safe-role');
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($candidate, 'account');
 
         $this->post(route('logout'));
 
-        $this->actingAs($admin)
+        $this->actingAs($admin, 'admin')
             ->withSession(['url.intended' => route('admin.jobs.index')])
-            ->post(route('account.switch'), ['destination' => 'login'])
-            ->assertRedirect(route('login'))
-            ->assertSessionMissing('url.intended');
-    }
+            ->post(route('login.store'), [
+                'login' => $candidate->username,
+                'password' => 'Password1!',
+            ])->assertRedirect(route('account.home'));
 
-    public function test_switching_regenerates_session_and_csrf_token(): void
-    {
-        $admin = $this->makeAdmin();
-
-        $this->actingAs($admin)->withSession(['_token' => 'old-csrf-token']);
-        $oldSessionId = $this->app['session']->getId();
-
-        $this->post(route('account.switch'), ['destination' => 'login'])
-            ->assertRedirect(route('login'))
-            ->assertSessionHas('_token', fn (string $token) => $token !== 'old-csrf-token');
-
-        $this->assertNotSame($oldSessionId, $this->app['session']->getId());
-        $this->assertGuest();
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertAuthenticatedAs($candidate, 'account');
     }
 
     public function test_role_authorization_boundaries_remain_unchanged(): void
@@ -143,19 +110,26 @@ class AccountSwitchingTest extends TestCase
         $candidate = $this->makeCandidate();
         $employer = $this->makeEmployer();
 
-        $this->actingAs($admin)->get(route('account.home'))->assertForbidden();
-        $this->actingAs($candidate)->get(route('admin.dashboard'))->assertForbidden();
-        $this->actingAs($employer)->get(route('admin.dashboard'))->assertForbidden();
+        $this->actingAs($admin, 'admin')
+            ->get(route('account.home'))
+            ->assertRedirect(route('login'));
+        $this->assertAuthenticatedAs($admin, 'admin');
+        $this->assertGuest('account');
+
+        $this->forgetAuthentication();
+        $this->actingAs($candidate, 'account')->get(route('admin.dashboard'))->assertForbidden();
+        $this->forgetAuthentication();
+        $this->actingAs($employer, 'account')->get(route('admin.dashboard'))->assertForbidden();
     }
 
-    public function test_only_an_admin_can_confirm_an_account_switch(): void
+    public function test_only_an_authenticated_account_admin_can_hit_the_legacy_switch_route(): void
     {
         $candidate = $this->makeCandidate();
 
-        $this->actingAs($candidate)
+        $this->actingAs($candidate, 'account')
             ->post(route('account.switch'), ['destination' => 'login'])
             ->assertForbidden();
-        $this->assertAuthenticatedAs($candidate);
+        $this->assertAuthenticatedAs($candidate, 'account');
 
         $this->post(route('logout'));
         $this->post(route('account.switch'), ['destination' => 'login'])

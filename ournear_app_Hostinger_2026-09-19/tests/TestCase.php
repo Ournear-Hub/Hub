@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\CandidateResume;
 use App\Models\Job;
 use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\UploadedFile;
@@ -24,6 +25,36 @@ abstract class TestCase extends BaseTestCase
         Storage::fake('candidate_files');
         Storage::fake('freelancer_files');
         Storage::fake('public');
+    }
+
+    public function actingAs(Authenticatable $user, $guard = null)
+    {
+        if ($guard === null && $user instanceof User) {
+            $guard = $user->isAdmin() ? 'admin' : 'account';
+        }
+
+        if ($guard === 'admin') {
+            $this->app['auth']->guard('account')->logout();
+        } elseif ($guard === 'account') {
+            $this->app['auth']->guard('admin')->logout();
+        }
+
+        return parent::actingAs($user, $guard);
+    }
+
+    public function assertAuthenticatedAs($user, $guard = null)
+    {
+        if ($guard === null && $user instanceof User) {
+            $guard = $user->isAdmin() ? 'admin' : 'account';
+        }
+
+        return parent::assertAuthenticatedAs($user, $guard);
+    }
+
+    protected function forgetAuthentication(): void
+    {
+        $this->app['auth']->forgetGuards();
+        $this->flushSession();
     }
 
     protected function makeAdmin(array $overrides = []): User

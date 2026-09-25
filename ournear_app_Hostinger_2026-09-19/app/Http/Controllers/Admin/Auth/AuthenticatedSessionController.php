@@ -17,7 +17,7 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('admin')->user();
         if ($user instanceof User && $user->isAdmin()) {
             return redirect()->route('admin.dashboard');
         }
@@ -39,12 +39,10 @@ class AuthenticatedSessionController extends Controller
 
     public function destroy(Request $request, LoginLogService $logs): RedirectResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('admin')->user();
         $logs->logout($request, $user instanceof User ? $user : null);
 
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
+        Auth::guard('admin')->logout();
         $request->session()->regenerateToken();
 
         return redirect()->route('admin.login');

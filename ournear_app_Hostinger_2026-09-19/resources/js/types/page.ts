@@ -42,6 +42,8 @@ export type FlashProps = {
 export type SharedPageProps = {
     auth: {
         user: AuthUser | null;
+        admin?: AuthUser | null;
+        account?: AuthUser | null;
     };
     flash: FlashProps;
     adminAlerts?: {

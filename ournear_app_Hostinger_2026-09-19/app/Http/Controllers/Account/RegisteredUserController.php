@@ -22,15 +22,8 @@ class RegisteredUserController extends Controller
 {
     public function create(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('account')->user();
         if ($user instanceof User) {
-            if ($user->isAdmin()) {
-                return Inertia::render('Account/Switch', [
-                    'destination' => 'register',
-                    'currentUserName' => $user->name,
-                ]);
-            }
-
             return redirect()->route('account.home');
         }
 
@@ -79,7 +72,7 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::guard('account')->login($user);
         $request->session()->regenerate();
 
         return redirect()->to(IntendedUrl::pullAllowed(

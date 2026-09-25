@@ -36,7 +36,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         ->middleware('throttle:admin-login')
         ->name('login.store');
 
-    Route::middleware('guest')->group(function () {
+    Route::middleware('guest:admin')->group(function () {
         Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
         Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
             ->middleware('throttle:admin-password-reset')
@@ -48,7 +48,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('password.store');
     });
 
-    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::middleware(['admin.auth', 'admin'])->group(function () {
         Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
         Route::get('profile/password', [AdminProfileController::class, 'editPassword'])->name('profile.password.edit');
         Route::put('profile/password', [AdminProfileController::class, 'updatePassword'])->name('profile.password.update');

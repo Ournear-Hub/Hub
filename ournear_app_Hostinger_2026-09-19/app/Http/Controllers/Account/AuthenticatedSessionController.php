@@ -17,15 +17,8 @@ class AuthenticatedSessionController extends Controller
 {
     public function create(Request $request): Response|RedirectResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('account')->user();
         if ($user instanceof User) {
-            if ($user->isAdmin()) {
-                return Inertia::render('Account/Switch', [
-                    'destination' => 'login',
-                    'currentUserName' => $user->name,
-                ]);
-            }
-
             return redirect()->route('account.home');
         }
 
@@ -46,42 +39,24 @@ class AuthenticatedSessionController extends Controller
         ));
     }
 
-    public function switch(Request $request, LoginLogService $logs): RedirectResponse
+    public function switch(Request $request): RedirectResponse
     {
         $validated = $request->validate([
             'destination' => ['required', 'in:login,register'],
         ]);
-        $user = $request->user();
+        $user = Auth::guard('account')->user();
 
         abort_unless($user instanceof User && $user->isAdmin(), 403);
-
-        $safeIntendedUrl = IntendedUrl::pullAllowed(
-            $request,
-            ['/account', '/jobs'],
-            '',
-        );
-
-        $logs->logout($request, $user);
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-
-        if ($safeIntendedUrl !== '') {
-            IntendedUrl::remember($request, $safeIntendedUrl);
-        }
 
         return redirect()->route($validated['destination']);
     }
 
     public function destroy(Request $request, LoginLogService $logs): RedirectResponse
     {
-        $user = $request->user();
+        $user = Auth::guard('account')->user();
         $logs->logout($request, $user instanceof User ? $user : null);
 
-        Auth::guard('web')->logout();
-
-        $request->session()->invalidate();
+        Auth::guard('account')->logout();
         $request->session()->regenerateToken();
 
         return redirect()->route('home');

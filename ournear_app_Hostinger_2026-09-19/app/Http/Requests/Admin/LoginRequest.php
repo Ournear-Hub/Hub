@@ -34,7 +34,7 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        if (! Auth::guard('admin')->attempt($this->only('email', 'password'), $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
             app(LoginLogService::class)->failure($this);
 
@@ -43,10 +43,10 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        $user = Auth::user();
+        $user = Auth::guard('admin')->user();
 
         if (! $user instanceof User || ! $user->isAdmin()) {
-            Auth::logout();
+            Auth::guard('admin')->logout();
             RateLimiter::hit($this->throttleKey());
             app(LoginLogService::class)->failure($this, $user instanceof User ? $user : null, 'not_admin');
 
@@ -56,7 +56,7 @@ class LoginRequest extends FormRequest
         }
 
         if (! $user->canSignIn()) {
-            Auth::logout();
+            Auth::guard('admin')->logout();
             RateLimiter::hit($this->throttleKey());
             app(LoginLogService::class)->failure($this, $user, $user->accountStatus()->value);
 

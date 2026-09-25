@@ -185,7 +185,7 @@ class AccountCandidateCommunicationTest extends TestCase
     {
         $this->actingAs($this->makeEmployer())->get(route('account.notifications.index'))->assertForbidden();
         $this->actingAs($this->makeEmployer())->get(route('account.settings.communication'))->assertForbidden();
-        $this->actingAs($this->makeAdmin())->get(route('account.notifications.index'))->assertForbidden();
+        $this->actingAs($this->makeAdmin())->get(route('account.notifications.index'))->assertRedirect(route('login'));
         $this->actingAs($this->makeAdmin())->get(route('admin.notifications.index'))->assertOk();
         $this->actingAs($this->makeAdmin())->get(route('admin.messages.index'))->assertOk();
     }

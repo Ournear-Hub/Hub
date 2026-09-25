@@ -422,12 +422,12 @@ class AccountUserFoundationTest extends TestCase
 
         $this->actingAs($candidate)->get(route('admin.dashboard'))->assertForbidden();
         $this->actingAs($employer)->get(route('admin.dashboard'))->assertForbidden();
-        $this->actingAs($this->makeAdmin())->get(route('account.home'))->assertForbidden();
+        $this->actingAs($this->makeAdmin())->get(route('account.home'))->assertRedirect(route('login'));
         $this->actingAs($this->makeAdmin())->put(route('account.profile.update'), [
             'name' => 'Nope',
             'username' => 'nope-admin',
             'preferred_language' => 'en',
-        ])->assertForbidden();
+        ])->assertRedirect(route('login'));
     }
 
     /**

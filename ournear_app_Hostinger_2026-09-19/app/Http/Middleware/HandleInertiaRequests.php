@@ -13,6 +13,7 @@ use App\Services\TurnstileService;
 use App\Services\WebsiteContentService;
 use App\Services\WebsiteSettingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -47,27 +48,7 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            'auth' => [
-                'user' => $request->user() instanceof \App\Models\User
-                    ? [
-                        'id' => $request->user()->id,
-                        'name' => $request->user()->name,
-                        'email' => $request->user()->email,
-                        'username' => $request->user()->username,
-                        'role' => $request->user()->role->value,
-                        'photo_url' => $request->user()->photoUrl(),
-                        'must_change_password' => (bool) $request->user()->must_change_password,
-                        'preferred_language' => $request->user()->preferred_language instanceof \App\Enums\PreferredLanguage
-                            ? $request->user()->preferred_language->value
-                            : 'en',
-                        'email_verified' => $request->user()->emailVerified(),
-                        'profile_completion' => (int) $request->user()->profile_completion,
-                        'permissions' => $request->user()->isAdmin()
-                            ? $request->user()->permissionNames()
-                            : [],
-                    ]
-                    : null,
-            ],
+            'auth' => $this->authProps($request),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
@@ -77,7 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'application_confirmation' => $request->session()->get('application_confirmation'),
             ],
             'adminAlerts' => function () use ($request) {
-                $user = $request->user();
+                $user = $this->adminUser($request);
                 if (! $user instanceof User || ! $user->hasPermission(PermissionName::NotificationsView->value)) {
                     return null;
                 }
@@ -94,7 +75,7 @@ class HandleInertiaRequests extends Middleware
                 ];
             },
             'accountAlerts' => function () use ($request) {
-                $user = $request->user();
+                $user = $this->accountUser($request);
                 if (! $user instanceof User || ! $user->isCandidate()) {
                     return null;
                 }
@@ -104,7 +85,7 @@ class HandleInertiaRequests extends Middleware
                 ];
             },
             'candidateNav' => function () use ($request) {
-                $user = $request->user();
+                $user = $this->accountUser($request);
 
                 return $user instanceof User && $user->isCandidate()
                     ? CandidateAccountNav::items()
@@ -118,13 +99,87 @@ class HandleInertiaRequests extends Middleware
             'analytics' => fn () => app(AnalyticsService::class)->publicPayload($request),
             'turnstileSiteKey' => fn () => app(TurnstileService::class)->siteKey(),
             'locale' => function () use ($request) {
-                $user = $request->user();
+                $user = $this->currentUser($request);
                 if ($user instanceof User && $user->preferred_language instanceof \App\Enums\PreferredLanguage) {
                     return $user->preferred_language->value;
                 }
 
                 return config('app.locale', 'en');
             },
+        ];
+    }
+
+    /**
+     * @return array{user: array<string, mixed>|null, admin: array<string, mixed>|null, account: array<string, mixed>|null}
+     */
+    private function authProps(Request $request): array
+    {
+        $onAdmin = $this->onAdminSurface($request);
+        $admin = $onAdmin ? $this->userPayload($this->adminUser($request)) : null;
+        $account = $onAdmin ? null : $this->userPayload($this->accountUser($request));
+
+        return [
+            'user' => $onAdmin ? $admin : $account,
+            'admin' => $admin,
+            'account' => $account,
+        ];
+    }
+
+    private function currentUser(Request $request): ?User
+    {
+        return $this->onAdminSurface($request) ? $this->adminUser($request) : $this->accountUser($request);
+    }
+
+    private function adminUser(Request $request): ?User
+    {
+        if (! $this->onAdminSurface($request)) {
+            return null;
+        }
+
+        $user = Auth::guard('admin')->user();
+
+        return $user instanceof User ? $user : null;
+    }
+
+    private function accountUser(Request $request): ?User
+    {
+        if ($this->onAdminSurface($request)) {
+            return null;
+        }
+
+        $user = Auth::guard('account')->user();
+
+        return $user instanceof User ? $user : null;
+    }
+
+    private function onAdminSurface(Request $request): bool
+    {
+        return $request->is('admin') || $request->is('admin/*');
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function userPayload(?User $user): ?array
+    {
+        if (! $user instanceof User) {
+            return null;
+        }
+
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'username' => $user->username,
+            'role' => $user->role->value,
+            'photo_url' => $user->photoUrl(),
+            'must_change_password' => (bool) $user->must_change_password,
+            'preferred_language' => $user->preferred_language instanceof \App\Enums\PreferredLanguage
+                ? $user->preferred_language->value
+                : 'en',
+            'email_verified' => $user->emailVerified(),
+            'profile_completion' => (int) $user->profile_completion,
+            'permissions' => $user->isAdmin() ? $user->permissionNames() : [],
         ];
     }
 }
