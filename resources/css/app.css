@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+@source '../**/*.ts';
+@source '../**/*.tsx';
+
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+        'Segoe UI Symbol', 'Noto Color Emoji';
+    --color-brand: #214449;
+    --color-accent: #f15a24;
+    --color-canvas: #f9fafa;
+    --color-surface: #f4f5f5;
+    --color-line: #e5e7e7;
+    --color-ink: #0f172a;
+    --color-muted: #64748b;
+    --color-disabled: #94a3a8;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    --radius-sm: 0.375rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+    --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+    --shadow-md: 0 4px 12px rgb(15 23 42 / 0.08);
+}
+
+@layer base {
+    body {
+        @apply bg-canvas text-ink antialiased;
+    }
+}
+
+@page {
+    size: A4;
+    margin: 12mm;
+}
+
+@media print {
+    body:has(.ourneer-resume-sheet) {
+        background: #ffffff !important;
+        color: #214449 !important;
+    }
+
+    body:has(.ourneer-resume-sheet) header,
+    body:has(.ourneer-resume-sheet) footer,
+    body:has(.ourneer-resume-sheet) aside,
+    body:has(.ourneer-resume-sheet) .resume-print-hide {
+        display: none !important;
+    }
+
+    body:has(.ourneer-resume-sheet) main,
+    body:has(.ourneer-resume-sheet) section,
+    body:has(.ourneer-resume-sheet) .grid,
+    body:has(.ourneer-resume-sheet) .max-w-3xl {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        min-height: 0 !important;
+        max-width: none !important;
+        width: 100% !important;
+    }
+
+    body:has(.ourneer-resume-sheet) {
+        overflow-x: hidden !important;
+    }
+
+    .ourneer-resume-sheet {
+        overflow: visible !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-inside: auto;
+        break-inside: auto;
+    }
+
+    .ourneer-resume-header {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .ourneer-resume-section-title {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    .ourneer-resume-block {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .ourneer-resume-section {
+        page-break-inside: auto;
+        break-inside: auto;
+    }
+}

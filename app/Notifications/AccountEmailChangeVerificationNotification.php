@@ -1,0 +1,29 @@
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+class AccountEmailChangeVerificationNotification extends Notification
+{
+    public function __construct(private string $verifyUrl) {}
+
+    /**
+     * @return list<string>
+     */
+    public function via(object $notifiable): array
+    {
+        return ['mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('Confirm your new email for OurNear')
+            ->greeting('Confirm email change')
+            ->line('You requested to use this email address for your OurNear account.')
+            ->action('Confirm new email', $this->verifyUrl)
+            ->line('If you did not request this change, you can ignore this message. Your current email stays active until you confirm.');
+    }
+}
