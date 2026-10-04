@@ -203,7 +203,9 @@ class HandleInertiaRequests extends Middleware
             return null;
         }
 
-        $user->loadMissing('employerProfile');
+        if ($user->isEmployer()) {
+            $user->loadMissing('employerProfile');
+        }
 
         return [
             'id' => $user->id,
