@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\EmployerEnquiryStatus;
 use Database\Factories\EmployerEnquiryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -52,7 +53,7 @@ class EmployerEnquiry extends Model
             'training_required' => 'boolean',
             'expected_start_date' => 'date',
             'internal_notes' => 'array',
-            'status' => EmployerEnquiryStatus::class,
+            'status' => RecoveredBackedEnumCast::class.':'.EmployerEnquiryStatus::class,
         ];
     }
 

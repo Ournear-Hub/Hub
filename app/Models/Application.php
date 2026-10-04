@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\ApplicationStatus;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\ScreeningDecision;
@@ -59,7 +60,7 @@ class Application extends Model
     {
         return [
             'consent' => 'boolean',
-            'status' => ApplicationStatus::class,
+            'status' => RecoveredBackedEnumCast::class.':'.ApplicationStatus::class,
             'internal_notes' => 'array',
         ];
     }

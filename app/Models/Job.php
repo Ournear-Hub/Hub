@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\JobPublishingStatus;
 use App\Models\Concerns\HasBusinessId;
@@ -81,7 +82,7 @@ class Job extends Model
             'posted_date' => 'date',
             'closing_date' => 'date',
             'joining_date' => 'date',
-            'publishing_status' => JobPublishingStatus::class,
+            'publishing_status' => RecoveredBackedEnumCast::class.':'.JobPublishingStatus::class,
             'trial_expires_at' => 'datetime',
         ];
     }

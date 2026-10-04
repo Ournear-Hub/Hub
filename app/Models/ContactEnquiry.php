@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\ContactEnquiryStatus;
 use Database\Factories\ContactEnquiryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -40,7 +41,7 @@ class ContactEnquiry extends Model
     {
         return [
             'internal_notes' => 'array',
-            'status' => ContactEnquiryStatus::class,
+            'status' => RecoveredBackedEnumCast::class.':'.ContactEnquiryStatus::class,
         ];
     }
 

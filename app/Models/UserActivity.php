@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\UserActivityType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,7 +26,7 @@ class UserActivity extends Model
     protected function casts(): array
     {
         return [
-            'type' => UserActivityType::class,
+            'type' => RecoveredBackedEnumCast::class.':'.UserActivityType::class,
             'metadata' => 'array',
         ];
     }

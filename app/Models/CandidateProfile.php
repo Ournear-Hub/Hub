@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\NoticePeriod;
 use App\Models\Concerns\HasBusinessId;
@@ -47,7 +48,7 @@ class CandidateProfile extends Model
         return [
             'current_salary' => 'decimal:2',
             'expected_salary' => 'decimal:2',
-            'notice_period' => NoticePeriod::class,
+            'notice_period' => RecoveredBackedEnumCast::class.':'.NoticePeriod::class,
             'willing_to_relocate' => 'boolean',
             'public_share' => 'array',
         ];

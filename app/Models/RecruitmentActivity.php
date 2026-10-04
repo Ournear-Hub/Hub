@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\RecruitmentActivityType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,7 +49,7 @@ class RecruitmentActivity extends Model
     protected function casts(): array
     {
         return [
-            'type' => RecruitmentActivityType::class,
+            'type' => RecoveredBackedEnumCast::class.':'.RecruitmentActivityType::class,
         ];
     }
 

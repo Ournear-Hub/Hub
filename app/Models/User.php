@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\AccountStatus;
 use App\Enums\BusinessIdPrefix;
 use App\Enums\PermissionName;
@@ -97,12 +98,12 @@ class User extends Authenticatable implements MustVerifyEmail
             'whatsapp_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'last_activity_at' => 'datetime',
-            'registration_source' => RegistrationSource::class,
+            'registration_source' => RecoveredBackedEnumCast::class.':'.RegistrationSource::class,
             'password_changed_at' => 'datetime',
             'password' => 'hashed',
-            'role' => UserRole::class,
-            'account_status' => AccountStatus::class,
-            'preferred_language' => PreferredLanguage::class,
+            'role' => RecoveredBackedEnumCast::class.':'.UserRole::class,
+            'account_status' => RecoveredBackedEnumCast::class.':'.AccountStatus::class,
+            'preferred_language' => RecoveredBackedEnumCast::class.':'.PreferredLanguage::class,
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'profile_completion' => 'integer',
