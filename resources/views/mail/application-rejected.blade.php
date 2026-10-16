@@ -3,7 +3,11 @@
 
 Hello {{ $application->full_name }},
 
+@if (! empty($introLine))
+{{ $introLine }}
+@else
 Thank you for applying for **{{ $job?->title ?? 'this role' }}**. After careful review, we will not be progressing your application on this occasion.
+@endif
 
 We appreciate the time you took to apply and wish you well in your search.
 

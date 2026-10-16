@@ -1,3 +1,5 @@
+import Card from '@/Components/atoms/Card';
+
 type ServiceCardProps = {
     title: string;
     summary: string;
@@ -7,8 +9,10 @@ type ServiceCardProps = {
 
 export default function ServiceCard({ title, summary, id, bullets = [] }: ServiceCardProps) {
     return (
-        <article id={id} className="rounded-xl border border-line bg-white p-6">
-            <h3 className="text-lg font-semibold text-ink">{title}</h3>
+        <Card as="article" padding="standard">
+            <h3 id={id} className="text-lg font-semibold text-ink">
+                {title}
+            </h3>
             {summary ? <p className="mt-2 text-sm text-muted">{summary}</p> : null}
             {bullets.length > 0 ? (
                 <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-muted">
@@ -17,6 +21,6 @@ export default function ServiceCard({ title, summary, id, bullets = [] }: Servic
                     ))}
                 </ul>
             ) : null}
-        </article>
+        </Card>
     );
 }

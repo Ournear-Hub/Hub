@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { useForm } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import FormField from '@/Components/Public/FormField';
 import HoneypotField from '@/Components/Public/HoneypotField';
 import IndustryCard from '@/Components/Public/IndustryCard';
@@ -95,7 +95,7 @@ export default function FreelancersIndex({ content, industries, submission_token
                         application and not a candidate account.
                     </p>
                     <div className="mt-8">
-                        <Button href="#become-partner">Become a Freelancer Partner</Button>
+                        <Button surface="public" href="#become-partner">Become a Freelancer Partner</Button>
                     </div>
                 </PageContainer>
             </section>
@@ -338,7 +338,7 @@ export default function FreelancersIndex({ content, industries, submission_token
                                 <TurnstileField onToken={(token) => form.setData('cf-turnstile-response', token)} />
                             </div>
                             <div className="md:col-span-2">
-                                <Button type="submit">{form.processing ? 'Submitting…' : 'Become a Freelancer Partner'}</Button>
+                                <Button surface="public" type="submit">{form.processing ? 'Submitting…' : 'Become a Freelancer Partner'}</Button>
                             </div>
                         </form>
                     </section>

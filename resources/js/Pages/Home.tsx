@@ -1,64 +1,125 @@
 import type { FormEvent } from 'react';
-import { Link, router } from '@inertiajs/react';
+import { useRef } from 'react';
+import { Link, router, usePage } from '@inertiajs/react';
 import JobCard from '@/Components/Public/JobCard';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import PageContainer from '@/Components/Public/PageContainer';
-import PublicCompanyCard, { type PublicCompanyCardData } from '@/Components/Public/PublicCompanyCard';
-import Card from '@/Components/UI/Card';
 import EmptyState from '@/Components/UI/EmptyState';
-import SectionHeader from '@/Components/UI/SectionHeader';
+import HomeAudienceFeatureCards, { type AudienceFeatureCard } from '@/Components/Public/HomeAudienceFeatureCards';
+import HomeAtAGlance, { type HomeGlanceStat } from '@/Components/Public/HomeAtAGlance';
+import HomeHeroSlider, { type HomeHeroSlide } from '@/Components/Public/HomeHeroSlider';
+import HomeIndustriesScroller, { type HomeIndustry } from '@/Components/Public/HomeIndustriesScroller';
+import ShowcaseCompanyGrid, { type ShowcaseCompanyPublic } from '@/Components/Public/ShowcaseCompanyGrid';
+import HomePopularSearches, { type PopularSearchDiscovery } from '@/Components/Public/HomePopularSearches';
+import HomePromoBanner, { type HomePromoBannerData } from '@/Components/Public/HomePromoBanner';
+import HomeRecruitmentProcess from '@/Components/Public/HomeRecruitmentProcess';
 import PublicLayout from '@/Layouts/PublicLayout';
 import { controlBase } from '@/design-system/classNames';
-import { hireTalentCtaLabel } from '@/utils/publicCtaLabels';
+import { defaultCandidateFeatures, defaultHiringFeatures } from '@/content/homeAudienceFallbacks';
 import type { PublicJobCard } from '@/types/jobs';
 import { cmsSection, type CmsPage } from '@/types/cms';
-import type { SiteContent } from '@/types/public';
+import type { SharedPageProps } from '@/types/page';
+import { resolveHiringWorkspaceHref, resolvePostJobHref } from '@/utils/employerHiringEntry';
 
 type HomeProps = {
-    content: SiteContent;
     cms: CmsPage;
+    heroSlides: HomeHeroSlide[];
+    popularSearchDiscovery: PopularSearchDiscovery;
+    hiringFeatures: { title: string; body: string; icon: string; href: string }[];
+    candidateFeatures: { title: string; body: string; icon: string; href: string }[];
+    industries: HomeIndustry[];
+    promoBanner: HomePromoBannerData | null;
     featuredJobs: PublicJobCard[];
     latestJobs?: PublicJobCard[];
-    companies?: PublicCompanyCardData[];
+    homeGlanceStats?: HomeGlanceStat[];
+    homeShowcaseCompanies?: ShowcaseCompanyPublic[];
 };
 
-const whyPoints = [
-    'Search and apply to published jobs from one candidate profile.',
-    'Build and maintain resume information for applications.',
-    'Employers can post roles and review applicants through OurNear Hire.',
-    'Discover talent through the public Talent Pool where profiles allow it.',
-    'Staffing enquiries use the same platform contact and enquiry flow.',
-];
+const HIRING_TITLES = ['Post a Job', 'Search Talent', 'Manage Applications', 'Interview & Schedule'] as const;
+const CANDIDATE_TITLES = ['Find Jobs', 'Create Profile', 'Upload Resume', 'Internships'] as const;
 
-const serviceAreas = [
-    {
-        title: 'OurNear Hire',
-        body: 'For organizations that need recruitment support—publish jobs, review applications, and manage hiring in one workspace.',
-        href: '/hire',
-        cta: 'Hire Talent',
-    },
-    {
-        title: 'Talent Pool',
-        body: 'Browse candidates who choose to share a public profile and discover skills relevant to your roles.',
-        href: '/talent-pool',
-        cta: 'Explore Talent',
-    },
-    {
-        title: 'Staffing',
-        body: 'Workforce and manpower support for operational teams—start with a staffing enquiry on OurNear.',
-        href: '/staffing',
-        cta: 'Staffing Solutions',
-    },
-] as const;
+const defaultPromoBanner: HomePromoBannerData = {
+    eyebrow: 'ONE PLATFORM. EVERY HIRING NEED.',
+    heading: 'Smarter Hiring. Better Teams.',
+    body: 'Use OurNear Hire to post jobs, manage talent and coordinate recruitment through one connected platform.',
+    primary_label: 'Explore ATS',
+    primary_href: '/hire',
+    image_url: null,
+};
 
-export default function Home({ content, cms, featuredJobs, latestJobs = [], companies = [] }: HomeProps) {
-    const hero = cmsSection(cms, 'hero');
-    const business = cmsSection(cms, 'business_solutions');
-    const why = cmsSection(cms, 'why_choose_us');
-    const cta = cmsSection(cms, 'home_cta');
+function mergeByTitle(
+    order: readonly string[],
+    cms: { title: string; body: string; icon: string; href: string }[],
+    defaults: AudienceFeatureCard[],
+): AudienceFeatureCard[] {
+    const pool = new Map<string, AudienceFeatureCard>();
+    defaults.forEach((item) => pool.set(item.title, item));
+    cms.forEach((item) => pool.set(item.title, { ...item, href: item.href }));
 
-    const recentJobs = latestJobs.length > 0 ? latestJobs : featuredJobs;
-    const featuredOnly = featuredJobs.filter((job) => !recentJobs.some((recent) => recent.slug === job.slug));
+    return order
+        .map((title) => pool.get(title))
+        .filter((item): item is AudienceFeatureCard => item !== undefined);
+}
+
+function resolveHiringHref(title: string, user: SharedPageProps['auth']['user']): string | null {
+    switch (title) {
+        case 'Post a Job':
+            return resolvePostJobHref(user);
+        case 'Search Talent':
+            return '/talent-pool';
+        case 'Manage Applications':
+            return resolveHiringWorkspaceHref(user, '/account/hiring/applications');
+        case 'Interview & Schedule':
+            return resolveHiringWorkspaceHref(user, '/account/hiring/applications');
+        default:
+            return null;
+    }
+}
+
+function resolveCandidateHref(title: string, user: SharedPageProps['auth']['user']): string | null {
+    switch (title) {
+        case 'Find Jobs':
+            return '/jobs';
+        case 'Create Profile':
+            return user ? '/account/profile' : '/login';
+        case 'Upload Resume':
+            return user ? '/account/resumes' : '/login';
+        case 'Internships':
+            return null;
+        default:
+            return null;
+    }
+}
+
+export default function Home({
+    cms,
+    heroSlides,
+    popularSearchDiscovery,
+    hiringFeatures,
+    candidateFeatures,
+    industries,
+    promoBanner,
+    featuredJobs,
+    latestJobs = [],
+    homeGlanceStats = [],
+    homeShowcaseCompanies = [],
+}: HomeProps) {
+    const { auth } = usePage<SharedPageProps>().props;
+    const user = auth.user;
+    const industriesSection = cmsSection(cms, 'industries');
+    const keywordRef = useRef<HTMLInputElement>(null);
+    const locationRef = useRef<HTMLInputElement>(null);
+    const latest = latestJobs.length > 0 ? latestJobs : featuredJobs;
+
+    const hiringCards = mergeByTitle(HIRING_TITLES, hiringFeatures, defaultHiringFeatures).map((card) => ({
+        ...card,
+        href: resolveHiringHref(card.title, user),
+    }));
+
+    const candidateCards = mergeByTitle(CANDIDATE_TITLES, candidateFeatures, defaultCandidateFeatures).map((card) => ({
+        ...card,
+        href: resolveCandidateHref(card.title, user),
+    }));
 
     const search = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
@@ -69,44 +130,42 @@ export default function Home({ content, cms, featuredJobs, latestJobs = [], comp
         });
     };
 
-    const heroHeading = hero?.heading?.replace(/\n/g, ' ') || 'Right people. Right training. Better results.';
-    const heroBody =
-        hero?.body ||
-        content.tagline ||
-        'OurNear connects job seekers with open roles and gives hiring teams tools for recruitment, talent discovery, and staffing support.';
+    const applyPopularChip = (item: PopularSearchDiscovery['designations'][number]) => {
+        if (keywordRef.current) {
+            keywordRef.current.value = item.label;
+        }
+    };
 
     return (
         <PublicLayout title="Home">
-            <section className="border-b border-line bg-brand text-white">
-                <PageContainer className="py-10 sm:py-12 lg:py-14">
-                    <div className="mx-auto max-w-3xl text-center lg:mx-0 lg:max-w-2xl lg:text-left">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-white/80">OurNear Jobs · OurNear Hire</p>
-                        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl lg:text-[2.5rem] lg:leading-tight">
-                            {heroHeading}
-                        </h1>
-                        <p className="mt-4 text-sm leading-relaxed text-white/85 sm:text-base">{heroBody}</p>
-                        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-center lg:justify-start">
-                            <Button href="/jobs" variant="primary" className="w-full sm:w-auto">
-                                {hero?.primary_button_label || 'Find Jobs'}
-                            </Button>
-                            <Button href="/hire" variant="outline" className="w-full border-white/30 bg-transparent text-white hover:bg-white/10 sm:w-auto">
-                                {hireTalentCtaLabel(hero?.secondary_button_label)}
-                            </Button>
-                        </div>
-                    </div>
+            <HomeHeroSlider slides={heroSlides} />
 
+            <HomeAtAGlance stats={homeGlanceStats} />
+
+            <HomeIndustriesScroller
+                industries={industries}
+                heading={industriesSection?.heading ?? 'Explore industries'}
+                subheading={industriesSection?.body ?? 'Sectors where OurNear Hire supports recruitment.'}
+            />
+
+            <ShowcaseCompanyGrid title="Our Companies" companies={homeShowcaseCompanies} id="home-our-companies-heading" />
+
+            <section className="border-b border-line bg-white py-6 md:py-7">
+                <PageContainer className="min-w-0">
                     <form
                         onSubmit={search}
-                        className="mt-8 grid min-w-0 gap-3 rounded-xl border border-white/15 bg-white p-3 text-ink shadow-sm sm:p-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
+                        className="grid min-w-0 gap-3 rounded-xl border border-line bg-canvas p-3 shadow-sm sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:p-4"
                     >
                         <div className="min-w-0">
                             <label htmlFor="home-keyword" className="mb-1 block text-xs font-medium text-muted">
-                                Job title or keyword
+                                Job title, skill or keyword
                             </label>
                             <input
+                                ref={keywordRef}
                                 id="home-keyword"
                                 name="keyword"
-                                placeholder="e.g. Site Engineer"
+                                autoComplete="off"
+                                placeholder="e.g. Site Engineer…"
                                 className={controlBase}
                             />
                         </div>
@@ -114,168 +173,72 @@ export default function Home({ content, cms, featuredJobs, latestJobs = [], comp
                             <label htmlFor="home-location" className="mb-1 block text-xs font-medium text-muted">
                                 Location
                             </label>
-                            <input id="home-location" name="location" placeholder="City or region" className={controlBase} />
+                            <input
+                                ref={locationRef}
+                                id="home-location"
+                                name="location"
+                                autoComplete="off"
+                                placeholder="City or region…"
+                                className={controlBase}
+                            />
                         </div>
                         <div className="flex items-end">
-                            <Button type="submit" variant="secondary" className="w-full md:w-auto">
+                            <Button surface="public" type="submit" variant="primary" className="w-full sm:w-auto">
                                 Search Jobs
                             </Button>
                         </div>
                     </form>
+                    <HomePopularSearches discovery={popularSearchDiscovery} onSelect={applyPopularChip} />
                 </PageContainer>
             </section>
 
-            {featuredOnly.length > 0 ? (
-                <section className="py-10 md:py-12">
-                    <PageContainer className="min-w-0">
-                        <SectionHeader
-                            title="Featured roles"
-                            description="Highlighted openings from employers on OurNear Jobs."
-                            action={
-                                <Link href="/jobs?featured=1" className="text-sm font-semibold text-brand hover:underline">
-                                    View all jobs
-                                </Link>
-                            }
-                        />
-                        <div className="mt-6 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {featuredOnly.slice(0, 3).map((job) => (
-                                <JobCard key={job.slug} job={job} compact />
+            <HomeAudienceFeatureCards
+                eyebrow="For employers"
+                title="HIRE & MANAGE TALENT"
+                items={hiringCards}
+                variant="employer"
+            />
+            <HomeAudienceFeatureCards
+                eyebrow="For candidates"
+                title="Find Jobs on ON Hire"
+                items={candidateCards}
+                variant="candidate"
+            />
+
+            <HomeRecruitmentProcess />
+
+            <section className="bg-canvas py-8 md:py-10">
+                <PageContainer className="min-w-0">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h2 className="text-lg font-semibold text-ink sm:text-xl">Latest Jobs</h2>
+                        <Link href="/jobs" className="text-sm font-semibold text-brand hover:underline">
+                            View All Jobs
+                        </Link>
+                    </div>
+                    {latest.length > 0 ? (
+                        <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                            {latest.slice(0, 6).map((job) => (
+                                <JobCard key={job.slug} job={job} compact openInWorkspace />
                             ))}
                         </div>
-                    </PageContainer>
-                </section>
-            ) : null}
-
-            <section className={`${featuredOnly.length > 0 ? 'bg-canvas' : ''} py-10 md:py-12`}>
-                <PageContainer className="min-w-0">
-                    <SectionHeader
-                        title="Recent jobs"
-                        description="Latest published roles. Sign in to apply with your profile and resume."
-                        action={
-                            <Link href="/jobs" className="text-sm font-semibold text-brand hover:underline">
-                                View all jobs
-                            </Link>
-                        }
-                    />
-                    {recentJobs.length === 0 ? (
-                        <EmptyState
-                            className="mt-6"
-                            title="No open jobs yet"
-                            description="When employers publish roles, they will appear here and on the jobs board."
-                            action={
-                                <Button href="/hire" variant="secondary">
-                                    Hire Talent
-                                </Button>
-                            }
-                        />
                     ) : (
-                        <div className="mt-6 grid min-w-0 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {recentJobs.slice(0, 6).map((job) => (
-                                <JobCard key={job.slug} job={job} compact />
-                            ))}
+                        <div className="mt-4">
+                            <EmptyState
+                                className="px-5 py-6"
+                                title="No open jobs yet"
+                                description="Published roles from employers will appear here and on the jobs board."
+                                action={
+                                    <Button surface="public" href="/jobs" variant="secondary">
+                                        Browse Jobs Board
+                                    </Button>
+                                }
+                            />
                         </div>
                     )}
                 </PageContainer>
             </section>
 
-            <section className="border-y border-line bg-white py-10 md:py-12">
-                <PageContainer className="min-w-0">
-                    <SectionHeader
-                        title="Companies hiring on OurNear"
-                        description="Explore employers with public company pages and open roles."
-                        action={
-                            <Link href="/companies" className="text-sm font-semibold text-brand hover:underline">
-                                View all companies
-                            </Link>
-                        }
-                    />
-                    {companies.length === 0 ? (
-                        <EmptyState
-                            className="mt-6"
-                            title="Companies will appear here"
-                            description="When employers enable a public company page, they are listed on OurNear Jobs."
-                            action={
-                                <Button href="/companies" variant="outline">
-                                    Browse companies
-                                </Button>
-                            }
-                        />
-                    ) : (
-                        <div className="mt-6 grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {companies.map((company) => (
-                                <PublicCompanyCard key={company.id} company={company} compact />
-                            ))}
-                        </div>
-                    )}
-                </PageContainer>
-            </section>
-
-            <section className="py-10 md:py-12">
-                <PageContainer className="min-w-0">
-                    <SectionHeader
-                        eyebrow="For employers"
-                        title={business?.heading ?? 'Recruitment, talent, and staffing'}
-                        description={
-                            business?.body ??
-                            'OurNear Hire, Talent Pool, and Staffing work on the same platform records—choose the path that fits your team.'
-                        }
-                    />
-                    <div className="mt-8 grid min-w-0 gap-4 md:grid-cols-3">
-                        {serviceAreas.map((area) => (
-                            <Card key={area.title} as="article" density="standard" className="flex flex-col">
-                                <h3 className="text-base font-semibold text-ink">{area.title}</h3>
-                                <p className="mt-2 flex-1 text-sm text-muted">{area.body}</p>
-                                <Button href={area.href} variant="link" className="mt-4 self-start">
-                                    {area.cta}
-                                </Button>
-                            </Card>
-                        ))}
-                    </div>
-                </PageContainer>
-            </section>
-
-            <section className="bg-canvas py-10 md:py-12">
-                <PageContainer className="min-w-0">
-                    <SectionHeader
-                        title={why?.heading ?? 'Why OurNear'}
-                        description={
-                            why?.body ??
-                            'A practical recruitment platform for candidates and hiring teams—built around jobs, profiles, and supported services.'
-                        }
-                    />
-                    <ul className="mt-6 grid min-w-0 gap-3 sm:grid-cols-2">
-                        {whyPoints.map((point) => (
-                            <li key={point} className="flex gap-2 text-sm text-ink">
-                                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true" />
-                                {point}
-                            </li>
-                        ))}
-                    </ul>
-                </PageContainer>
-            </section>
-
-            <section className="py-10 md:py-12">
-                <PageContainer>
-                    <div className="grid min-w-0 gap-6 rounded-2xl border border-line bg-white p-6 md:grid-cols-2 md:items-center md:p-8">
-                        <div className="min-w-0">
-                            <h2 className="text-xl font-semibold text-ink sm:text-2xl">
-                                {cta?.heading ?? 'Find work or hire with confidence'}
-                            </h2>
-                            <p className="mt-2 text-sm text-muted">
-                                {cta?.body ?? 'Candidates search jobs on OurNear Jobs. Employers and recruiters start with OurNear Hire.'}
-                            </p>
-                        </div>
-                        <div className="flex flex-col gap-3 sm:flex-row md:justify-end">
-                            <Button href="/jobs" variant="secondary" className="w-full sm:w-auto">
-                                Find Your Next Opportunity
-                            </Button>
-                            <Button href="/hire" variant="primary" className="w-full sm:w-auto">
-                                Hire the Right People
-                            </Button>
-                        </div>
-                    </div>
-                </PageContainer>
-            </section>
+            <HomePromoBanner banner={promoBanner ?? defaultPromoBanner} />
         </PublicLayout>
     );
 }

@@ -7,16 +7,17 @@ import JobForm from '@/Components/Admin/JobForm';
 import {
     Button,
     ConfirmDialog,
-    DataTable,
     Drawer,
     EmptyState,
-    FilterBar,
     SearchBar,
     Select,
     StatusBadge,
     Tabs,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { AdminApplicationListItem, AdminJob, Paginator } from '@/types/jobs';
 import type { JobFormLookups } from '@/types/masterData';
 import type { StaffUserOption } from '@/types/applications';
@@ -49,7 +50,11 @@ type Props = {
     can_create_task?: boolean;
 };
 
-function recorded(value: string | number | null | undefined): string {
+function recorded(value: string | number | string[] | null | undefined): string {
+    if (Array.isArray(value)) {
+        return value.length > 0 ? value.join(', ') : 'Not recorded yet';
+    }
+
     if (value === null || value === undefined || value === '') {
         return 'Not recorded yet';
     }
@@ -175,7 +180,7 @@ export default function JobsIndex({
             ['Location', selected.location],
             ['Employment type', selected.employment_type],
             ['Experience', selected.experience],
-            ['Qualification', recorded(selected.qualification)],
+            ['Qualifications', recorded(selected.qualifications)],
             ['Skills', recorded(selected.skills)],
             ['Salary', selected.salary ?? '—'],
             ['Notice period', recorded(selected.notice_period)],
@@ -202,12 +207,13 @@ export default function JobsIndex({
                 inert={selected || creating ? true : undefined}
                 aria-hidden={selected || creating ? true : undefined}
             >
-                <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-ink">Jobs</h1>
-                        <p className="mt-1 text-sm text-muted">Recruitment listings. Open a row for job information, publishing actions, and related recruitment work.</p>
-                    </div>
-                    <Button onClick={() => visit({ mode: 'create', job: '' })}>Create job</Button>
+                <div className="mb-6">
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Recruitment listings"
+                        description="Open a row for job information, publishing actions, and related recruitment work."
+                        actions={<Button onClick={() => visit({ mode: 'create', job: '' })}>Create job</Button>}
+                    />
                 </div>
 
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>

@@ -21,13 +21,13 @@ use App\Models\RejectionReason;
 use App\Models\ScorecardTemplate;
 use App\Models\Task;
 use App\Services\ApplicationPipelineService;
+use App\Services\ApplicationResumeDeliveryService;
 use App\Services\EmployerSubmissionService;
 use App\Services\ScreeningWorkspaceService;
 use App\Support\ApplicationQuery;
 use App\Support\StaffOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -163,35 +163,16 @@ class ApplicationsController extends Controller
             ->with('success', 'Candidate submitted to the employer.');
     }
 
-    public function resume(Request $request, Application $application): StreamedResponse
-    {
+    public function resume(
+        Request $request,
+        Application $application,
+        ApplicationResumeDeliveryService $resumes,
+    ): StreamedResponse {
         $this->authorize('downloadResume', $application);
 
-        $path = $application->getAttributes()['resume_path'] ?? null;
-
-        if (! is_string($path) || $path === '' || ! Storage::disk('resumes')->exists($path)) {
-            abort(404);
-        }
-
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $label = $application->business_id ?: 'application-'.$application->id;
-        $downloadName = $label.'.'.$extension;
-        $inline = $request->string('disposition')->toString() === 'inline';
-        $mime = match ($extension) {
-            'pdf' => 'application/pdf',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            default => 'application/octet-stream',
-        };
 
-        return Storage::disk('resumes')->response($path, $downloadName, [
-            'Content-Type' => $mime,
-            'Content-Disposition' => sprintf(
-                '%s; filename="%s"',
-                $inline ? 'inline' : 'attachment',
-                str_replace('"', '', $downloadName)
-            ),
-        ]);
+        return $resumes->stream($request, $application, $label);
     }
 
     private function workspace(

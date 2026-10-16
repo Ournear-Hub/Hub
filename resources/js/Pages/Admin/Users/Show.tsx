@@ -130,17 +130,8 @@ export default function UsersShow({ record, can_manage, can_change_status, optio
             breadcrumbs={[
                 { label: 'Admin', href: '/admin' },
                 { label: 'Users', href: '/admin/users' },
-                { label: user.name },
             ]}
         >
-            <div className="mb-4 text-sm text-muted">
-                <Link href="/admin/users" className="text-brand hover:underline">
-                    Users
-                </Link>
-                <span className="px-2">/</span>
-                <span className="text-ink">{user.name}</span>
-            </div>
-
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-line bg-white p-5">
                 <div className="flex min-w-0 items-start gap-4">
                     {user.photo_url ? (
@@ -189,9 +180,10 @@ export default function UsersShow({ record, can_manage, can_change_status, optio
                 {tab === 'profile' ? (
                     <div className="grid gap-6 lg:grid-cols-2">
                         <section className="rounded-xl border border-line bg-white p-5">
-                            <h2 className="text-lg font-semibold text-ink">Identity</h2>
+                            <h2 className="text-lg font-semibold text-ink">Personal details (unified account)</h2>
                             <p className="mt-1 text-sm text-muted">
-                                This is the master platform user. Candidate and employer records stay attached as profiles.
+                                Shared identity across OurNear applications. Professional candidate and employer data stay in
+                                separate profiles linked to this account.
                             </p>
                             {can_manage ? (
                                 <form className="mt-4 space-y-3" onSubmit={saveProfile}>
@@ -295,6 +287,61 @@ export default function UsersShow({ record, can_manage, can_change_status, optio
                                 <div>
                                     <dt className="text-muted">Mobile verification</dt>
                                     <dd>{user.mobile_verified ? 'Verified' : 'Unverified'}</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section className="rounded-xl border border-line bg-white p-5 lg:col-span-2">
+                            <h2 className="text-lg font-semibold text-ink">Professional profiles</h2>
+                            <p className="mt-1 text-sm text-muted">
+                                Role-specific résumé, company, and hiring data linked to this unified account.
+                            </p>
+                            <ul className="mt-4 flex flex-wrap gap-3 text-sm">
+                                <li>
+                                    {record.candidate ? (
+                                        <Link
+                                            href={`/admin/candidates?candidate=${record.candidate.id}`}
+                                            className="font-semibold text-brand hover:underline"
+                                        >
+                                            Candidate profile
+                                        </Link>
+                                    ) : (
+                                        <span className="text-muted">No candidate profile</span>
+                                    )}
+                                </li>
+                                <li>
+                                    {record.employer ? (
+                                        <Link
+                                            href={record.employer.workspace_url || `/admin/employers?employer=${record.employer.id}`}
+                                            className="font-semibold text-brand hover:underline"
+                                        >
+                                            Employer / company profile
+                                        </Link>
+                                    ) : (
+                                        <span className="text-muted">No employer profile</span>
+                                    )}
+                                </li>
+                            </ul>
+                        </section>
+
+                        <section className="rounded-xl border border-line bg-white p-5 lg:col-span-2">
+                            <h2 className="text-lg font-semibold text-ink">Application access and roles</h2>
+                            <p className="mt-1 text-sm text-muted">
+                                Platform account type and staff roles. Access to hiring, admin, and mobile APIs is enforced
+                                separately on the server.
+                            </p>
+                            <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-muted">Account type</dt>
+                                    <dd>{accountLabel(user.account_type)}</dd>
+                                </div>
+                                <div>
+                                    <dt className="text-muted">Staff roles</dt>
+                                    <dd>
+                                        {(user.roles ?? []).length > 0
+                                            ? (user.roles ?? []).map((role) => role.name).join(', ')
+                                            : '—'}
+                                    </dd>
                                 </div>
                             </dl>
                         </section>

@@ -1,8 +1,9 @@
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import { Button, DataTable, Input, Label, StatusBadge, Textarea } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import { Button, Input, Label, StatusBadge, Textarea } from '@/Components/Admin/ui';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { PermissionGroup, RoleDetail } from '@/types/security';
 
 type Props = {

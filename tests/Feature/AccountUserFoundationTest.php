@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Models\UserActivity;
 use Illuminate\Auth\Notifications\ResetPassword;
 use App\Notifications\AccountEmailChangeVerificationNotification;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\VerifyAccountEmailNotification;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -127,7 +127,6 @@ class AccountUserFoundationTest extends TestCase
     {
         $candidate = $this->makeCandidate([
             'email' => 'profile.owner@example.com',
-            'email_verified_at' => null,
         ]);
 
         $this->actingAs($candidate)
@@ -246,11 +245,11 @@ class AccountUserFoundationTest extends TestCase
         $this->assertFalse($candidate->fresh()->hasVerifiedEmail());
 
         $this->actingAs($candidate)
-            ->from(route('account.settings.security'))
+            ->from(route('account.settings.verification'))
             ->post(route('account.verification.send'))
             ->assertRedirect();
 
-        Notification::assertSentTo($candidate, VerifyEmail::class);
+        Notification::assertSentTo($candidate, VerifyAccountEmailNotification::class);
 
         $url = URL::temporarySignedRoute('verification.verify', now()->addMinutes(60), [
             'id' => $candidate->id,
@@ -267,7 +266,8 @@ class AccountUserFoundationTest extends TestCase
 
         $this->actingAs($candidate)
             ->get($url)
-            ->assertRedirect(route('account.settings.security'));
+            ->assertRedirect(route('account.settings.verification'))
+            ->assertSessionHas('success', 'Your email has been verified successfully.');
 
         $this->assertNotNull($candidate->fresh()->email_verified_at);
         $this->assertTrue(
@@ -277,11 +277,16 @@ class AccountUserFoundationTest extends TestCase
                 ->exists()
         );
 
+        $this->assertTrue($candidate->fresh()->hasVerifiedEmail());
+
+        $sentCount = count(Notification::sent($candidate, VerifyAccountEmailNotification::class));
+
         $this->actingAs($candidate)
             ->post(route('account.verification.send'))
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHas('status', 'Your email is already verified.');
 
-        $this->assertCount(1, Notification::sent($candidate, VerifyEmail::class));
+        $this->assertSame($sentCount, count(Notification::sent($candidate, VerifyAccountEmailNotification::class)));
     }
 
     public function test_verification_resend_is_throttled(): void
@@ -308,7 +313,7 @@ class AccountUserFoundationTest extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->from(route('account.settings.security'))
+            ->from(route('account.settings.password'))
             ->put(route('account.settings.password.update'), [
                 'current_password' => 'wrong-password',
                 'password' => 'NewPassword1!',
@@ -317,7 +322,7 @@ class AccountUserFoundationTest extends TestCase
             ->assertSessionHasErrors('current_password');
 
         $this->actingAs($candidate)
-            ->from(route('account.settings.security'))
+            ->from(route('account.settings.password'))
             ->put(route('account.settings.password.update'), [
                 'current_password' => 'password',
                 'password' => 'NewPassword1!',
@@ -385,6 +390,7 @@ class AccountUserFoundationTest extends TestCase
     public function test_account_settings_pages_render_and_employer_can_update_language(): void
     {
         $employer = $this->makeEmployer(['username' => 'employer-one']);
+        $candidate = $this->makeCandidate(['username' => 'candidate-one']);
 
         $this->actingAs($employer)
             ->get(route('account.home'))
@@ -396,24 +402,45 @@ class AccountUserFoundationTest extends TestCase
 
         $this->actingAs($employer)
             ->get(route('account.settings.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Account/Settings/Index'));
+            ->assertRedirect(route('account.company'));
+
+        $this->actingAs($employer)
+            ->get(route('account.settings.account'))
+            ->assertRedirect(route('account.company'));
 
         $this->actingAs($employer)
             ->get(route('account.settings.security'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->component('Account/Settings/Security'));
+            ->assertRedirect(route('account.company'));
 
         $this->actingAs($employer)
+            ->get(route('account.settings.verification'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Account/Settings/Verification'));
+
+        $this->actingAs($employer)
+            ->get(route('account.settings.password'))
+            ->assertRedirect(route('account.company'));
+
+        $this->actingAs($employer)
+            ->get(route('account.settings.communication'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Account/Settings/Account')->where('role', 'employer'));
+
+        $this->actingAs($candidate)
+            ->get(route('account.settings.account'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Account/Settings/Account'));
+
+        $this->actingAs($candidate)
             ->put(route('account.settings.account.update'), [
-                'username' => 'employer-one',
+                'username' => 'candidate-one',
                 'mobile' => '9000000000',
                 'preferred_language' => PreferredLanguage::Hindi->value,
             ])
             ->assertRedirect();
 
-        $this->assertSame(PreferredLanguage::Hindi, $employer->fresh()->preferred_language);
-        $this->assertSame('+919000000000', $employer->fresh()->mobile);
+        $this->assertSame(PreferredLanguage::Hindi, $candidate->fresh()->preferred_language);
+        $this->assertSame('+919000000000', $candidate->fresh()->mobile);
     }
 
     public function test_candidate_and_employer_remain_isolated_from_admin(): void
@@ -440,7 +467,7 @@ class AccountUserFoundationTest extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->from(route('account.settings.security'))
+            ->from(route('account.settings.verification'))
             ->post(route('account.settings.email.change'), [
                 'email' => 'new.after.confirm@example.com',
             ])
@@ -465,7 +492,7 @@ class AccountUserFoundationTest extends TestCase
         $other = $this->makeCandidate(['email' => 'other.email@example.com', 'email_verified_at' => now()]);
         $this->actingAs($other)->get($url)->assertForbidden();
 
-        $this->actingAs($candidate)->get($url)->assertRedirect(route('account.settings.security'));
+        $this->actingAs($candidate)->get($url)->assertRedirect(route('account.settings.verification'));
 
         $candidate->refresh();
         $this->assertSame('new.after.confirm@example.com', $candidate->email);
@@ -489,7 +516,7 @@ class AccountUserFoundationTest extends TestCase
 
         $this->assertSame('fresh.unverified@example.com', $candidate->fresh()->email);
         $this->assertFalse($candidate->fresh()->hasVerifiedEmail());
-        Notification::assertSentTo($candidate->fresh(), VerifyEmail::class);
+        Notification::assertSentTo($candidate->fresh(), VerifyAccountEmailNotification::class);
     }
 
     public function test_client_cannot_set_email_or_verification_timestamps_via_account_settings(): void

@@ -1,0 +1,137 @@
+# Stage 4 — employer registration, profile, dashboard, jobs (schema v1)
+
+version: 1
+stage: 4
+title: Employer workspace
+module: employer
+
+inventory:
+  registration_fields:
+    - { id: role, control: radio, options: [candidate, employer] }
+    - { id: name, control: text, required: true }
+    - { id: username, control: text, required: true }
+    - { id: email, control: email, required: true }
+    - { id: mobile, control: text, optional: true }
+    - { id: password, control: password, required: true }
+    - { id: password_confirmation, control: password, required: true }
+    - { id: accept_terms, control: checkbox, required: true }
+  employer_profile_fields:
+    - company_name
+    - contact_person
+    - mobile_number
+    - industry
+    - company_size
+    - company_website
+    - about_company
+    - company_details
+    - photo_logo
+    - location_ids
+    - benefits
+    - socials
+  job_form_fields_employer_scope:
+    - title
+    - industry_id
+    - job_category_id
+    - job_title_id
+    - location_id
+    - employment_type_id
+    - experience_range_id
+    - salary
+    - vacancy
+    - posted_date
+    - closing_date
+    - joining_date
+    - site
+    - accommodation
+    - description
+    - requirements
+    - responsibilities
+    - what_we_offer
+  dashboard_cards:
+    - own_jobs
+    - applicants
+    - submissions
+    - enquiries
+    - company_profile_link
+
+cases:
+  - id: STG4-AUTH-001
+    feature_ids: [ACC-AUTH-01, EMP-02]
+    route: /login
+    summary: Employer A login reaches dashboard
+  - id: STG4-AUTH-002
+    feature_ids: [ACC-AUTH-01]
+    route: /login
+    summary: Invalid credentials rejected
+  - id: STG4-AUTH-003
+    feature_ids: [ACC-AUTH-01]
+    route: /account
+    summary: Logout clears employer session
+  - id: STG4-AUTH-004
+    feature_ids: [X-01]
+    route: /account
+    summary: Guest redirected from account
+  - id: STG4-AUTH-005
+    feature_ids: [ACC-AUTH-01]
+    route: /register
+    summary: Duplicate email blocked on register
+  - id: STG4-AUTH-006
+    feature_ids: [ACC-AUTH-01]
+    route: /register
+    summary: Unique employer registration then login
+  - id: STG4-PROF-001
+    feature_ids: [EMP-07]
+    route: /account/profile
+    summary: Company name save persists after reload
+  - id: STG4-DASH-001
+    feature_ids: [EMP-01, EMP-02]
+    route: /account
+    summary: Employer dashboard metric cards and links load
+  - id: STG4-DASH-002
+    feature_ids: [EMP-01]
+    route: /account/hiring
+    summary: Hiring Command Center reachable
+  - id: STG4-JOB-001
+    feature_ids: [EMP-02, JRN-EMPLOYER-JOB-PUBLISH-01]
+    route: /account/jobs/create
+    summary: Empty create job validation
+  - id: STG4-JOB-002
+    feature_ids: [EMP-02]
+    route: /account/jobs/create
+    summary: Save draft and list draft
+  - id: STG4-JOB-003
+    feature_ids: [EMP-02]
+    route: /account/jobs/{slug}/edit
+    summary: Reopen draft preserves title
+  - id: STG4-JOB-004
+    feature_ids: [EMP-02]
+    route: /account/jobs
+    summary: Publish draft from job management
+  - id: STG4-JOB-005
+    feature_ids: [EMP-02]
+    route: /jobs/{slug}
+    summary: Published job public detail and listing
+  - id: STG4-JOB-006
+    feature_ids: [EMP-02]
+    route: /account/jobs
+    summary: Pause published job hides from public
+  - id: STG4-JOB-007
+    feature_ids: [EMP-02]
+    route: /account/jobs
+    summary: Republish after pause
+  - id: STG4-JOB-008
+    feature_ids: [EMP-02]
+    route: /account/jobs/{slug}/edit
+    summary: Edit published job persists publicly
+  - id: STG4-JOB-009
+    feature_ids: [EMP-02]
+    route: /account/jobs
+    summary: Close job removes public visibility
+  - id: STG4-ISO-001
+    feature_ids: [EMP-09, X-03]
+    route: /account/jobs/{slug}/edit
+    summary: Employer B cannot edit Employer A job
+  - id: STG4-ISO-002
+    feature_ids: [X-03]
+    route: /account/jobs/create
+    summary: Candidate cannot access employer job management

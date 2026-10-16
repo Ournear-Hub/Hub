@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\RecruitmentActivityType;
+use App\Enums\RecruitmentOperationalVisibility;
 use App\Models\Application;
 use App\Models\ChannelPartner;
 use App\Models\ChannelPartnerAgreement;
@@ -60,12 +61,23 @@ class RecruitmentActivityService
         ?ReferralLink $referralLink = null,
         ?ShareEvent $shareEvent = null,
         ?Referral $referral = null,
+        ?\App\Models\TalentPoolCompanySubmission $talentPoolSubmission = null,
+        ?\App\Models\RecruiterTalentPoolAssignment $talentPoolAssignment = null,
+        ?\App\Models\StaffingCandidateSubmission $staffingSubmission = null,
+        ?RecruitmentOperationalVisibility $visibility = null,
+        ?array $operationalMeta = null,
     ): RecruitmentActivity {
         return RecruitmentActivity::query()->create([
             'application_id' => $application?->id ?? $interview?->application_id ?? $task?->application_id,
-            'employer_enquiry_id' => $enquiry?->id ?? $crmLead?->employer_enquiry_id ?? $task?->employer_enquiry_id,
+            'employer_enquiry_id' => $enquiry?->id
+                ?? $staffingSubmission?->employer_enquiry_id
+                ?? $crmLead?->employer_enquiry_id
+                ?? $task?->employer_enquiry_id,
             'employer_submission_id' => $submission?->id,
+            'talent_pool_company_submission_id' => $talentPoolSubmission?->id,
+            'staffing_candidate_submission_id' => $staffingSubmission?->id,
             'employer_profile_id' => $employer?->id
+                ?? $talentPoolSubmission?->employer_profile_id
                 ?? $crmLead?->employer_profile_id
                 ?? $crmOpportunity?->employer_profile_id
                 ?? $submission?->employer_profile_id
@@ -104,6 +116,10 @@ class RecruitmentActivityService
             'from_status' => $fromStatus,
             'to_status' => $toStatus,
             'actor_id' => $actor->id,
+            'recruiter_talent_pool_assignment_id' => $talentPoolAssignment?->id
+                ?? $talentPoolSubmission?->recruiter_talent_pool_assignment_id,
+            'visibility' => $visibility?->value,
+            'operational_meta' => $operationalMeta,
         ]);
     }
 }

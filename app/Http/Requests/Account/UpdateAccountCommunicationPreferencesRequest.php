@@ -9,7 +9,7 @@ class UpdateAccountCommunicationPreferencesRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isCandidate() === true;
+        return $this->user()?->isAccountMember() === true;
     }
 
     /**

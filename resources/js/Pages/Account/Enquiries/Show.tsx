@@ -1,8 +1,9 @@
 import { Link } from '@inertiajs/react';
 import AccountLayout from '@/Layouts/AccountLayout';
 import StatusBadge from '@/Components/Account/StatusBadge';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import Button from '@/Components/atoms/Button';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import Card from '@/Components/atoms/Card';
 import StaffingRequestCard, { type StaffingRequest } from '@/Components/Account/Staffing/StaffingRequestCard';
 import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
 
@@ -11,12 +12,18 @@ type Props = {
         name: string;
         business_id: string | null;
     };
-    enquiry: StaffingRequest;
+    enquiry: StaffingRequest & { fulfilled_joinings_count?: number; vacancies_remaining?: number };
+    candidate_submissions?: {
+        id: number;
+        name: string;
+        status_label: string;
+        submission_href?: string;
+        business_id: string;
+    }[];
     list_filters: {
         q: string;
         status: string;
     };
-    request_href: string;
     support_href: string;
 };
 
@@ -32,31 +39,58 @@ function listHref(filters: Props['list_filters']): string {
     return `/account/enquiries${query ? `?${query}` : ''}`;
 }
 
-export default function EmployerEnquiryShow({ company, enquiry, list_filters, request_href, support_href }: Props) {
+export default function EmployerEnquiryShow({ company, enquiry, candidate_submissions = [], list_filters, support_href }: Props) {
     const backHref = listHref(list_filters);
 
     return (
         <AccountLayout
             title={`Staffing request · ${enquiry.workforce_type ?? enquiry.company_name}`}
-            description="Staffing Services request detail"
-            breadcrumbs={[
-                { label: 'Hiring', href: '/account/hiring' },
-                { label: 'Staffing Services', href: backHref },
-                { label: enquiry.workforce_type ?? 'Request' },
-            ]}
+            hideShellHeader
         >
             <div className="mx-auto max-w-3xl space-y-4 lg:max-w-none">
-                <Card as="section" density="compact">
-                    <Link href={backHref} className="text-sm font-semibold text-brand hover:underline">
-                        ← Back to staffing requests
-                    </Link>
+                <Card as="section" padding="compact">
+                    <BackNavLink href={backHref} label="Back to staffing requests" className="mb-3" />
                     <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">{company.name}</p>
                     <h1 className="mt-1 text-xl font-semibold text-ink">Staffing request details</h1>
                 </Card>
 
                 <StaffingRequestCard request={{ ...enquiry, detail_href: undefined }} />
 
-                <Card as="section" density="compact">
+                {typeof enquiry.fulfilled_joinings_count === 'number' ? (
+                    <Card as="section" padding="compact">
+                        <h2 className="text-base font-semibold text-ink">Fulfilment</h2>
+                        <p className="mt-2 text-sm text-ink">
+                            Confirmed joinings:{' '}
+                            <span className="font-semibold">{enquiry.fulfilled_joinings_count}</span> of{' '}
+                            {enquiry.number_of_people ?? '—'} requested
+                            {typeof enquiry.vacancies_remaining === 'number' ? (
+                                <span className="text-muted"> · {enquiry.vacancies_remaining} remaining</span>
+                            ) : null}
+                        </p>
+                    </Card>
+                ) : null}
+
+                {candidate_submissions.length > 0 ? (
+                    <Card as="section" padding="compact">
+                        <h2 className="text-base font-semibold text-ink">Candidates submitted by OurNear</h2>
+                        <p className="mt-1 text-sm text-muted">These are staffing coordination records — not job applications.</p>
+                        <ul className="mt-4 space-y-2">
+                            {candidate_submissions.map((row) => (
+                                <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                                    <span className="font-medium text-ink">{row.name}</span>
+                                    <StatusBadge status={row.status_label} />
+                                    {row.submission_href ? (
+                                        <Link href={row.submission_href} className="text-brand hover:underline">
+                                            Review candidate
+                                        </Link>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    </Card>
+                ) : null}
+
+                <Card as="section" padding="compact">
                     <h2 className="text-base font-semibold text-ink">Request information</h2>
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         {enquiry.contact_person ? (
@@ -92,17 +126,14 @@ export default function EmployerEnquiryShow({ company, enquiry, list_filters, re
                     </div>
                 </Card>
 
-                <Card as="section" density="compact" className="bg-surface/40">
+                <Card as="section" padding="compact" className="bg-surface/40">
                     <h2 className="text-base font-semibold text-ink">Next steps</h2>
                     <p className="mt-2 text-sm text-muted">
                         OurNear staffing operations will follow up on this request. Submit another enquiry or contact us if your
                         requirement has changed.
                     </p>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Button href={request_href} variant="secondary" className="min-h-11 w-full sm:w-auto">
-                            Request staffing support
-                        </Button>
-                        <Button href={support_href} variant="link" className="min-h-11">
+                    <div className="mt-4">
+                        <Button surface="public" href={support_href} variant="link" className="min-h-11">
                             Contact staffing support
                         </Button>
                     </div>

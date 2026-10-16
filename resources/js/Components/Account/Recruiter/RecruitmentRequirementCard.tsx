@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import StatusBadge from '@/Components/Account/StatusBadge';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
 
 export type RecruitmentRequirement = {
@@ -64,7 +64,7 @@ export default function RecruitmentRequirementCard({ requirement }: Props) {
             </dl>
             {requirement.next_action ? <p className="mt-3 text-sm text-muted">{requirement.next_action}</p> : null}
             <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                <Button href={requirement.href} variant="primary" className="min-h-11 w-full sm:w-auto">
+                <Button surface="public" href={requirement.href} variant="primary" className="min-h-11 w-full sm:w-auto">
                     View requirement
                 </Button>
                 <Link href={requirement.href} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ApplicationStatus;
+use App\Enums\CandidateInterviewResponse;
 use App\Enums\InterviewLifecycleStatus;
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
@@ -273,6 +274,65 @@ class InterviewService
         });
 
         $this->notifications->notifyInterviewCancelled($interview->application, $interview);
+
+        return $interview;
+    }
+
+    public function recordCandidateResponse(
+        ApplicationInterview $interview,
+        User $candidate,
+        CandidateInterviewResponse $response,
+        ?string $note = null,
+    ): ApplicationInterview {
+        $application = $interview->application;
+        if (! $candidate->isCandidate() || (int) $application->user_id !== (int) $candidate->id) {
+            throw ValidationException::withMessages([
+                'response' => 'You cannot respond to this interview.',
+            ]);
+        }
+
+        if (! $interview->candidateCanRespond()) {
+            throw ValidationException::withMessages([
+                'response' => 'This interview is not awaiting your response.',
+            ]);
+        }
+
+        $interview = DB::transaction(function () use ($interview, $candidate, $response, $note, $application) {
+            $attributes = [
+                'candidate_response' => $response,
+                'candidate_responded_at' => now(),
+                'candidate_response_note' => $note,
+            ];
+
+            if ($response === CandidateInterviewResponse::Accepted) {
+                $lifecycle = $interview->lifecycle_status ?? InterviewLifecycleStatus::Scheduled;
+                if ($lifecycle->canConfirm()) {
+                    $attributes['lifecycle_status'] = InterviewLifecycleStatus::Confirmed;
+                    $attributes['confirmed_at'] = now();
+                }
+            }
+
+            $interview->update($attributes);
+
+            $this->activities->record(
+                actor: $candidate,
+                type: $response === CandidateInterviewResponse::Accepted
+                    ? RecruitmentActivityType::InterviewCandidateAccepted
+                    : RecruitmentActivityType::InterviewCandidateDeclined,
+                application: $application,
+                interview: $interview,
+                body: 'Candidate '.$response->label().' interview #'.$interview->sort_order
+                    .($note ? ': '.$note : '.'),
+            );
+
+            return $interview->fresh() ?? $interview;
+        });
+
+        app(EmployerNotificationService::class)->notifyInterviewCandidateResponded(
+            $application->fresh() ?? $application,
+            $interview,
+            $response,
+        );
 
         return $interview;
     }

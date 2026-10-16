@@ -114,65 +114,108 @@ class MasterDataBootstrapper
     {
         $order = 1;
 
-        foreach (WebsiteContentDefaults::groups()['industries'] as $industry) {
-            $this->firstOrCreateByName(Industry::class, $industry['title'], [
+        foreach (WebsiteContentDefaults::homepageIndustryCatalogue() as $industry) {
+            $record = $this->firstOrCreateByName(Industry::class, $industry['title'], [
                 'description' => $industry['description'] ?? null,
                 'sort_order' => $order,
             ]);
-            $order++;
-        }
-
-        foreach ([
-            'Facilities',
-            'Hospitality',
-            'Logistics',
-            'Manufacturing',
-            'Office and professional',
-        ] as $name) {
-            $this->firstOrCreateByName(Industry::class, $name, ['sort_order' => $order]);
+            if ((int) $record->sort_order !== $order || ! $record->is_active) {
+                $record->forceFill([
+                    'sort_order' => $order,
+                    'is_active' => true,
+                    'description' => $record->description ?: ($industry['description'] ?? null),
+                ])->save();
+            }
             $order++;
         }
 
         $construction = Industry::findByName('Construction');
 
-        if (! $construction) {
-            return;
-        }
+        if ($construction) {
+            $hierarchy = [
+                'Civil' => ['Site Engineer', 'Quantity Surveyor', 'Civil Foreman'],
+                'Electrical' => ['Electrical Engineer', 'Electrician'],
+                'Mechanical' => ['Mechanical Engineer', 'Fitter'],
+                'Plumbing & HVAC' => ['Plumber', 'HVAC Technician'],
+                'Safety & QA' => ['HSE Officer', 'QA/QC Engineer'],
+            ];
 
-        $hierarchy = [
-            'Civil' => ['Site Engineer', 'Quantity Surveyor', 'Civil Foreman'],
-            'Electrical' => ['Electrical Engineer', 'Electrician'],
-            'Mechanical' => ['Mechanical Engineer', 'Fitter'],
-        ];
+            $categoryOrder = 1;
 
-        $categoryOrder = 1;
-
-        foreach ($hierarchy as $categoryName => $titles) {
-            $category = JobCategory::query()->firstOrCreate(
-                [
-                    'industry_id' => $construction->id,
-                    'name' => $categoryName,
-                ],
-                [
-                    'is_active' => true,
-                    'sort_order' => $categoryOrder,
-                ],
-            );
-
-            foreach ($titles as $titleOrder => $title) {
-                JobTitle::query()->firstOrCreate(
+            foreach ($hierarchy as $categoryName => $titles) {
+                $category = JobCategory::query()->firstOrCreate(
                     [
-                        'job_category_id' => $category->id,
-                        'name' => $title,
+                        'industry_id' => $construction->id,
+                        'name' => $categoryName,
                     ],
                     [
                         'is_active' => true,
-                        'sort_order' => $titleOrder + 1,
+                        'sort_order' => $categoryOrder,
+                    ],
+                );
+
+                foreach ($titles as $titleOrder => $title) {
+                    JobTitle::query()->firstOrCreate(
+                        [
+                            'job_category_id' => $category->id,
+                            'name' => $title,
+                        ],
+                        [
+                            'is_active' => true,
+                            'sort_order' => $titleOrder + 1,
+                        ],
+                    );
+                }
+
+                $categoryOrder++;
+            }
+        }
+
+        $generalCategories = [
+            'Mining' => [
+                'Open Cast & Surface Mining',
+                'Underground Mining',
+                'Mine Planning & Geology',
+                'Mineral Processing & Beneficiation',
+                'Health, Safety & Environment (HSE)',
+                'Maintenance & Engineering',
+            ],
+            'Infrastructure' => [
+                'Civil & Structural Works',
+                'Roads & Highways',
+                'Utilities & Power',
+                'Bridges & Tunnels',
+                'Project & Site Management',
+            ],
+            'Information Technology' => ['Software Development', 'Infrastructure & Support', 'Data & Analytics'],
+            'Healthcare' => ['Clinical', 'Allied Health', 'Healthcare Administration'],
+            'Manufacturing' => ['Production', 'Quality', 'Maintenance'],
+            'Retail & Hospitality' => ['Store Operations', 'Customer Service', 'Food & Beverage'],
+            'Finance & Banking' => ['Accounting', 'Financial Services', 'Compliance'],
+            'Education & Training' => ['Teaching', 'Administration', 'Student Services'],
+            'Logistics & Supply Chain' => ['Warehouse', 'Transport', 'Procurement'],
+            'Human Resources' => ['Recruitment', 'HR Operations', 'Learning & Development'],
+        ];
+
+        foreach (Industry::query()->where('is_active', true)->get() as $industry) {
+            if ($construction && (int) $industry->id === (int) $construction->id) {
+                continue;
+            }
+
+            $preset = $generalCategories[$industry->name] ?? ['General'];
+
+            foreach ($preset as $index => $categoryName) {
+                JobCategory::query()->firstOrCreate(
+                    [
+                        'industry_id' => $industry->id,
+                        'name' => $categoryName,
+                    ],
+                    [
+                        'is_active' => true,
+                        'sort_order' => $index + 1,
                     ],
                 );
             }
-
-            $categoryOrder++;
         }
     }
 

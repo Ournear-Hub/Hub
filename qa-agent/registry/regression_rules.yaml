@@ -1,0 +1,85 @@
+# Path → regression coverage rules for plan-regression (Phase F)
+version: 1
+
+# Any match forces recommend_full_regression (Laravel/shared infra)
+broad_impact_globs:
+  - "app/Providers/**"
+  - "bootstrap/**"
+  - "config/**"
+  - "database/migrations/**"
+  - "routes/**"
+  - "composer.json"
+  - "composer.lock"
+  - "package.json"
+  - "package-lock.json"
+  - "vite.config.*"
+  - "phpunit.xml"
+  - "phpunit.xml.dist"
+
+# QA agent / registry edits → QA tests (may still recommend broader Laravel smoke)
+qa_broad_impact_globs:
+  - "qa-agent/pyproject.toml"
+  - "qa-agent/ournear_qa/**"
+  - "qa-agent/tests/conftest.py"
+
+feature_path_rules:
+  - pattern: "resources/js/Pages/Jobs/**"
+    features: [PUB-02, PUB-03]
+  - pattern: "resources/js/Pages/Account/Applications/**"
+    features: [CAN-07]
+  - pattern: "resources/js/Pages/Account/Resumes/**"
+    features: [CAN-04]
+  - pattern: "resources/js/Pages/Account/**"
+    features: [CAN-01]
+  - pattern: "resources/js/Pages/Account/Employer/Jobs/**"
+    features: [EMP-02]
+  - pattern: "app/Http/Controllers/Account/EmployerJobsController.php"
+    features: [EMP-02]
+  - pattern: "resources/js/Pages/Admin/Applications/**"
+    features: [ADM-03]
+  - pattern: "resources/js/Pages/Auth/**"
+    features: [ACC-AUTH-01]
+  - pattern: "app/Http/Controllers/PublicSiteController.php"
+    features: [PUB-01, PUB-02]
+  - pattern: "app/Http/Controllers/Account/**"
+    features: [CAN-01, CAN-07]
+  - pattern: "app/Http/Controllers/Admin/**"
+    features: [ADM-03]
+  - pattern: "app/Models/Application.php"
+    features: [CAN-07, ADM-03, EMP-03, X-03]
+  - pattern: "app/Support/ScreeningMatchService.php"
+    features: [X-01]
+  - pattern: "tests/Feature/ApplicationExperienceTest.php"
+    features: [PUB-03, CAN-07]
+  - pattern: "tests/Feature/JobApplicationTest.php"
+    features: [PUB-02, PUB-03]
+  - pattern: "tests/Feature/EmployerHiringStage25Test.php"
+    features: [EMP-03, EMP-09]
+  - pattern: "tests/Feature/ApplicationsWorkspaceTest.php"
+    features: [ADM-03]
+
+qa_agent_rules:
+  - pattern: "qa-agent/registry/features.yaml"
+    pytest_paths:
+      - "tests/test_registry_validation.py"
+      - "tests/test_registry.py"
+  - pattern: "qa-agent/registry/**"
+    pytest_paths:
+      - "tests/test_registry_validation.py"
+  - pattern: "qa-agent/tests/smoke/**"
+    pytest_paths:
+      - "tests/smoke"
+  - pattern: "qa-agent/ournear_qa/journey/candidate_apply.py"
+    pytest_paths:
+      - "tests/journey/test_candidate_apply_journey.py"
+    rate_limit_sensitive: true
+  - pattern: "qa-agent/ournear_qa/journey/cross_role.py"
+    pytest_paths:
+      - "tests/journey/test_cross_role_e2e.py"
+    rate_limit_sensitive: true
+  - pattern: "qa-agent/ournear_qa/failure_bundle.py"
+    pytest_paths:
+      - "tests/test_failure_bundle.py"
+  - pattern: "qa-agent/ournear_qa/trace_lifecycle.py"
+    pytest_paths:
+      - "tests/test_failure_bundle.py"

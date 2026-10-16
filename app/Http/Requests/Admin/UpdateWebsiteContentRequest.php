@@ -43,6 +43,11 @@ class UpdateWebsiteContentRequest extends FormRequest
             'sections.*.extra.founder_name' => ['nullable', 'string', 'max:190'],
             'sections.*.extra.founder_title' => ['nullable', 'string', 'max:190'],
             'sections.*.extra.founder_description' => ['nullable', 'string', 'max:5000'],
+            'sections.*.extra.image_alt' => ['nullable', 'string', 'max:255'],
+            'sections.*.extra.image_enabled' => ['nullable', Rule::in(['0', '1', 0, 1, true, false])],
+            'sections.*.extra.mobile_media_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'sections.*.extra.image_object_position' => ['nullable', 'string', 'max:64'],
+            'sections.*.extra.mobile_image_object_position' => ['nullable', 'string', 'max:64'],
             'sections.*.items' => ['nullable', 'array'],
             'sections.*.items.*.id' => ['required', 'integer', Rule::exists('content_items', 'id')],
             'sections.*.items.*.title' => ['required', 'string', 'max:255'],
@@ -73,6 +78,18 @@ class UpdateWebsiteContentRequest extends FormRequest
 
             if (array_key_exists('media_id', $section) && ($section['media_id'] === '' || $section['media_id'] === null)) {
                 $sections[$index]['media_id'] = null;
+            }
+
+            if (is_array($section['extra'] ?? null)) {
+                $extra = $section['extra'];
+                if (array_key_exists('image_enabled', $extra)) {
+                    $sections[$index]['extra']['image_enabled'] = filter_var($extra['image_enabled'], FILTER_VALIDATE_BOOLEAN)
+                        ? '1'
+                        : '0';
+                }
+                if (array_key_exists('mobile_media_id', $extra) && ($extra['mobile_media_id'] === '' || $extra['mobile_media_id'] === null)) {
+                    unset($sections[$index]['extra']['mobile_media_id']);
+                }
             }
 
             foreach ($section['items'] ?? [] as $itemIndex => $item) {

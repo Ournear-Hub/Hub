@@ -1,5 +1,5 @@
 import type { PropsWithChildren, ReactNode } from 'react';
-import Button from '@/Components/Public/Button';
+import { BackNavButton } from '@/Components/molecules/BackNavLink';
 
 type Props = PropsWithChildren<{
     title: string;
@@ -12,9 +12,7 @@ export default function ProfileModuleEditorShell({ title, description, onBack, f
     return (
         <div className="mt-6 space-y-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="ghost" className="min-h-11 px-2 text-sm" onClick={onBack}>
-                    ← Back
-                </Button>
+                <BackNavButton label="Back" onClick={onBack} />
                 <div className="min-w-0">
                     <h2 className="text-lg font-semibold text-ink">{title}</h2>
                     {description ? <p className="mt-0.5 text-sm text-muted">{description}</p> : null}

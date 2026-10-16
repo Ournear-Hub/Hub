@@ -5,6 +5,7 @@ namespace App\Enums;
 enum UserActivityType: string
 {
     case Registered = 'registered';
+    case LegalConsentAccepted = 'legal_consent_accepted';
     case EmailVerified = 'email_verified';
     case MobileVerified = 'mobile_verified';
     case WhatsAppVerified = 'whatsapp_verified';
@@ -35,6 +36,7 @@ enum UserActivityType: string
     {
         return match ($this) {
             self::Registered => 'Registered',
+            self::LegalConsentAccepted => 'Legal consent accepted',
             self::EmailVerified => 'Email verified',
             self::MobileVerified => 'Mobile verified',
             self::WhatsAppVerified => 'WhatsApp verified',

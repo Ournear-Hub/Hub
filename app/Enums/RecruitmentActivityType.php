@@ -9,8 +9,12 @@ enum RecruitmentActivityType: string
     case InterviewScheduled = 'interview_scheduled';
     case InterviewUpdated = 'interview_updated';
     case InterviewConfirmed = 'interview_confirmed';
+    case InterviewCandidateAccepted = 'interview_candidate_accepted';
+    case InterviewCandidateDeclined = 'interview_candidate_declined';
     case InterviewRescheduled = 'interview_rescheduled';
     case InterviewCancelled = 'interview_cancelled';
+    case CorrectionRequestSubmitted = 'correction_request_submitted';
+    case CorrectionRequestUpdated = 'correction_request_updated';
     case ScorecardSubmitted = 'scorecard_submitted';
     case TaskCreated = 'task_created';
     case TaskCompleted = 'task_completed';
@@ -25,6 +29,13 @@ enum RecruitmentActivityType: string
     case ScreeningHeld = 'screening_held';
     case EmployerAssigned = 'employer_assigned';
     case CandidateSubmitted = 'candidate_submitted';
+    case StaffingSubmittedToClient = 'staffing_submitted_to_client';
+    case StaffingSubmissionStatusChanged = 'staffing_submission_status_changed';
+    case StaffingFollowUpRecorded = 'staffing_follow_up_recorded';
+    case StaffingEmployerMessage = 'staffing_employer_message';
+    case TalentPoolSubmittedToCompany = 'talent_pool_submitted_to_company';
+    case TalentPoolFollowUpRecorded = 'talent_pool_follow_up_recorded';
+    case TalentPoolEmployerMessage = 'talent_pool_employer_message';
     case SubmissionStatusChanged = 'submission_status_changed';
     case EmployerSelected = 'employer_selected';
     case EmployerRejected = 'employer_rejected';

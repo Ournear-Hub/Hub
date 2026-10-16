@@ -15,6 +15,7 @@ use App\Models\Job;
 use App\Models\Message;
 use App\Models\Placement;
 use App\Models\Replacement;
+use App\Models\TalentPoolCompanySubmission;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -32,6 +33,39 @@ class MessageService
         $this->assertRecipient($actor, $recipient);
         $this->assertContext($contextType, $contextId);
 
+        return $this->createConversation($actor, $recipient, $subject, $body, $contextType, $contextId);
+    }
+
+    public function startRecruitmentApplicationMessage(
+        User $actor,
+        User $recipient,
+        Application $application,
+        string $subject,
+        string $body,
+    ): Conversation {
+        $this->assertRecruitmentApplicationExchange($actor, $recipient, $application);
+
+        return $this->createConversation(
+            $actor,
+            $recipient,
+            $subject,
+            $body,
+            ConversationContextType::Application,
+            $application->id,
+        );
+    }
+
+    /**
+     * @return Conversation
+     */
+    private function createConversation(
+        User $actor,
+        User $recipient,
+        string $subject,
+        string $body,
+        ?ConversationContextType $contextType,
+        ?int $contextId,
+    ): Conversation {
         return DB::transaction(function () use ($actor, $recipient, $subject, $body, $contextType, $contextId) {
             $conversation = Conversation::query()->create([
                 'subject' => $subject,
@@ -127,6 +161,40 @@ class MessageService
         }
     }
 
+    private function assertRecruitmentApplicationExchange(User $actor, User $recipient, Application $application): void
+    {
+        if ((int) $actor->id === (int) $recipient->id) {
+            throw ValidationException::withMessages([
+                'body' => 'You cannot message yourself.',
+            ]);
+        }
+
+        $application->loadMissing(['job.employer.user', 'user']);
+        $employerUser = $application->job?->employer?->user;
+        $candidateUser = $application->user;
+
+        if (! $candidateUser instanceof User || ! $employerUser instanceof User) {
+            throw ValidationException::withMessages([
+                'body' => 'This application is not eligible for employer messaging.',
+            ]);
+        }
+
+        $valid = ($actor->isEmployer() && (int) $actor->id === (int) $employerUser->id && (int) $recipient->id === (int) $candidateUser->id)
+            || ($actor->isCandidate() && (int) $actor->id === (int) $candidateUser->id && (int) $recipient->id === (int) $employerUser->id);
+
+        if (! $valid) {
+            throw ValidationException::withMessages([
+                'body' => 'You are not authorized to message for this application.',
+            ]);
+        }
+
+        if (! $actor->isActive() || ! $recipient->isActive()) {
+            throw ValidationException::withMessages([
+                'body' => 'Messaging is unavailable for inactive accounts.',
+            ]);
+        }
+    }
+
     private function assertContext(?ConversationContextType $type, ?int $id): void
     {
         if ($type === null && $id === null) {
@@ -148,6 +216,7 @@ class MessageService
             ConversationContextType::Employee => Employee::query()->whereKey($id)->exists(),
             ConversationContextType::Replacement => Replacement::query()->whereKey($id)->exists(),
             ConversationContextType::Invoice => Invoice::query()->whereKey($id)->exists(),
+            ConversationContextType::TalentPoolSubmission => TalentPoolCompanySubmission::query()->whereKey($id)->exists(),
         };
 
         if (! $exists) {

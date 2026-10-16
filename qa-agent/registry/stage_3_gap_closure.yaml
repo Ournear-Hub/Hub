@@ -1,0 +1,28 @@
+# Stage 3 gap closure — browser evidence for §F outstanding items
+
+version: 1
+stage: 3
+title: Stage 3 gap closure
+module: candidate
+
+cases:
+  - id: STG3-GAP-A
+    feature_ids: [CAN-07]
+    route: /jobs/{slug}/apply
+    summary: Double-click and revisit apply — single application record
+  - id: STG3-GAP-B
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}/withdraw
+    summary: Candidate withdraws application with confirm dialog
+  - id: STG3-GAP-C
+    feature_ids: [CAN-07]
+    route: /jobs/{slug}
+    summary: Closed fixture job rejects public apply paths
+  - id: STG3-GAP-D
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Application resume snapshot unchanged after library replace
+  - id: STG3-GAP-E
+    feature_ids: [JRN-CANDIDATE-APPLY-01]
+    route: n/a
+    summary: Journey runner import / evidence sufficiency note

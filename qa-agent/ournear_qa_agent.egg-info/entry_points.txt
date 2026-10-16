@@ -1,0 +1,2 @@
+[console_scripts]
+ournear-qa = ournear_qa.cli:main

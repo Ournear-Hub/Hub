@@ -17,14 +17,21 @@ class TechnicalStabilizationStage18Test extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Jobs/Show'));
     }
 
-    public function test_jobs_index_supports_desktop_selection_query(): void
+    public function test_jobs_index_lists_public_jobs_and_detail_page_loads(): void
     {
         $job = Job::factory()->create(['active' => true]);
 
-        $this->get(route('jobs.index', ['job' => $job->slug]))
+        $this->get(route('jobs.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Jobs/Index')
-                ->where('selected.slug', $job->slug));
+                ->where('jobs.data.0.slug', $job->slug));
+
+        $this->get(route('jobs.show', $job))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Jobs/Show')
+                ->where('job.slug', $job->slug)
+                ->has('job.company_profile'));
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Account\StoreCandidateResumeRequest;
-use App\Http\Requests\StoreContactEnquiryRequest;
 use App\Http\Requests\StoreEmployerEnquiryRequest;
 use App\Models\CandidateResume;
 use App\Models\EmployerProfile;
@@ -11,13 +10,17 @@ use App\Models\Job;
 use App\Models\User;
 use App\Services\ApplicationSubmissionService;
 use App\Services\CandidateResumeLibraryService;
+use App\Services\HomepagePresentationService;
+use App\Services\JobSearchAnalyticsService;
+use App\Services\PopularJobSearchService;
 use App\Services\ShareTrackingService;
 use App\Services\EnquirySubmissionService;
 use App\Services\PublicJobStateService;
 use App\Services\SavedJobService;
 use App\Services\SubmissionMailService;
+use App\Services\UnifiedProfilePresenter;
+use App\Services\ShowcaseContentService;
 use App\Services\WebsiteContentService;
-use App\Support\IntendedUrl;
 use App\Support\JobListingQuery;
 use App\Support\PublicContent;
 use Illuminate\Http\RedirectResponse;
@@ -28,88 +31,157 @@ use Inertia\Response;
 
 class PublicSiteController extends Controller
 {
-    public function home(Request $request, JobListingQuery $jobs, PublicJobStateService $states, WebsiteContentService $cms): Response
-    {
+    public function home(
+        Request $request,
+        JobListingQuery $jobs,
+        PublicJobStateService $states,
+        WebsiteContentService $cms,
+        HomepagePresentationService $homepage,
+        PopularJobSearchService $popularSearches,
+        ShowcaseContentService $showcase,
+    ): Response {
         $featured = collect($jobs->featuredPublic());
-        $latest = Job::query()->with('employer.user')->publiclyVisible()->latest('id')->limit(6)->get();
-
-        $companies = EmployerProfile::query()
-            ->with(['user', 'locations'])
-            ->withCount(['jobs as open_jobs_count' => fn ($query) => $query->publiclyVisible()])
-            ->orderByDesc('open_jobs_count')
-            ->orderBy('company_name')
-            ->limit(20)
-            ->get()
-            ->filter(
-                fn (EmployerProfile $employer) => $employer->user?->is_active === true
-                    && $employer->shareAllows('enabled'),
-            )
-            ->take(6)
-            ->map(fn (EmployerProfile $employer) => [
-                'id' => $employer->id,
-                'name' => $employer->publicDisplayCompany(),
-                'industry' => $employer->shareAllows('industry_size') ? $employer->displayIndustry() : null,
-                'location' => $employer->shareAllows('locations')
-                    ? $employer->locations->pluck('name')->filter()->implode(', ') ?: null
-                    : null,
-                'logo_url' => $employer->user?->photoUrl(),
-                'ournear_verified' => $employer->ournearVerified(),
-                'open_jobs' => (int) $employer->open_jobs_count,
-                'url' => route('companies.show', $employer),
+        $latest = Job::query()
+            ->with([
+                'employer.user',
+                'classifiedIndustry',
+                'classifiedCategory',
+                'classifiedLocation',
+                'classifiedEmploymentType',
+                'classifiedExperienceRange',
             ])
-            ->values();
+            ->publiclyVisible()
+            ->latest('id')
+            ->limit(6)
+            ->get();
 
         return Inertia::render('Home', [
             'content' => PublicContent::common(),
             'cms' => $cms->publicPage('home'),
             'services' => PublicContent::services(),
-            'industries' => PublicContent::industries(),
+            'heroSlides' => $homepage->heroSlides(),
+            'popularSearchDiscovery' => $popularSearches->homepageDiscovery(),
+            'hiringFeatures' => $homepage->audienceFeatureCards('hiring_features'),
+            'candidateFeatures' => $homepage->audienceFeatureCards('candidate_features'),
+            'industries' => $homepage->industries(),
+            'promoBanner' => $homepage->promotionalBanner(),
+            'latestJobsSection' => $homepage->latestJobsSection(),
             'featuredJobs' => $states->decorateCollection($featured, $request->user()),
             'latestJobs' => $states->decorateCollection($latest, $request->user()),
-            'companies' => $companies,
+            'homeGlanceStats' => $showcase->statistics()->toPublicGlance(),
+            'homeShowcaseCompanies' => $showcase->publicCompaniesFor('home'),
         ]);
     }
 
-    public function jobs(Request $request, JobListingQuery $jobs, PublicJobStateService $states): Response
-    {
+    public function jobs(
+        Request $request,
+        JobListingQuery $jobs,
+        PublicJobStateService $states,
+        JobSearchAnalyticsService $searchAnalytics,
+        UnifiedProfilePresenter $profiles,
+    ): Response {
+        $searchAnalytics->recordFromRequest($request);
+
         $listings = $jobs->publicIndex($request);
         $pageJobs = $listings->getCollection();
 
-        $selectedSlug = $request->string('job')->toString();
-        $selected = $selectedSlug !== ''
-            ? Job::query()->with('employer.user')->publiclyVisible()->where('slug', $selectedSlug)->first()
-            : null;
+        $selectedSlug = trim($request->string('job')->toString());
+        if ($selectedSlug === '' && $pageJobs->isNotEmpty()) {
+            $selectedSlug = (string) $pageJobs->first()->slug;
+        }
 
         return Inertia::render('Jobs/Index', [
             'content' => PublicContent::common(),
             'jobs' => $listings->through(fn (Job $job) => $states->decorate($job, $request->user())),
-            'selected' => $selected ? $states->decorate($selected, $request->user(), true) : null,
-            'filters' => [
-                'keyword' => $request->string('keyword')->toString(),
-                'location' => $request->string('location')->toString(),
-                'industry' => $request->string('industry')->toString(),
-                'category' => $request->string('category')->toString(),
-                'employment_type' => $request->string('employment_type')->toString(),
-                'experience' => $request->string('experience')->toString(),
-                'company' => $request->string('company')->toString(),
-                'salary' => $request->string('salary')->toString(),
-                'work_mode' => $request->string('work_mode')->toString(),
-                'sort' => $request->string('sort')->toString(),
-                'featured' => $request->boolean('featured'),
-            ],
+            'selected_job' => $this->resolvePublicJobsSelection($request, $states, $profiles, $selectedSlug),
+            'filters' => $this->publicJobsFilters($request, $jobs),
             'options' => $jobs->publicFilterOptions(),
         ]);
     }
 
-    public function jobShow(Request $request, Job $job, PublicJobStateService $states, JobListingQuery $jobs): Response
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolvePublicJobsSelection(
+        Request $request,
+        PublicJobStateService $states,
+        UnifiedProfilePresenter $profiles,
+        string $slug,
+    ): ?array {
+        if ($slug === '') {
+            return null;
+        }
+
+        $job = Job::query()
+            ->publiclyVisible()
+            ->where('slug', $slug)
+            ->first();
+
+        if (! $job instanceof Job) {
+            return null;
+        }
+
+        $job->loadMissing([
+            'employer.user',
+            'employer.locations',
+            'employer.classifiedIndustry',
+            'skills',
+            'qualifications',
+        ]);
+
+        $payload = $states->decorate($job, $request->user(), true);
+        $payload['company_profile'] = $profiles->publicCompanyForJobTab($job->employer);
+
+        return $payload;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function publicJobsFilters(Request $request, JobListingQuery $jobs): array
     {
+        $company = trim($request->string('company')->toString());
+        $employerLabel = $jobs->employerFilterLabel($request);
+
+        return [
+            'keyword' => $request->string('keyword')->toString(),
+            'location' => $request->string('location')->toString(),
+            'industry' => $request->string('industry')->toString(),
+            'category' => $request->string('category')->toString(),
+            'employment_type' => $request->string('employment_type')->toString(),
+            'experience' => $request->string('experience')->toString(),
+            'company' => $company !== '' ? $company : ($employerLabel ?? ''),
+            'salary' => $request->string('salary')->toString(),
+            'work_mode' => $request->string('work_mode')->toString(),
+            'sort' => $request->string('sort')->toString(),
+            'featured' => $request->has('featured') ? $request->boolean('featured') : false,
+        ];
+    }
+
+    public function jobShow(
+        Request $request,
+        Job $job,
+        PublicJobStateService $states,
+        JobListingQuery $jobs,
+        UnifiedProfilePresenter $profiles,
+    ): Response {
         abort_unless($job->isPubliclyVisible(), 404);
 
+        $job->loadMissing([
+            'employer.user',
+            'employer.locations',
+            'employer.classifiedIndustry',
+            'skills',
+            'qualifications',
+        ]);
+
         $similar = collect($jobs->similar($job));
+        $jobPayload = $states->decorate($job, $request->user(), true);
+        $jobPayload['company_profile'] = $profiles->publicCompanyForJobTab($job->employer);
 
         return Inertia::render('Jobs/Show', [
             'content' => PublicContent::common(),
-            'job' => $states->decorate($job, $request->user(), true),
+            'job' => $jobPayload,
             'similar_jobs' => $states->decorateCollection($similar, $request->user()),
         ]);
     }
@@ -129,8 +201,6 @@ class PublicSiteController extends Controller
 
         $user = $request->user();
         if (! $user instanceof User) {
-            IntendedUrl::remember($request, route('jobs.apply', $job, false));
-
             return redirect()->guest(route('login'));
         }
 
@@ -139,7 +209,7 @@ class PublicSiteController extends Controller
         }
 
         $state = $states->decorate($job, $user, true);
-        if (in_array($state['apply_state'], ['applied', 'closed'], true)) {
+        if (in_array($state['apply_state'], ['applied', 'closed', 'own_company'], true)) {
             return redirect()->route('jobs.show', $job);
         }
 
@@ -170,6 +240,7 @@ class PublicSiteController extends Controller
             'needs_resume' => ! $state['has_resume'],
             'resume' => $resumePayload,
             'profile_gaps' => $profileGaps,
+            'requires_email_verification' => ! $user->hasVerifiedEmail(),
         ]);
     }
 
@@ -183,8 +254,6 @@ class PublicSiteController extends Controller
 
         $user = $request->user();
         if (! $user instanceof User) {
-            IntendedUrl::remember($request, route('jobs.show', $job, false));
-
             return redirect()->guest(route('login'));
         }
 
@@ -195,15 +264,16 @@ class PublicSiteController extends Controller
         try {
             $application = $submissions->submitFromProfile($job, $user);
         } catch (ValidationException $exception) {
-            if (isset($exception->errors()['resume'])) {
+            $errors = $exception->errors();
+            if (isset($errors['resume']) || isset($errors['email'])) {
                 return redirect()
                     ->route('jobs.apply', $job)
-                    ->withErrors($exception->errors());
+                    ->withErrors($errors);
             }
 
             return redirect()
                 ->route('jobs.show', $job)
-                ->withErrors($exception->errors());
+                ->withErrors($errors);
         }
 
         $outcome = $mail->notifyApplication($application);
@@ -286,45 +356,42 @@ class PublicSiteController extends Controller
         EnquirySubmissionService $enquiries,
         SubmissionMailService $mail,
     ): RedirectResponse {
-        $enquiry = $enquiries->storeEmployerEnquiry($request->validated());
+        $validated = $request->validated();
+        unset($validated['from_staffing']);
+        $enquiry = $enquiries->storeEmployerEnquiry($validated);
         $outcome = $mail->notifyEmployerEnquiry($enquiry);
+
+        $isStaffing = $request->input('from_staffing') === '1';
+
+        $message = $outcome->publicMessage(
+            $isStaffing
+                ? 'Your staffing requirement has been submitted. Reference #'.$enquiry->id.'.'
+                : 'Thank you. Your employer enquiry has been submitted.',
+            'A confirmation email has been sent to you when delivery is available.',
+        );
+
+        if ($isStaffing) {
+            return redirect()
+                ->route('staffing')
+                ->withFragment('request-manpower')
+                ->with('success', $message);
+        }
 
         return redirect()
             ->route('for-employers')
-            ->with('success', $outcome->publicMessage(
-                'Thank you. Your employer enquiry has been submitted.',
-                'A confirmation email has been sent to you.',
-            ));
+            ->with('success', $message);
     }
 
-    public function contact(WebsiteContentService $cms): Response
+    public function contact(): Response
     {
         return Inertia::render('Contact', [
             'content' => PublicContent::common(),
-            'cms' => $cms->publicPage('contact'),
-            'interestOptions' => [
-                'Recruitment',
-                'Training',
-                'Workforce solutions',
-                'General enquiry',
-            ],
         ]);
     }
 
-    public function storeContactEnquiry(
-        StoreContactEnquiryRequest $request,
-        EnquirySubmissionService $enquiries,
-        SubmissionMailService $mail,
-    ): RedirectResponse {
-        $enquiry = $enquiries->storeContactEnquiry($request->validated());
-        $outcome = $mail->notifyContactEnquiry($enquiry);
-
-        return redirect()
-            ->route('contact')
-            ->with('success', $outcome->publicMessage(
-                'Thank you. Your message has been sent.',
-                'A confirmation email has been sent to you.',
-            ));
+    public function storeContactEnquiry(): never
+    {
+        abort(404);
     }
 
     public function privacy(WebsiteContentService $cms): Response

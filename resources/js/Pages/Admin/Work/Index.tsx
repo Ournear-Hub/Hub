@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import DetailHeader from '@/Components/organisms/DetailHeader';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Card, EmptyState } from '@/Components/Admin/ui';
 import type { AdminInterview } from '@/types/applications';
@@ -148,14 +149,13 @@ export default function WorkIndex({
     },
 }: Props) {
     return (
-        <AdminLayout title="My Work">
+        <AdminLayout title="My Work" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'My Work' }]}>
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">My Work</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Your assigned tasks, interviews, CRM work, and recent activity you recorded.
-                    </p>
-                </div>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Your assigned recruitment work"
+                    description="Your assigned tasks, interviews, CRM work, and recent activity you recorded."
+                />
 
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                     <CountCard label="Overdue tasks" value={counts.overdue_tasks} href="/admin/tasks?due=overdue" />

@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import StatCard from '@/Components/Admin/StatCard';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import type { DashboardMetric, DashboardPipelineStage, DashboardStats, SharedPageProps } from '@/types/page';
 
 type DashboardProps = {
@@ -131,7 +131,7 @@ export default function Dashboard({
                                 return null;
                             }
                             return (
-                                <Button key={link.href} href={link.href} variant="secondary" className="min-h-11">
+                                <Button surface="admin" key={link.href} href={link.href} variant="secondary" className="min-h-11">
                                     {link.label}
                                 </Button>
                             );

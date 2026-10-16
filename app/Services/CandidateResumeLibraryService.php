@@ -92,15 +92,22 @@ class CandidateResumeLibraryService
         $previousPath = $resume->storage_path;
         $stored = $this->files->store($file, 'resumes', $this->files->resumeExtensions());
 
-        $resume->forceFill([
-            'original_filename' => $stored['original_filename'],
-            'storage_disk' => $stored['disk'],
-            'storage_path' => $stored['path'],
-            'mime_type' => $stored['mime_type'],
-            'extension' => $stored['extension'],
-            'file_size' => $stored['file_size'],
-            'status' => FileLifecycleStatus::Active,
-        ])->save();
+        try {
+            DB::transaction(function () use ($resume, $stored) {
+                $resume->forceFill([
+                    'original_filename' => $stored['original_filename'],
+                    'storage_disk' => $stored['disk'],
+                    'storage_path' => $stored['path'],
+                    'mime_type' => $stored['mime_type'],
+                    'extension' => $stored['extension'],
+                    'file_size' => $stored['file_size'],
+                    'status' => FileLifecycleStatus::Active,
+                ])->save();
+            });
+        } catch (\Throwable $exception) {
+            $this->files->delete($stored['path'], $stored['disk']);
+            throw $exception;
+        }
 
         $this->files->delete($previousPath, is_string($previousDisk) ? $previousDisk : CandidatePrivateFileService::DISK);
         $this->assertIndependentFromApplications($previousPath);

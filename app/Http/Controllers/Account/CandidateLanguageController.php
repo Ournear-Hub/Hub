@@ -20,7 +20,7 @@ class CandidateLanguageController extends Controller
 
         $talent->addLanguage($profile, $request->languageAttributes(), $request->user());
 
-        return back()->with('success', 'Language added.');
+        return $this->redirectToLanguages('Language added.');
     }
 
     public function update(
@@ -34,7 +34,7 @@ class CandidateLanguageController extends Controller
 
         $talent->updateLanguage($language, $request->languageAttributes(), $request->user());
 
-        return back()->with('success', 'Language updated.');
+        return $this->redirectToLanguages('Language updated.');
     }
 
     public function destroy(
@@ -48,7 +48,15 @@ class CandidateLanguageController extends Controller
 
         $talent->deleteLanguage($language, $request->user());
 
-        return back()->with('success', 'Language removed.');
+        return $this->redirectToLanguages('Language removed.');
+    }
+
+    private function redirectToLanguages(string $message): RedirectResponse
+    {
+        return redirect()
+            ->route('account.profile.edit')
+            ->withFragment('languages')
+            ->with('success', $message);
     }
 
     private function ownedProfile(Request $request): CandidateProfile

@@ -59,6 +59,8 @@ class ResumeBuilderService
             ?? $this->display($user->location)
             ?? $this->display($profile?->location);
 
+        $profileUpdatedAt = $profile?->updated_at ?? $user->updated_at;
+
         return [
             'personal' => [
                 'name' => $this->display($user->name),
@@ -78,6 +80,7 @@ class ResumeBuilderService
                 ->first()
                 ?->toAccountArray(),
             'note' => 'This OurNear resume is a live preview of your existing profile. Print from your browser. It does not create a second profile or change application resume snapshots.',
+            'generated_at' => $profileUpdatedAt?->toIso8601String(),
         ];
     }
 

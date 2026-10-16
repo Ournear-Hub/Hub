@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Account;
 
 use App\Enums\PreferredLanguage;
-use App\Enums\UserRole;
 use App\Http\Requests\Concerns\ValidatesAccountMobile;
 use App\Models\User;
 use App\Support\AccountPassword;
@@ -24,6 +23,9 @@ class RegisterRequest extends FormRequest
     {
         $this->merge([
             'username' => User::normalizeUsername($this->input('username')),
+        ]);
+
+        $this->merge([
             'email' => is_string($this->input('email'))
                 ? strtolower(trim($this->input('email')))
                 : $this->input('email'),
@@ -38,12 +40,12 @@ class RegisterRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'username' => User::usernameRules(),
+            'username' => ['required', 'string', 'min:3', 'max:64', 'alpha_dash', Rule::unique('users', 'username')],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'mobile' => ['nullable', 'string', 'max:32'],
+            'mobile' => ['required', 'string', 'max:32'],
             'password' => ['required', 'confirmed', AccountPassword::rules()],
             'preferred_language' => ['nullable', Rule::enum(PreferredLanguage::class)],
-            'role' => ['required', Rule::in([UserRole::Candidate->value, UserRole::Employer->value])],
+            'role' => ['prohibited'],
             'accept_terms' => ['accepted'],
         ];
     }
@@ -51,5 +53,15 @@ class RegisterRequest extends FormRequest
     public function withValidator(Validator $validator): void
     {
         $this->validateNormalizedMobile($validator, null, null);
+
+        $validator->after(function (Validator $validator): void {
+            $username = User::normalizeUsername($this->input('username'));
+            if ($username !== '' && ! User::usernameIsValid($username)) {
+                $validator->errors()->add(
+                    'username',
+                    'Usernames may use letters, numbers, dashes, and underscores (3–64 characters).',
+                );
+            }
+        });
     }
 }

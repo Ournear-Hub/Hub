@@ -49,6 +49,20 @@ function statusFromKeys(map: Record<string, boolean>, keys: string[], hasContent
     return 'not_started';
 }
 
+function hasSavedJobPreferences(pro: AccountProfile['professional']): boolean {
+    if (!pro) {
+        return false;
+    }
+
+    return (
+        (pro.preferred_locations?.length ?? 0) > 0 ||
+        (pro.preferred_employment_types?.length ?? 0) > 0 ||
+        Boolean(pro.employment_preference?.trim()) ||
+        pro.willing_to_relocate === true ||
+        Boolean(pro.availability?.trim())
+    );
+}
+
 export function buildProfileModules(profile: AccountProfile): ProfileModuleCard[] {
     const map = itemMap(profile.completion_items ?? []);
     const pro = profile.professional;
@@ -66,8 +80,12 @@ export function buildProfileModules(profile: AccountProfile): ProfileModuleCard[
             title: 'Basic information',
             description: 'Name, username, photo, location, and mobile.',
             summary: [profile.name, profile.location].filter(Boolean).join(' · ') || 'Add your contact basics',
-            status: statusFromKeys(map, ['name', 'username', 'photo', 'location', 'mobile'], Boolean(profile.name)),
-            completionKeys: ['name', 'username', 'photo', 'location', 'mobile'],
+            status: statusFromKeys(
+                map,
+                ['name', 'username', 'photo', 'location', 'mobile', 'email'],
+                Boolean(profile.name || profile.email),
+            ),
+            completionKeys: ['name', 'username', 'photo', 'location', 'mobile', 'email'],
         },
         {
             id: 'about',
@@ -146,15 +164,15 @@ export function buildProfileModules(profile: AccountProfile): ProfileModuleCard[
                 (pro?.preferred_locations?.length ?? 0) > 0
                     ? `${pro?.preferred_locations?.length} preferred location(s)`
                     : 'Add job preferences',
-            status: (pro?.preferred_locations?.length ?? 0) > 0 ? 'in_progress' : 'not_started',
+            status: hasSavedJobPreferences(pro) ? 'complete' : 'not_started',
             completionKeys: [],
         },
         {
             id: 'resume',
             title: 'My Resume',
             description: 'Uploaded resume used for applications.',
-            summary: 'Manage in resume library',
-            status: 'not_started',
+            summary: profile.library_resume?.title ?? 'Manage in resume library',
+            status: profile.library_resume?.has_upload ? 'complete' : 'not_started',
             completionKeys: [],
         },
     ];

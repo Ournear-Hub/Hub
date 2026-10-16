@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\SecurityActivityType;
 use App\Enums\UserActivityType;
 use App\Models\EmployerProfile;
+use App\Models\Industry;
 use App\Models\Location;
 use App\Models\User;
 use App\Support\EmployerPublicShare;
@@ -15,6 +16,7 @@ class EmployerCompanyService
     public function __construct(
         private UserActivityService $activities,
         private SecurityAuditService $audit,
+        private EmployerJobPublicationPolicy $publicationPolicy,
     ) {}
 
     /**
@@ -29,6 +31,7 @@ class EmployerCompanyService
             'contact_person',
             'mobile_number',
             'industry',
+            'industry_id',
             'about_company',
             'company_size',
             'company_website',
@@ -36,6 +39,13 @@ class EmployerCompanyService
         ] as $field) {
             if (array_key_exists($field, $attributes)) {
                 $fields[$field] = $attributes[$field];
+            }
+        }
+
+        if (array_key_exists('industry_id', $fields)) {
+            $industryId = $fields['industry_id'];
+            if ($industryId) {
+                $fields['industry'] = Industry::query()->whereKey($industryId)->value('name');
             }
         }
 
@@ -110,6 +120,10 @@ class EmployerCompanyService
             $profile,
             ['approved' => $approved],
         );
+
+        if ($approved) {
+            $this->publicationPolicy->liftTrialExpiryForVerifiedEmployer($profile->fresh() ?? $profile);
+        }
 
         return $profile->fresh(['user']) ?? $profile;
     }

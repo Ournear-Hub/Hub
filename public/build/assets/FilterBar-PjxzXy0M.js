@@ -1,1 +1,0 @@
-import{j as i}from"./app-DKG1WQxt.js";function t({onSubmit:r,children:e,className:o=""}){return i.jsx("form",{onSubmit:r,className:`mb-6 grid gap-3 rounded-xl border border-line bg-white p-4 md:grid-cols-4 ${o}`,children:e})}export{t as F};

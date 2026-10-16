@@ -6,6 +6,8 @@ Dual guards, active-user check, staff RBAC, policies on files and workspaces. Se
 
 Stage 25: ordinary Admin (`users.manage`, no `roles.manage`) cannot assign Super Admin, cannot grant `roles.manage` via custom roles, and cannot assign a role whose permissions exceed their own. Private candidate resume/document downloads remain policy-gated (`candidates.view`). Hiring mutations use `ApplicationPolicy::update` (`applications.manage`). Frontend sidebar permission checks are convenience only.
 
+**2026-10-12 (REG-SEC-003):** Admin mail diagnostic JSON (`validate`, `test-connection`, `prerequisites`) and `/admin/design-system/*` require `website.manage` on the server (`MailDiagnosticRequest`, `DesignSystemController`). Settings page load and mail save were already gated; diagnostics were the gap.
+
 ## Headers
 
 `SecurityHeaders` middleware on web stack.

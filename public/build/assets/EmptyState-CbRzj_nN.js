@@ -1,1 +1,0 @@
-import{j as t}from"./app-DKG1WQxt.js";function x({title:s,description:e}){return t.jsxs("div",{className:"px-4 py-10 text-center",children:[t.jsx("p",{className:"text-sm font-medium text-ink",children:s}),e?t.jsx("p",{className:"mt-1 text-sm text-muted",children:e}):null]})}export{x as E};

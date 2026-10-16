@@ -1,6 +1,6 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import DocumentGroupList from '@/Components/Documents/DocumentGroupList';
+import DocumentGroupList from '@/Components/organisms/DocumentGroupList';
 import AccountLayout from '@/Layouts/AccountLayout';
 import type { AccountDocument, AccountFileOption } from '@/types/account';
 import type { SharedPageProps } from '@/types/page';

@@ -43,7 +43,7 @@ class EmailChangeController extends Controller
         $emailChange->confirmPendingEmail($user, (string) $request->route('hash'));
 
         return redirect()
-            ->route('account.settings.security')
+            ->route('account.settings.verification')
             ->with('success', 'Your email address has been updated and verified.');
     }
 }

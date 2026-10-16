@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Support\SecurityMailMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -19,11 +20,13 @@ class HiringEmailVerificationNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject('Verify recruiter email for OurNear Hire')
-            ->greeting('Verify recruiter email')
-            ->line('Confirm this email to activate hiring services on your existing OurNear account.')
-            ->action('Verify Recruiter Email', $this->verifyUrl)
-            ->line('This does not create another account.');
+        return SecurityMailMessage::make(
+            'Verify recruiter email for OurNear Hire',
+            'Verify recruiter email',
+            'Confirm this email to activate hiring services on your existing OurNear account.',
+            'Verify recruiter email',
+            $this->verifyUrl,
+            'This does not create another account.',
+        );
     }
 }

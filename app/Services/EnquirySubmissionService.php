@@ -36,6 +36,13 @@ class EnquirySubmissionService
             ]);
         }
 
+        $additional = trim((string) ($validated['additional_requirements'] ?? ''));
+        if (! empty($validated['period_to'] ?? null)) {
+            $periodFrom = $validated['period_from'] ?? $validated['expected_start_date'] ?? null;
+            $periodLine = 'Staffing period: '.($periodFrom ?: '—').' to '.$validated['period_to'];
+            $additional = $additional === '' ? $periodLine : $periodLine."\n\n".$additional;
+        }
+
         $enquiry = EmployerEnquiry::query()->create([
             'user_id' => $this->authenticatedEmployerId(),
             'company_name' => $company,
@@ -49,7 +56,7 @@ class EnquirySubmissionService
             'required_skills' => $validated['required_skills'],
             'expected_start_date' => $validated['expected_start_date'] ?? null,
             'training_required' => filter_var($validated['training_required'], FILTER_VALIDATE_BOOLEAN),
-            'additional_requirements' => $validated['additional_requirements'] ?? null,
+            'additional_requirements' => $additional !== '' ? $additional : null,
             'status' => EmployerEnquiryStatus::New,
             'internal_notes' => [],
         ]);

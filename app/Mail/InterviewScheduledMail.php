@@ -2,7 +2,9 @@
 
 namespace App\Mail;
 
+use App\Enums\SystemMessageTemplateKey;
 use App\Mail\Concerns\UsesCompanyMailIdentity;
+use App\Mail\Concerns\UsesRecruitmentMessageTemplate;
 use App\Models\Application;
 use App\Models\ApplicationInterview;
 use Illuminate\Bus\Queueable;
@@ -14,7 +16,7 @@ use Illuminate\Queue\SerializesModels;
 
 class InterviewScheduledMail extends Mailable implements ShouldQueue
 {
-    use Queueable, SerializesModels, UsesCompanyMailIdentity;
+    use Queueable, SerializesModels, UsesCompanyMailIdentity, UsesRecruitmentMessageTemplate;
 
     public function __construct(
         public Application $application,
@@ -23,15 +25,28 @@ class InterviewScheduledMail extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return $this->companyEnvelope(
-            'Interview scheduled: '.($this->application->job?->title ?? 'your application'),
-            'recruitment',
+        $defaultSubject = 'Interview scheduled: '.($this->application->job?->title ?? 'your application');
+        $copy = $this->recruitmentEmailCopy(
+            SystemMessageTemplateKey::InterviewScheduledEmail->value,
+            $this->application,
+            $defaultSubject,
+            'An interview has been scheduled for this role.',
+            $this->interview,
         );
+
+        return $this->companyEnvelope($copy['subject'], 'recruitment');
     }
 
     public function content(): Content
     {
         $this->application->loadMissing('job');
+        $copy = $this->recruitmentEmailCopy(
+            SystemMessageTemplateKey::InterviewScheduledEmail->value,
+            $this->application,
+            'Interview scheduled',
+            'An interview has been scheduled for this role.',
+            $this->interview,
+        );
 
         return new Content(
             markdown: 'mail.interview-scheduled',
@@ -39,6 +54,7 @@ class InterviewScheduledMail extends Mailable implements ShouldQueue
                 'application' => $this->application,
                 'job' => $this->application->job,
                 'interview' => $this->interview,
+                'introLine' => $copy['intro_line'],
             ],
         );
     }

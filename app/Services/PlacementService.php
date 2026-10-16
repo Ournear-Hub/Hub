@@ -6,8 +6,11 @@ use App\Enums\EmployerSubmissionStatus;
 use App\Enums\PlacementStatus;
 use App\Enums\RecruitmentActivityType;
 use App\Models\Employee;
+use App\Models\Application;
 use App\Models\EmployerSubmission;
 use App\Models\Placement;
+use App\Support\EmployerApplicationAccess;
+use App\Enums\ApplicationStatus;
 use App\Models\PlacementOffer;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -20,6 +23,55 @@ class PlacementService
         private ReplacementService $replacements,
         private AdminAlertService $alerts,
     ) {}
+
+    public function createForEmployerApplication(Application $application, User $employer, ?string $notes = null): Placement
+    {
+        return DB::transaction(function () use ($application, $employer, $notes) {
+            $application = Application::query()->lockForUpdate()->with('job.employer')->findOrFail($application->id);
+
+            if (! EmployerApplicationAccess::managesApplication($employer, $application)) {
+                throw ValidationException::withMessages([
+                    'application' => 'You cannot open a placement for this application.',
+                ]);
+            }
+
+            if ($application->status !== ApplicationStatus::Selected) {
+                throw ValidationException::withMessages([
+                    'status' => 'Select the candidate before opening a placement.',
+                ]);
+            }
+
+            if ($application->placements()->exists()) {
+                throw ValidationException::withMessages([
+                    'placement' => 'A placement already exists for this application.',
+                ]);
+            }
+
+            $job = $application->job;
+            abort_unless($job !== null, 422);
+
+            $placement = Placement::query()->create([
+                'employer_submission_id' => null,
+                'employer_profile_id' => $job->employer_id,
+                'job_id' => $job->id,
+                'application_id' => $application->id,
+                'status' => PlacementStatus::Open,
+                'notes' => $notes,
+                'created_by' => $employer->id,
+            ]);
+
+            $this->record(
+                $employer,
+                RecruitmentActivityType::PlacementCreated,
+                $placement,
+                'Employer opened placement for direct ATS hire.',
+                null,
+                PlacementStatus::Open->value,
+            );
+
+            return $placement->fresh() ?? $placement;
+        });
+    }
 
     public function createFromSubmission(EmployerSubmission $submission, User $actor, ?string $notes = null): Placement
     {

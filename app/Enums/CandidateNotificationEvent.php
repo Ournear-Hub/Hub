@@ -13,6 +13,7 @@ enum CandidateNotificationEvent: string
     case InterviewRescheduled = 'interview_rescheduled';
     case InterviewCancelled = 'interview_cancelled';
     case InterviewReminder = 'interview_reminder';
+    case ApplicationMessageReceived = 'application_message_received';
     case ProfileIncomplete = 'profile_incomplete';
 
     public function label(): string
@@ -27,6 +28,7 @@ enum CandidateNotificationEvent: string
             self::InterviewRescheduled => 'Interview rescheduled',
             self::InterviewCancelled => 'Interview cancelled',
             self::InterviewReminder => 'Interview reminder',
+            self::ApplicationMessageReceived => 'Application message',
             self::ProfileIncomplete => 'Complete your profile',
         };
     }

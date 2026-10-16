@@ -6,15 +6,15 @@ import Pagination from '@/Components/Pagination';
 import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     SearchBar,
     Select,
     StatusBadge,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { AdminAlertItem } from '@/types/communication';

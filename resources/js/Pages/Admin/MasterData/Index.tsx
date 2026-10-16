@@ -7,9 +7,7 @@ import {
     ActivityFeed,
     Button,
     ConfirmDialog,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Label,
     SearchBar,
@@ -18,7 +16,10 @@ import {
     Tabs,
     Textarea,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
+import MasterDataExcelPanel from '@/Components/Admin/MasterDataExcelPanel';
 import type { MasterRecord, MasterWorkspaceProps } from '@/types/masterData';
 
 export default function MasterDataIndex({ tab, tabs, meta, records, filters, options }: MasterWorkspaceProps) {
@@ -217,6 +218,8 @@ export default function MasterDataIndex({ tab, tabs, meta, records, filters, opt
                     visit({ tab: id, job_category_id: '', industry_id: '' });
                 }}
             />
+
+            <MasterDataExcelPanel tab={tab} label={meta.label} />
 
             <FilterBar
                 className="mt-4 md:grid-cols-5"

@@ -43,35 +43,34 @@ class CorrectionPassTest extends TestCase
 
         $cardSource = file_get_contents(resource_path('js/Components/Public/JobCard.tsx'));
         $this->assertIsString($cardSource);
-        $this->assertStringContainsString('Posted:', $cardSource);
-        $this->assertStringNotContainsString('Closing:', $cardSource);
+        $this->assertStringContainsString('Posted', $cardSource);
         $this->assertStringNotContainsString('Posted on', $cardSource);
 
         $this->get(route('jobs.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Jobs/Index')
-                ->where('selected', null)
                 ->where('jobs.data.0.slug', $job->slug)
                 ->where('jobs.data.0.posted_label', '1 day ago')
                 ->where('jobs.data.0.closing_label', '19 days left')
                 ->where('jobs.data.0.apply_state', 'guest')
                 ->where('jobs.data.0.is_saved', false));
 
-        $this->get(route('jobs.index', ['job' => $job->slug]))
+        $this->get(route('jobs.show', $job))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('selected.slug', $job->slug)
-                ->where('selected.title', 'Site Supervisor')
-                ->where('selected.project', 'North Works')
-                ->where('selected.location', 'Manchester')
-                ->where('selected.employment_type', 'Full-time')
-                ->where('selected.experience', '3-5 years')
-                ->where('selected.salary', '£32,000')
-                ->where('selected.description', 'Lead site teams.')
-                ->where('selected.responsibilities', 'Supervise daily works.')
-                ->where('selected.requirements', 'CSCS and experience.')
-                ->where('selected.apply_state', 'guest'));
+                ->where('job.slug', $job->slug)
+                ->where('job.title', 'Site Supervisor')
+                ->where('job.project', 'North Works')
+                ->where('job.location', 'Manchester')
+                ->where('job.employment_type', 'Full-time')
+                ->where('job.experience', '3-5 years')
+                ->where('job.salary', '£32,000')
+                ->where('job.description', 'Lead site teams.')
+                ->where('job.responsibilities', 'Supervise daily works.')
+                ->where('job.requirements', 'CSCS and experience.')
+                ->where('job.apply_state', 'guest')
+                ->has('job.company_profile'));
     }
 
     public function test_guest_save_and_apply_redirect_to_login_without_creating_records(): void
@@ -107,13 +106,18 @@ class CorrectionPassTest extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->get(route('jobs.index', ['job' => $job->slug]))
+            ->get(route('jobs.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('jobs.data.0.is_saved', true)
-                ->where('selected.is_saved', true)
-                ->where('jobs.data.0.apply_state', 'apply')
-                ->where('selected.apply_state', 'apply'));
+                ->where('jobs.data.0.apply_state', 'apply'));
+
+        $this->actingAs($candidate)
+            ->get(route('jobs.show', $job))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('job.is_saved', true)
+                ->where('job.apply_state', 'apply'));
 
         $this->actingAs($candidate)->delete(route('account.saved-jobs.destroy', $job))->assertRedirect();
         $this->assertSame(0, SavedJob::query()->count());
@@ -294,8 +298,8 @@ class CorrectionPassTest extends TestCase
         $this->assertStringContainsString("MOBILE_MENU_ID = 'public-mobile-nav'", $header);
         $this->assertStringContainsString('aria-controls={MOBILE_MENU_ID}', $header);
         $this->assertStringContainsString('hidden text-ink hover:text-brand lg:inline-flex', $header);
-        $this->assertStringContainsString('hidden bg-brand text-white hover:bg-brand/90 lg:inline-flex', $header);
-        $this->assertStringContainsString('flex shrink-0 items-center gap-2', $header);
+        $this->assertStringContainsString('hidden border border-line text-ink hover:bg-surface lg:inline-flex', $header);
+        $this->assertStringContainsString('flex items-center gap-2', $header);
         $this->assertStringNotContainsString('Find Jobs', $header);
         $this->assertStringNotContainsString("Button href=\"/jobs\"", $header);
 
@@ -307,17 +311,23 @@ class CorrectionPassTest extends TestCase
     public function test_public_header_uses_existing_profile_menu_with_role_scoped_links(): void
     {
         $header = file_get_contents(resource_path('js/Components/Public/Header.tsx'));
+        $personalMenu = file_get_contents(resource_path('js/Components/Account/PersonalAccountMenu.tsx'));
+        $nav = file_get_contents(app_path('Support/PublicHeaderAccountNav.php'));
 
         $this->assertIsString($header);
         $this->assertStringContainsString('user.photo_url', $header);
-        $this->assertStringContainsString('initials(user)', $header);
-        $this->assertStringContainsString('aria-label="Account menu"', $header);
-        $this->assertStringContainsString('props.candidateNav', $header);
-        $this->assertStringContainsString("href: '/account/enquiries'", $header);
-        $this->assertStringContainsString("user?.role === 'admin'", $header);
-        $this->assertStringContainsString("{ href: '/admin', label: 'Admin Panel' }", $header);
-        $this->assertStringContainsString('href="/logout"', $header);
-        $this->assertStringContainsString("window.addEventListener('mousedown', closeOutside)", $header);
+        $this->assertStringContainsString('PersonalAccountMenu', $header);
+        $this->assertStringContainsString('props.headerAccountNav', $header);
+        $this->assertStringContainsString("router.post('/logout')", $header);
+
+        $this->assertIsString($personalMenu);
+        $this->assertStringContainsString('initials(user)', $personalMenu);
+        $this->assertStringContainsString('aria-label="Personal account menu"', $personalMenu);
+        $this->assertStringContainsString("document.addEventListener('mousedown', closeOutside)", $personalMenu);
+
+        $this->assertIsString($nav);
+        $this->assertStringContainsString("'/account/enquiries'", $nav);
+        $this->assertStringContainsString("'Admin Panel'", $nav);
     }
 
     public function test_freelancer_partnership_stays_public_and_admin_protected(): void
@@ -359,13 +369,14 @@ class CorrectionPassTest extends TestCase
                 ->where('freelancer.status', FreelancerStatus::New->value));
     }
 
-    public function test_candidate_nav_exposes_notifications_with_working_backend(): void
+    public function test_candidate_notifications_use_workspace_bell_not_sidebar_duplicate(): void
     {
         $labels = array_column(CandidateAccountNav::items(), 'label');
         $this->assertSame(array_column(CandidateAccountNav::items(), 'label'), $labels);
-        $this->assertContains('Notifications', $labels);
+        $this->assertNotContains('Notifications', $labels);
         $this->assertContains('My Resume', $labels);
         $this->assertContains('Hire Resume', $labels);
+        $this->assertSame('Contact Us', $labels[array_key_last($labels)]);
 
         $candidate = $this->makeCandidate();
         $this->applyAsCandidate($candidate, Job::factory()->create());
@@ -375,7 +386,7 @@ class CorrectionPassTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->where('candidateNav', CandidateAccountNav::items())
-                ->where('candidateNav', fn ($items) => collect($items)->pluck('label')->contains('Notifications')));
+                ->has('accountAlerts.unread'));
 
         $this->assertTrue(Route::has('account.notifications.index'));
         $this->assertTrue(class_exists(CandidateLifecycleNotification::class));

@@ -7,9 +7,11 @@ use App\Enums\UserActivityType;
 use App\Models\Job;
 use App\Models\SavedJob;
 use App\Models\User;
+use App\Support\JobApplicationEligibility;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Validation\ValidationException;
 
 class SavedJobService
 {
@@ -29,6 +31,12 @@ class SavedJobService
         }
 
         abort_unless($job->isPubliclyVisible(), 404);
+
+        if (JobApplicationEligibility::candidateOwnsJobCompany($user, $job)) {
+            throw ValidationException::withMessages([
+                'job' => 'You cannot save a job posted by your own company.',
+            ]);
+        }
 
         try {
             $saved = SavedJob::query()->create([
@@ -105,7 +113,14 @@ class SavedJobService
 
         $query = SavedJob::query()
             ->where('user_id', $user->id)
-            ->with('job')
+            ->with([
+                'job.employer.user',
+                'job.classifiedIndustry',
+                'job.classifiedCategory',
+                'job.classifiedLocation',
+                'job.classifiedEmploymentType',
+                'job.classifiedExperienceRange',
+            ])
             ->latest('created_at');
 
         if ($status === 'open') {
@@ -128,7 +143,23 @@ class SavedJobService
         return $query
             ->paginate(10)
             ->withQueryString()
-            ->through(fn (SavedJob $saved) => $saved->toAccountArray());
+            ->through(function (SavedJob $saved) use ($user) {
+                $job = $saved->job;
+                if (! $job instanceof Job) {
+                    return $saved->toAccountArray();
+                }
+
+                $card = app(PublicJobStateService::class)->decorate($job, $user);
+
+                return [
+                    ...$card,
+                    'saved_at' => $saved->created_at?->toDateTimeString(),
+                    'can_view' => $job->isPubliclyVisible(),
+                    'status_label' => $job->isPubliclyVisible()
+                        ? 'Open'
+                        : ($job->isClosed() ? 'Closed' : 'Unavailable'),
+                ];
+            });
     }
 
     private function assertCandidate(User $user): void

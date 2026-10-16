@@ -1,3 +1,5 @@
+import Card from '@/Components/atoms/Card';
+
 type ContactCardProps = {
     label: string;
     value: string;
@@ -6,7 +8,7 @@ type ContactCardProps = {
 
 export default function ContactCard({ label, value, href }: ContactCardProps) {
     return (
-        <article className="rounded-xl border border-line bg-white p-5">
+        <Card as="article" padding="standard">
             <h3 className="text-sm font-semibold text-ink">{label}</h3>
             {href ? (
                 <a href={href} className="mt-2 block text-sm text-brand hover:underline" target="_blank" rel="noreferrer">
@@ -15,6 +17,6 @@ export default function ContactCard({ label, value, href }: ContactCardProps) {
             ) : (
                 <p className="mt-2 text-sm text-muted">{value}</p>
             )}
-        </article>
+        </Card>
     );
 }

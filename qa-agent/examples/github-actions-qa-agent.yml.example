@@ -1,0 +1,41 @@
+# Supplemental example for local/smoke with a running app — NOT committed as the default workflow.
+# The repository uses .github/workflows/qa-agent-checks.yml for safe PR checks (no staging, no secrets).
+# Copy this file only when you have a dedicated local/staging runner and credentials in GitHub Secrets.
+name: QA Agent smoke (manual / self-hosted)
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  qa-agent-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install QA agent
+        working-directory: qa-agent
+        run: |
+          python -m pip install -e ".[dev]"
+          playwright install chromium
+
+      - name: Run smoke suite (requires local app in real pipeline)
+        working-directory: qa-agent
+        env:
+          OURNEAR_ALLOW_RUN: local
+          OURNEAR_BASE_URL: http://127.0.0.1:8000
+        run: |
+          ournear-qa run --suite smoke || true
+          ournear-qa report --html --json --ci-exit
+
+      - name: Upload QA report artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qa-agent-reports
+          path: qa-agent/artifacts/reports/

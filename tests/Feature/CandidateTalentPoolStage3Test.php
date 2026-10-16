@@ -62,6 +62,58 @@ class CandidateTalentPoolStage3Test extends TestCase
         $this->assertFalse(in_array('certifications', array_column($candidate->fresh()->profileCompletionItems(), 'key'), true));
     }
 
+    public function test_candidate_language_crud_persists_on_profile_and_redirects_to_languages_hash(): void
+    {
+        $candidate = $this->makeCandidate();
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+
+        $this->actingAs($candidate)
+            ->post(route('account.profile.languages.store'), [
+                'name' => 'Tamil',
+                'proficiency' => LanguageProficiency::Conversational->value,
+            ])
+            ->assertRedirect(route('account.profile.edit').'#languages');
+
+        $language = $profile->languages()->where('name', 'Tamil')->first();
+        $this->assertInstanceOf(CandidateLanguage::class, $language);
+
+        $this->actingAs($candidate)
+            ->get(route('account.profile.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.professional.languages.0.name', 'Tamil')
+                ->where('profile.professional.languages.0.proficiency_label', LanguageProficiency::Conversational->label()));
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.languages.update', $language), [
+                'name' => 'Tamil',
+                'proficiency' => LanguageProficiency::Native->value,
+            ])
+            ->assertRedirect(route('account.profile.edit').'#languages');
+
+        $this->actingAs($this->makeCandidate(['email' => 'other-lang@example.com']))
+            ->put(route('account.profile.languages.update', $language), [
+                'name' => 'Hacked',
+                'proficiency' => LanguageProficiency::Basic->value,
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($candidate)
+            ->get(route('account.profile.edit'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.professional.languages.0.proficiency_label', LanguageProficiency::Native->label()));
+
+        $this->actingAs($candidate)
+            ->delete(route('account.profile.languages.destroy', $language))
+            ->assertRedirect(route('account.profile.edit').'#languages');
+
+        $this->assertFalse($profile->fresh()->languages()->where('name', 'Tamil')->exists());
+        $this->actingAs($candidate)
+            ->get(route('account.profile.edit'))
+            ->assertInertia(fn (Assert $page) => $page->where('profile.professional.languages', []));
+    }
+
     public function test_public_profile_honors_share_flags_and_never_exposes_files(): void
     {
         $candidate = $this->makeCandidate([
@@ -78,6 +130,7 @@ class CandidateTalentPoolStage3Test extends TestCase
             'current_salary' => '50000.00',
         ]);
         $this->giveCandidateResume($candidate);
+        $this->forgetAuthentication();
         $profile->certifications()->create(['name' => 'IOSH', 'issuer' => 'IOSH']);
         $profile->languages()->create([
             'name' => 'Hindi',
@@ -129,6 +182,11 @@ class CandidateTalentPoolStage3Test extends TestCase
             ->put(route('account.profile.privacy.update'), ['enabled' => false])
             ->assertRedirect();
 
+        $this->actingAs($candidate)
+            ->get(route('profiles.show', ['user' => $candidate->username]))
+            ->assertOk();
+
+        $this->forgetAuthentication();
         $this->get(route('profiles.show', ['user' => $candidate->username]))->assertNotFound();
     }
 

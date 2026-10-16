@@ -4,15 +4,16 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     SearchBar,
     Select,
     StatusBadge,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { AdminInterview, LabeledOption, ScorecardTemplateOption, StaffUserOption } from '@/types/applications';
 import type { Paginator } from '@/types/jobs';
 
@@ -108,17 +109,18 @@ export default function InterviewsIndex({
     ];
 
     return (
-        <AdminLayout title="Interviews">
+        <AdminLayout title="Interviews" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Interviews' }]}>
             <div className="space-y-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                        <h1 className="text-2xl font-semibold tracking-tight text-ink">Interviews</h1>
-                        <p className="mt-1 text-sm text-muted">All application interviews. Scores never change hiring status.</p>
-                    </div>
-                    <Link href="/admin/scorecard-templates" className="text-sm font-medium text-brand">
-                        Scorecard templates
-                    </Link>
-                </div>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Application interview schedule"
+                    description="All application interviews. Scores never change hiring status."
+                    actions={
+                        <Link href="/admin/scorecard-templates" className="text-sm font-medium text-brand">
+                            Scorecard templates
+                        </Link>
+                    }
+                />
 
                 <FilterBar onSubmit={filter}>
                     <SearchBar name="search" defaultValue={filters.search} placeholder="Search candidate or application ID" />

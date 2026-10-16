@@ -1,11 +1,12 @@
 import type { FormEvent } from 'react';
 import { Link, router, usePage } from '@inertiajs/react';
 import AdminLayout from '@/Layouts/AdminLayout';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import UiCard from '@/Components/UI/Card';
 import type { SharedPageProps } from '@/types/page';
 import StatCard from '@/Components/Admin/StatCard';
-import { Card, EmptyState, FilterBar, Label, Select } from '@/Components/Admin/ui';
+import { Card, EmptyState, Label, Select } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
 import type {
     HiringAttentionGroup,
     HiringCommandCenterProps,
@@ -265,7 +266,7 @@ export default function CommandCenter({
                                     </li>
                                 ))}
                             </ul>
-                            <Button href={primaryQueue.href} variant="primary" className="mt-4 min-h-11 w-full sm:w-auto">
+                            <Button surface="admin" href={primaryQueue.href} variant="primary" className="mt-4 min-h-11 w-full sm:w-auto">
                                 Open workspace
                             </Button>
                         </>
@@ -276,7 +277,7 @@ export default function CommandCenter({
                             </h2>
                             <p className="mt-2 text-sm text-muted">No urgent queues need attention for this filter.</p>
                             {permissions.jobs ? (
-                                <Button href={links.jobs} variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
+                                <Button surface="admin" href={links.jobs} variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
                                     View jobs
                                 </Button>
                             ) : null}

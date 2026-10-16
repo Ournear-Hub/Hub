@@ -56,6 +56,6 @@ class EmployerAccountTest extends TestCase
 
         $this->actingAs($candidate)
             ->get(route('account.enquiries.index'))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/enquiries']));
     }
 }

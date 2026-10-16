@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\UserActivityType;
 use App\Models\User;
 use App\Notifications\AccountEmailChangeVerificationNotification;
+use App\Support\ApplicationUrlResolver;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -91,6 +92,8 @@ class AccountEmailChangeService
         if ($pending === '') {
             return;
         }
+
+        app(ApplicationUrlResolver::class)->applyForUrlGeneration();
 
         $url = URL::temporarySignedRoute(
             'account.settings.email.verify-change',

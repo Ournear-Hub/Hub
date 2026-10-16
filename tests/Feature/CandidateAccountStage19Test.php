@@ -11,15 +11,14 @@ class CandidateAccountStage19Test extends TestCase
 {
     public function test_registration_requires_terms_acceptance(): void
     {
-        $payload = [
+        $this->withoutMiddleware('throttle:account-register');
+
+        $payload = $this->registrationPayload([
             'name' => 'Terms Candidate',
             'username' => 'termsstage19',
             'email' => 'terms.stage19@example.com',
-            'password' => 'Password1!',
-            'password_confirmation' => 'Password1!',
-            'role' => 'candidate',
             'accept_terms' => false,
-        ];
+        ]);
 
         $this->from(route('register'))
             ->post(route('register.store'), $payload)
@@ -27,18 +26,25 @@ class CandidateAccountStage19Test extends TestCase
 
         $payload['accept_terms'] = true;
 
-        $this->post(route('register.store'), $payload)->assertRedirect();
+        $this->from(route('register'))
+            ->post(route('register.store'), $payload)
+            ->assertRedirect(route('login'))
+            ->assertSessionHas('registered_email', 'terms.stage19@example.com');
         $this->assertDatabaseHas('users', ['email' => 'terms.stage19@example.com']);
     }
 
     public function test_candidate_nav_is_grouped_without_public_talent_pool_link(): void
     {
         $candidate = $this->makeCandidate();
-        $labels = array_column(CandidateAccountNav::items($candidate), 'label');
+        $labels = array_column(CandidateAccountNav::items(), 'label');
 
-        $this->assertContains('Profile', $labels);
+        $this->assertContains('Personal Profile', $labels);
+        $this->assertContains('My Applications', $labels);
+        $this->assertNotContains('Notifications', $labels);
         $this->assertContains('Hire Resume', $labels);
         $this->assertContains('My Resume', $labels);
+        $this->assertContains('Contact Us', $labels);
+        $this->assertNotContains('Help & Support', $labels);
         $this->assertNotContains('Talent Pool', $labels);
 
         $this->actingAs($candidate)

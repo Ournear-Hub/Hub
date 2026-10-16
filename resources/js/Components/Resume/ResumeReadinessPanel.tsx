@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import Alert from '@/Components/UI/Alert';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import type { AccountCompletionItem } from '@/types/account';
 import { incompleteResumeItems, isHireResumeReady, profileHrefForCompletionKey } from '@/Components/Resume/resumeReadiness';
 
@@ -40,7 +40,7 @@ export default function ResumeReadinessPanel({ items, completion, className = ''
                     </li>
                 ))}
             </ul>
-            <Button href="/account/profile" variant="secondary" className="mt-4 min-h-11">
+            <Button surface="public" href="/account/profile" variant="secondary" className="mt-4 min-h-11">
                 Complete profile
             </Button>
         </section>

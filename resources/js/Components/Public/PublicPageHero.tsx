@@ -11,14 +11,18 @@ type Props = {
     breadcrumbs?: BreadcrumbItem[];
     /** Brand teal band (default) or light canvas */
     tone?: 'brand' | 'canvas';
+    /** Tighter vertical rhythm for service pages */
+    compact?: boolean;
 };
 
-export default function PublicPageHero({ eyebrow, title, description, actions, breadcrumbs, tone = 'brand' }: Props) {
+export default function PublicPageHero({ eyebrow, title, description, actions, breadcrumbs, tone = 'brand', compact = false }: Props) {
     const isBrand = tone === 'brand';
+    const pad = compact ? 'py-5 sm:py-6' : 'py-8 sm:py-10';
+    const titleClass = compact ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl';
 
     return (
         <section className={`border-b border-line ${isBrand ? 'bg-brand text-white' : 'bg-canvas text-ink'}`}>
-            <PageContainer className="min-w-0 py-8 sm:py-10">
+            <PageContainer className={`min-w-0 ${pad}`}>
                 {breadcrumbs ? (
                     <div
                         className={
@@ -36,16 +40,16 @@ export default function PublicPageHero({ eyebrow, title, description, actions, b
                     </p>
                 ) : null}
                 <h1
-                    className={`mt-2 text-3xl font-semibold tracking-tight sm:text-4xl ${isBrand ? 'text-white' : typography.pageTitle}`}
+                    className={`mt-2 font-semibold tracking-tight ${titleClass} ${isBrand ? 'text-white' : typography.pageTitle}`}
                 >
                     {title}
                 </h1>
                 {description ? (
-                    <p className={`mt-3 max-w-2xl text-sm leading-relaxed sm:text-base ${isBrand ? 'text-white/85' : typography.secondary}`}>
+                    <p className={`mt-2 max-w-2xl text-sm leading-snug ${isBrand ? 'text-white/85' : typography.secondary}`}>
                         {description}
                     </p>
                 ) : null}
-                {actions ? <div className="mt-6 flex flex-wrap gap-3">{actions}</div> : null}
+                {actions ? <div className={`flex flex-wrap gap-3 ${compact ? 'mt-4' : 'mt-6'}`}>{actions}</div> : null}
             </PageContainer>
         </section>
     );

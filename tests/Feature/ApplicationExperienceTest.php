@@ -73,6 +73,13 @@ class ApplicationExperienceTest extends TestCase
             ->assertSessionHasErrors('job');
 
         $this->assertSame(1, Application::query()->where('email', 'v13c.repeat@example.com')->count());
+        $this->assertSame(
+            1,
+            $candidate->notifications()
+                ->where('type', CandidateLifecycleNotification::class)
+                ->where('data->event', CandidateNotificationEvent::ApplicationReceived->value)
+                ->count()
+        );
     }
 
     public function test_candidate_can_apply_with_a_library_resume_without_merging_the_snapshot(): void
@@ -135,6 +142,8 @@ class ApplicationExperienceTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Applications')
+                ->where('summary.total', 1)
+                ->where('summary.in_progress', 1)
                 ->has('applications.data', 1)
                 ->where('applications.data.0.id', $application->id)
                 ->where('applications.data.0.business_id', $application->business_id)

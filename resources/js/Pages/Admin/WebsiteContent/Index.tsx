@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import CmsEditor from '@/Pages/Admin/WebsiteContent/CmsEditor';
+import ShowcasePanel from '@/Pages/Admin/WebsiteContent/ShowcasePanel';
 import type { CmsPage } from '@/types/cms';
 import type { Paginator } from '@/types/jobs';
 import type { MediaOption } from '@/types/media';
@@ -54,6 +55,28 @@ type Props = {
     statuses: string[];
     mediaOptions: MediaOption[];
     can_create_lead?: boolean;
+    showcaseStatistics?: {
+        registered_companies: number;
+        talent_pool_companies: number;
+        staffing_companies: number;
+        registered_users: number;
+    } | null;
+    showcaseCompanies?: {
+        id: number;
+        name: string;
+        is_active: boolean;
+        sort_order: number;
+        show_on_home: boolean;
+        show_on_talent_pool: boolean;
+        show_on_staffing: boolean;
+        media_asset_id: number | null;
+        logo_url: string | null;
+        logo_filename: string | null;
+        employer_profile_id?: number | null;
+    }[];
+    showcaseEmployerOptions?: { id: number; name: string }[];
+    showcaseSurface?: 'home' | 'talent_pool' | 'staffing' | null;
+    showcaseTablesReady?: boolean;
 };
 
 const inputClass =
@@ -71,7 +94,13 @@ export default function WebsiteContentIndex({
     statuses,
     mediaOptions = [],
     can_create_lead = false,
+    showcaseStatistics = null,
+    showcaseCompanies = [],
+    showcaseEmployerOptions = [],
+    showcaseSurface = null,
+    showcaseTablesReady = true,
 }: Props) {
+    const isShowcasePage = activePage.startsWith('showcase-');
     const noteForm = useForm({ note: '' });
 
     const openTab = (slug: string) => {
@@ -148,12 +177,25 @@ export default function WebsiteContentIndex({
             </div>
 
             <div className="mt-6">
-                <CmsEditor
-                    key={`${cmsPage.slug}-${contentVersion ?? ''}`}
-                    cmsPage={cmsPage}
-                    activeSection={activeSection}
-                    mediaOptions={mediaOptions}
-                />
+                {isShowcasePage ? (
+                    <ShowcasePanel
+                        mode={activePage === 'showcase-statistics' ? 'statistics' : 'companies'}
+                        statistics={showcaseStatistics}
+                        companies={showcaseCompanies}
+                        employerOptions={showcaseEmployerOptions}
+                        showcaseSurface={showcaseSurface}
+                        mediaOptions={mediaOptions}
+                        activePage={activePage}
+                        tablesReady={showcaseTablesReady}
+                    />
+                ) : (
+                    <CmsEditor
+                        key={`${cmsPage.slug}-${contentVersion ?? ''}`}
+                        cmsPage={cmsPage}
+                        activeSection={activeSection}
+                        mediaOptions={mediaOptions}
+                    />
+                )}
             </div>
 
             {activePage === 'contact' ? (

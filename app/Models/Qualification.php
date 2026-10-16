@@ -50,4 +50,32 @@ class Qualification extends Model
     {
         return $this->is_active;
     }
+
+    public static function displayName(string $name): string
+    {
+        return trim(preg_replace('/\s+/', ' ', $name) ?? '');
+    }
+
+    public static function findOrCreateFromName(string $name): self
+    {
+        $display = static::displayName($name);
+        if ($display === '') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'qualification' => 'Enter a qualification name.',
+            ]);
+        }
+
+        $existing = static::findByName($display);
+        if ($existing instanceof self) {
+            return $existing;
+        }
+
+        $maxSort = (int) static::query()->max('sort_order');
+
+        return static::query()->create([
+            'name' => $display,
+            'is_active' => true,
+            'sort_order' => $maxSort + 1,
+        ]);
+    }
 }

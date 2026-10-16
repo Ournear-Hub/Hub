@@ -65,7 +65,9 @@ class AccountCandidateProfessionalTest extends TestCase
         $this->assertSame('55000.00', $profile->expected_salary);
         $this->assertSame(NoticePeriod::Days30, $profile->notice_period);
         $this->assertSame('5 years on site', $profile->experience);
-        $this->assertSame('B.Tech', $profile->qualification);
+        $expectedQualification = $qualification?->name ?? 'B.Tech';
+        $this->assertSame($expectedQualification, $profile->qualification);
+        $this->assertSame($qualification?->id, $profile->qualification_id);
         $this->assertSame($range?->id, $profile->experience_range_id);
         $this->assertSame('9000000001', $profile->mobile);
         $this->assertSame('Hyderabad', $profile->location);
@@ -300,6 +302,121 @@ class AccountCandidateProfessionalTest extends TestCase
         $this->assertSame($owner->candidateProfile?->id, $history->candidate_profile_id);
     }
 
+    public function test_professional_only_update_does_not_clear_existing_preferences(): void
+    {
+        $candidate = $this->makeCandidate(['username' => 'pro-partial-pref']);
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+        $hyderabad = Location::query()->firstOrCreate(
+            ['name' => 'Hyderabad'],
+            ['is_active' => true, 'sort_order' => 1],
+        );
+        $profile->update([
+            'current_designation' => 'Foreman',
+            'employment_preference' => 'Site roles only',
+            'willing_to_relocate' => true,
+            'availability' => '30 days',
+        ]);
+        $profile->preferredLocations()->sync([$hyderabad->id]);
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.professional.update'), [
+                'current_designation' => 'Senior Foreman',
+                'current_company' => 'North Build',
+            ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $profile->refresh();
+        $this->assertSame('Senior Foreman', $profile->current_designation);
+        $this->assertSame('North Build', $profile->current_company);
+        $this->assertSame('Site roles only', $profile->employment_preference);
+        $this->assertTrue($profile->willing_to_relocate);
+        $this->assertSame('30 days', $profile->availability);
+        $this->assertEqualsCanonicalizing([$hyderabad->id], $profile->preferredLocations()->pluck('locations.id')->all());
+    }
+
+    public function test_preferences_only_update_does_not_clear_existing_professional_fields(): void
+    {
+        $candidate = $this->makeCandidate(['username' => 'pref-partial']);
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+        $profile->update([
+            'current_designation' => 'Site Engineer',
+            'current_company' => 'Build Co',
+        ]);
+
+        $hyderabad = Location::query()->firstOrCreate(
+            ['name' => 'Hyderabad'],
+            ['is_active' => true, 'sort_order' => 1],
+        );
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.professional.update'), [
+                'preferred_location_ids' => [$hyderabad->id],
+                'employment_preference' => 'Open to site work',
+                'willing_to_relocate' => true,
+                'availability' => 'Immediate',
+            ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $profile->refresh();
+        $this->assertSame('Site Engineer', $profile->current_designation);
+        $this->assertSame('Build Co', $profile->current_company);
+        $this->assertSame('Open to site work', $profile->employment_preference);
+        $this->assertTrue($profile->willing_to_relocate);
+        $this->assertEqualsCanonicalizing([$hyderabad->id], $profile->preferredLocations()->pluck('locations.id')->all());
+
+        $this->actingAs($candidate)
+            ->get(route('account.profile.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.professional.current_designation', 'Site Engineer')
+                ->where('profile.professional.employment_preference', 'Open to site work')
+                ->where('profile.professional.willing_to_relocate', true));
+    }
+
+    public function test_legacy_full_form_empty_strings_clear_unsubmitted_professional_fields(): void
+    {
+        $candidate = $this->makeCandidate(['username' => 'pref-legacy-payload']);
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+        $profile->update(['current_designation' => 'Planner']);
+
+        $hyderabad = Location::query()->firstOrCreate(
+            ['name' => 'Hyderabad'],
+            ['is_active' => true, 'sort_order' => 1],
+        );
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.professional.update'), [
+                'current_designation' => '',
+                'current_company' => '',
+                'industry_id' => '',
+                'job_category_id' => '',
+                'experience' => '',
+                'experience_range_id' => '',
+                'qualification' => '',
+                'qualification_id' => '',
+                'current_salary' => '',
+                'expected_salary' => '',
+                'notice_period' => '',
+                'preferred_location_ids' => [$hyderabad->id],
+                'preferred_employment_type_ids' => [],
+                'employment_preference' => 'Night shift OK',
+                'willing_to_relocate' => false,
+                'availability' => '',
+            ])
+            ->assertRedirect();
+
+        $profile->refresh();
+        $this->assertSame('Night shift OK', $profile->employment_preference);
+        $this->assertEqualsCanonicalizing([$hyderabad->id], $profile->preferredLocations()->pluck('locations.id')->all());
+        // Documents current backend behavior when empty strings are submitted for untouched professional fields.
+        $this->assertNull($profile->current_designation);
+    }
+
     public function test_candidate_can_set_and_remove_employment_preferences(): void
     {
         $candidate = $this->makeCandidate();
@@ -481,7 +598,8 @@ class AccountCandidateProfessionalTest extends TestCase
         app(\App\Services\CandidateProfessionalProfileService::class)->refreshCompletion($profile);
         $this->assertSame(42, $candidate->fresh()->profile_completion);
 
-        $profile->update(['experience' => '3-5 years']);
+        $range = ExperienceRange::query()->first();
+        $profile->update(['experience_range_id' => $range?->id]);
         app(\App\Services\CandidateProfessionalProfileService::class)->refreshCompletion($profile->fresh());
         $this->assertSame(44, $candidate->fresh()->profile_completion);
 
@@ -489,6 +607,8 @@ class AccountCandidateProfessionalTest extends TestCase
         $profile->update(['industry_id' => $industry?->id]);
         app(\App\Services\CandidateProfessionalProfileService::class)->refreshCompletion($profile->fresh());
         $this->assertSame(46, $candidate->fresh()->profile_completion);
+
+        $candidate->forceFill(['email_verified_at' => now()])->save();
 
         $this->actingAs($candidate)->post(route('account.profile.skills.store'), ['name' => 'Excel']);
         $this->assertSame(48, $candidate->fresh()->profile_completion);
@@ -525,9 +645,47 @@ class AccountCandidateProfessionalTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Profile')
                 ->has('profile.professional')
+                ->has('profile.completion_items')
                 ->has('lookups.industries')
                 ->has('lookups.notice_periods')
                 ->has('lookups.employment_types'));
+    }
+
+    public function test_professional_update_persists_on_profile_edit_and_updates_completion_items(): void
+    {
+        $candidate = $this->makeCandidate([
+            'name' => 'Persist Pro',
+            'email' => 'persist.pro@example.com',
+            'username' => 'persist-pro',
+            'email_verified_at' => null,
+            'mobile' => null,
+            'location' => null,
+            'bio' => null,
+            'photo_path' => null,
+        ]);
+
+        $candidate->forceFill(['email_verified_at' => now()])->save();
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.professional.update'), [
+                'current_designation' => 'Surveyor',
+                'current_company' => 'Site Ltd',
+            ])
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
+
+        $this->actingAs($candidate)
+            ->get(route('account.profile.edit'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.professional.current_designation', 'Surveyor')
+                ->where('profile.professional.current_company', 'Site Ltd')
+                ->where('profile.profile_completion', $candidate->fresh()->calculateProfileCompletion())
+                ->where('profile.completion_items', function ($items): bool {
+                    $map = collect($items)->keyBy('key');
+
+                    return ($map['current_role']['complete'] ?? false) === true;
+                }));
     }
 
     public function test_guest_job_application_still_works_after_professional_profile(): void

@@ -1,0 +1,149 @@
+# Stage 2 — candidate registration, profile, resume (schema v1)
+# Inventory reflects implementation as of 2026-10-10; executed via pytest tests/stage2/ --ournear-suite stage2
+
+version: 1
+stage: 2
+title: Candidate registration, profile, and resume
+module: candidate
+
+inventory:
+  registration_fields:
+    - { id: role, control: radio, options: [candidate, employer] }
+    - { id: name, control: text, required: true }
+    - { id: username, control: text, required: true, async: username_availability }
+    - { id: email, control: email, required: true }
+    - { id: mobile, control: text, optional: true }
+    - { id: password, control: password, required: true }
+    - { id: password_confirmation, control: password, required: true }
+    - { id: preferred_language, control: select }
+    - { id: accept_terms, control: checkbox, required: true }
+  login_fields:
+    - { id: login, control: text, label: "Username or Email" }
+    - { id: password, control: password }
+  profile_personal_modules:
+    - basic
+    - about
+  profile_professional_modules:
+    - professional
+    - experience
+    - education
+    - skills
+    - projects
+    - certifications
+    - languages
+    - preferences
+    - resume
+  profile_basic_fields:
+    - photo
+    - name
+    - username
+    - email_readonly
+    - mobile
+    - location
+    - preferred_language
+  profile_about_fields:
+    - professional_headline
+    - bio
+  profile_professional_fields:
+    - current_designation
+    - current_company
+    - industry_id
+    - job_category_id
+    - experience
+    - experience_range_id
+    - qualification
+    - qualification_id
+    - current_salary
+    - expected_salary
+    - notice_period
+    - employment_preference
+  profile_preference_fields:
+    - preferred_location_ids
+    - preferred_employment_type_ids
+    - willing_to_relocate
+    - availability
+  resume_surfaces:
+    - /account/resumes
+    - /account/resumes/builder
+
+cases:
+  - id: STG2-AUTH-001
+    feature_ids: [ACC-AUTH-01, CAN-01]
+    route: /login
+    summary: Valid candidate login reaches dashboard
+  - id: STG2-AUTH-002
+    feature_ids: [ACC-AUTH-01]
+    route: /login
+    summary: Invalid credentials show error without session
+  - id: STG2-AUTH-003
+    feature_ids: [ACC-AUTH-01]
+    route: /account
+    summary: Log out ends session; guest cannot access account
+  - id: STG2-AUTH-004
+    feature_ids: [ACC-AUTH-01]
+    route: /register
+    summary: Empty register submit shows validation errors
+  - id: STG2-AUTH-005
+    feature_ids: [ACC-AUTH-01]
+    route: /register
+    summary: Duplicate email rejected on register
+  - id: STG2-AUTH-006
+    feature_ids: [ACC-AUTH-01]
+    route: /register
+    summary: Controlled unique registration succeeds (synthetic email)
+  - id: STG2-AUTH-007
+    feature_ids: [X-01]
+    route: /account
+    summary: Guest redirected from /account to login
+  - id: STG2-PRO-001
+    feature_ids: [CAN-02, CAN-03]
+    route: /account/profile#about
+    summary: Bio save persists after hard reload
+  - id: STG2-PRO-002
+    feature_ids: [CAN-02, CAN-03]
+    route: /account/profile#about
+    summary: Bio persists after logout and re-login
+  - id: STG2-PRO-003
+    feature_ids: [CAN-02, CAN-03]
+    route: /account/profile#professional
+    summary: Current designation save persists after reload
+  - id: STG2-PRO-004
+    feature_ids: [CAN-03]
+    route: /account/profile#skills
+    summary: Add skill via UI persists after reload
+  - id: STG2-PRO-005
+    feature_ids: [CAN-02]
+    route: /account/profile
+    summary: Profile completion modules visible on hub
+  - id: STG2-PRO-006
+    feature_ids: [CAN-10]
+    route: /account/profile#privacy
+    summary: Privacy section reachable (public share controls present)
+  - id: STG2-DASH-001
+    feature_ids: [CAN-01, CAN-02]
+    route: /account
+    summary: Completion % does not regress after profile saves
+  - id: STG2-DASH-002
+    feature_ids: [CAN-01]
+    route: /account
+    summary: Next-action link targets profile when incomplete
+  - id: STG2-RES-001
+    feature_ids: [CAN-04]
+    route: /account/resumes
+    summary: Resume hub shows fixture library resume
+  - id: STG2-RES-002
+    feature_ids: [CAN-05]
+    route: /account/resumes/builder
+    summary: Hire resume builder loads
+  - id: STG2-RES-003
+    feature_ids: [CAN-04]
+    route: /account/resumes
+    summary: Resume hub survives hard reload
+  - id: STG2-MOB-001
+    feature_ids: [CAN-02]
+    route: /account/profile#about
+    summary: Bio edit on mobile 390×844
+  - id: STG2-MOB-002
+    feature_ids: [CAN-01]
+    route: /account
+    summary: Candidate dashboard usable on mobile

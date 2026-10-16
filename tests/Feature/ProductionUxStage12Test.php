@@ -79,7 +79,7 @@ class ProductionUxStage12Test extends TestCase
                 ->component('Profiles/Show')
                 ->where('profile.name', 'Public Stage Candidate')
                 ->where('profile.username', 'public-stage-candidate')
-                ->where('profile.business_id', $candidate->business_id)
+                ->missing('profile.business_id')
                 ->where('profile.designation', 'Site Engineer')
                 ->missing('profile.email')
                 ->missing('profile.mobile')
@@ -155,14 +155,18 @@ class ProductionUxStage12Test extends TestCase
             'accommodation' => 'Shared hostel',
         ]);
 
-        $this->get(route('jobs.index', ['job' => $job->slug]))
+        $this->get(route('jobs.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Jobs/Index')
                 ->where('jobs.data.0.joining_date', $job->joining_date?->toDateString())
                 ->where('jobs.data.0.site', 'North Yard')
-                ->where('jobs.data.0.accommodation', 'Shared hostel')
-                ->where('selected.joining_date', $job->joining_date?->toDateString()));
+                ->where('jobs.data.0.accommodation', 'Shared hostel'));
+
+        $this->get(route('jobs.show', $job))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('job.joining_date', $job->joining_date?->toDateString()));
     }
 
     public function test_employer_dashboard_stays_ownership_scoped_and_admin_can_open_screening(): void
@@ -191,11 +195,17 @@ class ProductionUxStage12Test extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Home')
-                ->where('dashboard.jobs_count', 1)
-                ->where('dashboard.applicants_count', 1)
-                ->where('dashboard.business_id', $owner->employerProfile?->business_id)
-                ->where('dashboard.user_business_id', $owner->business_id)
-                ->where('profile.company_business_id', $owner->employerProfile?->business_id));
+                ->where('dashboard', null));
+
+        $this->actingAs($owner)
+            ->get(route('account.hiring'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Account/Hiring/Dashboard')
+                ->where('workspace.jobs_count', 1)
+                ->where('workspace.applicants_count', 1)
+                ->where('workspace.business_id', $owner->employerProfile?->business_id)
+                ->where('workspace.user_business_id', $owner->business_id));
 
         $this->actingAs($other)
             ->get(route('account.employer.jobs.edit', $owned))

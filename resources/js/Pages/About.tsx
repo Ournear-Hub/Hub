@@ -1,9 +1,9 @@
 import { Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import Breadcrumbs from '@/Components/Navigation/Breadcrumbs';
 import PageContainer from '@/Components/Public/PageContainer';
 import PublicPageHero from '@/Components/Public/PublicPageHero';
-import Button from '@/Components/Public/Button';
+import { Button } from '@/Components/atoms';
+import Card from '@/Components/atoms/Card';
 import { cmsSection, type CmsPage } from '@/types/cms';
 import type { SiteContent } from '@/types/public';
 
@@ -93,14 +93,19 @@ export default function About({ content, cms, industries = [] }: AboutProps) {
                             {missionVisionValues.map(({ key, label }) => {
                                 const value = extra[key]?.trim() || '';
                                 return (
-                                    <article key={key} className="rounded-2xl border border-line bg-canvas/40 p-5">
+                                    <Card
+                                        key={key}
+                                        as="article"
+                                        padding="standard"
+                                        className="rounded-2xl bg-canvas/40"
+                                    >
                                         <h3 className="text-sm font-semibold uppercase tracking-wide text-brand">
                                             {label}
                                         </h3>
                                         <p className="mt-2 text-sm text-muted">
                                             {value || 'Content not published yet.'}
                                         </p>
-                                    </article>
+                                    </Card>
                                 );
                             })}
                         </div>
@@ -112,16 +117,18 @@ export default function About({ content, cms, industries = [] }: AboutProps) {
                 <section className="py-14">
                     <PageContainer className="grid min-w-0 gap-4 md:grid-cols-3">
                         {pillarSections.map((section) => (
-                            <article
+                            <Card
                                 key={section?.key}
-                                className="flex min-w-0 flex-col rounded-2xl border border-line bg-white p-6 shadow-sm"
+                                as="article"
+                                padding="standard"
+                                className="flex min-w-0 flex-col rounded-2xl"
                             >
                                 <h2 className="text-xl font-semibold text-ink">{section?.heading}</h2>
                                 {section?.subtitle ? (
                                     <p className="mt-1 text-sm font-medium text-brand">{section.subtitle}</p>
                                 ) : null}
                                 <p className="mt-3 flex-1 text-sm text-muted">{section?.body}</p>
-                            </article>
+                            </Card>
                         ))}
                     </PageContainer>
                 </section>
@@ -164,17 +171,19 @@ export default function About({ content, cms, industries = [] }: AboutProps) {
 
             {commitment ? (
                 <section className="py-14">
-                    <PageContainer className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
-                        {commitment.image_url ? (
-                            <img src={commitment.image_url} alt="" className="h-48 w-full object-cover" />
-                        ) : null}
-                        <div className="p-8">
-                            <h2 className="text-2xl font-semibold text-ink">{commitment.heading}</h2>
-                            {commitment.subtitle ? (
-                                <p className="mt-1 text-sm font-medium text-brand">{commitment.subtitle}</p>
+                    <PageContainer>
+                        <Card padding="none" className="overflow-hidden rounded-2xl shadow-sm">
+                            {commitment.image_url ? (
+                                <img src={commitment.image_url} alt="" className="h-48 w-full object-cover" />
                             ) : null}
-                            <p className="mt-3 max-w-3xl text-muted">{commitment.body}</p>
-                        </div>
+                            <div className="p-8">
+                                <h2 className="text-2xl font-semibold text-ink">{commitment.heading}</h2>
+                                {commitment.subtitle ? (
+                                    <p className="mt-1 text-sm font-medium text-brand">{commitment.subtitle}</p>
+                                ) : null}
+                                <p className="mt-3 max-w-3xl text-muted">{commitment.body}</p>
+                            </div>
+                        </Card>
                     </PageContainer>
                 </section>
             ) : null}

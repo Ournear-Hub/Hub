@@ -33,6 +33,7 @@ use App\Models\InvestorInterest;
 use App\Models\Invoice;
 use App\Models\Job;
 use App\Models\LoginLog;
+use App\Models\MessageTemplate;
 use App\Models\Placement;
 use App\Models\Referral;
 use App\Models\ReferralLink;
@@ -75,6 +76,7 @@ use App\Policies\InvestorPolicy;
 use App\Policies\InvoicePolicy;
 use App\Policies\JobPolicy;
 use App\Policies\LoginLogPolicy;
+use App\Policies\MessageTemplatePolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\PlacementPolicy;
 use App\Policies\ReferralLinkPolicy;
@@ -89,7 +91,9 @@ use App\Policies\SecurityActivityPolicy;
 use App\Policies\TaskPolicy;
 use App\Policies\UserPolicy;
 use App\Services\AnalyticsService;
+use App\Services\MailConfigurationService;
 use App\Services\PublicSeoService;
+use App\Services\Sms\LogSmsOtpGateway;
 use App\Services\Sms\UnconfiguredSmsOtpGateway;
 use App\Services\WebsiteSettingService;
 use App\Services\WhatsApp\MetaWhatsAppCloudGateway;
@@ -101,8 +105,10 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
@@ -115,7 +121,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(SmsOtpGateway::class, UnconfiguredSmsOtpGateway::class);
+        $this->app->singleton(SmsOtpGateway::class, function ($app): SmsOtpGateway {
+            if ($app->environment('local') && config('otp.sms_driver') === 'log') {
+                return $app->make(LogSmsOtpGateway::class);
+            }
+
+            return $app->make(UnconfiguredSmsOtpGateway::class);
+        });
         $this->app->singleton(WhatsAppGateway::class, function ($app) {
             if (WhatsAppCloudConfig::isReady()) {
                 return $app->make(MetaWhatsAppCloudGateway::class);
@@ -130,6 +142,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Http::globalOptions([
+            'connect_timeout' => 5,
+            'timeout' => 10,
+        ]);
+
         if (\PHP_OS_FAMILY === 'Windows' && $this->app->runningInConsole()) {
             $_ENV['SYSTEMROOT'] ??= getenv('SYSTEMROOT') ?: ($_ENV['SystemRoot'] ?? 'C:\\Windows');
             $_ENV['PATH'] ??= getenv('PATH') ?: ($_ENV['Path'] ?? '');
@@ -152,13 +169,24 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(InvestmentOpportunity::class, InvestmentOpportunityPolicy::class);
         Gate::policy(InvestorInterest::class, InvestorInterestPolicy::class);
         Gate::policy(Campaign::class, CampaignPolicy::class);
+        Gate::policy(MessageTemplate::class, MessageTemplatePolicy::class);
         Gate::policy(RecruitmentAutomation::class, RecruitmentAutomationPolicy::class);
         Gate::policy(ReferralLink::class, ReferralLinkPolicy::class);
         Gate::policy(ShareEvent::class, ShareEventPolicy::class);
         Gate::policy(Referral::class, ReferralPolicy::class);
         Gate::policy(EmployerEnquiry::class, EmployerEnquiryPolicy::class);
+        Gate::policy(\App\Models\StaffingCandidateSubmission::class, \App\Policies\StaffingCandidateSubmissionPolicy::class);
         Gate::policy(Freelancer::class, FreelancerPolicy::class);
         Gate::policy(CandidateProfile::class, CandidateProfilePolicy::class);
+        Gate::policy(\App\Models\RecruiterTalentPoolAssignment::class, \App\Policies\RecruiterTalentPoolAssignmentPolicy::class);
+        Gate::policy(
+            \App\Models\CompanyRelationshipRecruiterAssignment::class,
+            \App\Policies\CompanyRelationshipRecruiterAssignmentPolicy::class,
+        );
+        Gate::policy(
+            \App\Models\TalentPoolCompanySubmission::class,
+            \App\Policies\TalentPoolCompanySubmissionPolicy::class,
+        );
         Gate::policy(CandidateEmploymentHistory::class, CandidateEmploymentHistoryPolicy::class);
         Gate::policy(CandidateResume::class, CandidateResumePolicy::class);
         Gate::policy(InternalCandidateResume::class, InternalCandidateResumePolicy::class);
@@ -191,6 +219,15 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for('job-applications', function (Request $request) {
+            if ($this->app->environment('testing')) {
+                return Limit::perHour(10000)->by('job-applications-testing');
+            }
+
+            $user = $request->user();
+            if ($user !== null) {
+                return Limit::perHour(8)->by('candidate-user:'.$user->getAuthIdentifier());
+            }
+
             return [
                 Limit::perHour(8)->by(strtolower((string) $request->input('email')).'|'.$request->ip()),
                 Limit::perHour(20)->by('ip:'.$request->ip()),
@@ -316,9 +353,14 @@ class AppServiceProvider extends ServiceProvider
             $view->with('publicBranding', app(WebsiteSettingService::class)->publicBranding());
         });
 
-        app(WebsiteSettingService::class)->applyRuntimeMailIdentity();
+        Event::listen(JobProcessing::class, function (JobProcessing $event): void {
+            if ($event->job->getQueue() !== null) {
+                app(MailConfigurationService::class)->applyRuntimeConfiguration();
+            }
+        });
 
         Event::listen(MessageSending::class, function (MessageSending $event): void {
+            app(MailConfigurationService::class)->applyRuntimeConfiguration();
             app(WebsiteSettingService::class)->applyToSymfonyMessage($event->message);
         });
     }

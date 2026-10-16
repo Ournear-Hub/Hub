@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('recruitment:send-reminders')->hourly();
+Schedule::command('jobs:expire-trials')->everyFiveMinutes();

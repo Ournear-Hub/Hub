@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\DocumentType;
 use App\Enums\LanguageProficiency;
 use App\Enums\NoticePeriod;
+use App\Enums\ApplicationStatus;
 use App\Enums\PermissionName;
 use App\Enums\ScreeningDecision;
+use App\Models\RecruiterTalentPoolAssignment;
+use App\Models\User;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RecordTalentInterestRequest;
 use App\Http\Requests\Admin\StoreCandidateCertificationRequest;
@@ -36,6 +39,7 @@ use App\Services\MasterData\MasterDataService;
 use App\Services\TagService;
 use App\Support\CandidateQuery;
 use App\Support\CandidateTimeline;
+use App\Support\OurNearInternalRecruiters;
 use App\Support\StaffOptions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,6 +119,8 @@ class CandidatesController extends Controller
             ])->all(),
             'saved_searches' => $actor ? $talent->searchesFor($actor) : [],
             'can_manage' => $actor?->hasPermission(PermissionName::CandidatesManage->value) === true,
+            'can_assign_talent_pool' => $actor?->can('create', RecruiterTalentPoolAssignment::class) === true,
+            'talent_pool_recruiters' => OurNearInternalRecruiters::optionsForAdmin(),
             'can_create_task' => $actor?->can('create', Task::class) === true,
             'staffUsers' => StaffOptions::users(),
         ]);
@@ -346,9 +352,14 @@ class CandidatesController extends Controller
                 || $application->status->value === 'Shortlisted')
             ->map(fn ($application) => [
                 'id' => $application->id,
+                'application_id' => $application->id,
+                'job_id' => $application->job_id,
                 'business_id' => $application->business_id,
                 'job_title' => $application->job?->title,
                 'href' => route('admin.shortlisted.index', ['application' => $application->id], false),
+                'default_recruiter_user_id' => $application->job?->employer?->user_id,
+                'can_assign' => $application->status === ApplicationStatus::Shortlisted
+                    && $application->job_id !== null,
             ])
             ->values()
             ->all();

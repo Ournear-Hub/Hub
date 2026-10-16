@@ -7,7 +7,8 @@ You are working in the **OurNear Hire** Laravel 12 + Inertia + React project (Ou
 1. Read `docs/CURRENT-STATE.md`.
 2. Read `docs/AI-READING-GUIDE.md` and open **only** the module docs it names for the task.
 3. Search existing code (`app/`, `routes/`, `resources/js/`) before creating files.
-4. Follow `docs/DEVELOPMENT-RULES.md`.
+4. Follow `docs/DEVELOPMENT-RULES.md` (including local dev: `scripts/start-local-web-server.ps1`, Rules A–F).
+5. Obey `.cursor/rules/ournear-core-governance.mdc` (rule precedence, conflict-blocking, amendment approval). If a task conflicts with governance, stop and report a `RULE BLOCKER`; do not implement until an amendment is explicitly approved.
 
 ## Hard constraints
 
@@ -27,4 +28,4 @@ You are working in the **OurNear Hire** Laravel 12 + Inertia + React project (Ou
 - Update `docs/CURRENT-STATE.md` (and module docs) when architecture, routes, tables, or permissions change.
 - Report files changed, tests run, and assumptions.
 
-There is no `.cursor/rules` pack in this repo as of the 2026-09-29 documentation audit. This file plus `docs/` is the instruction system.
+**Instruction system:** `AGENTS.md`, `docs/` (start with `CURRENT-STATE.md` and `DEVELOPMENT-RULES.md`), and always-applied Cursor rule `.cursor/rules/ournear-core-governance.mdc`.

@@ -1,0 +1,99 @@
+# Stage 11 — complete recruitment lifecycle (schema v1)
+# Correlation fixture: ONT-A-000051 (preserve state; read-heavy verification)
+
+version: 1
+stage: 11
+title: Complete recruitment lifecycle
+module: lifecycle
+correlation:
+  business_id: ONT-A-000051
+  expected_status: Interview
+
+cases:
+  - id: STG11-LCY-001
+    feature_ids: [X-01]
+    summary: Same application id visible candidate, employer, admin contexts
+  - id: STG11-LCY-002
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Candidate detail Interview status and timeline
+  - id: STG11-LCY-003
+    feature_ids: [EMP-03]
+    route: /account/hiring/applications
+    summary: Employer hiring list and detail Interview alignment
+  - id: STG11-LCY-004
+    feature_ids: [EMP-03]
+    route: /account/employer-applications/{id}/resume
+    summary: Authorized employer resume snapshot download
+  - id: STG11-LCY-005
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin drawer status and Interview tab persistence
+  - id: STG11-LCY-006
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: Candidate notification center and deep link target
+  - id: STG11-APPLY-001
+    feature_ids: [CAN-07]
+    summary: Public apply to open job (browser)
+    prior_evidence: OURNEAR_STAGE_3_APPLICATION_WORKFLOW_QA_REPORT.md
+  - id: STG11-APPLY-002
+    feature_ids: [CAN-07]
+    automation: phpunit
+    test: ApplicationExperienceTest::test_duplicate_post_does_not_create_a_second_application
+  - id: STG11-APPLY-003
+    feature_ids: [CAN-07]
+    automation: phpunit
+    test: ApplicationExperienceTest::test_guest_apply_redirects_to_login_and_does_not_create_an_application
+  - id: STG11-ADM-001
+    feature_ids: [ADM-03]
+    automation: phpunit
+    test: RecruitmentOperationsStage6Test
+    summary: Admin interview lifecycle operations (factory isolation)
+  - id: STG11-OUT-001
+    feature_ids: [ADM-03]
+    automation: phpunit
+    test: ScreeningShortlistTest
+    summary: Rejection path updates application status
+  - id: STG11-AUTH-001
+    feature_ids: [EMP-09]
+    prior_evidence: OURNEAR_STAGE_10_SECURITY_NEGATIVE_RECOVERY_QA_REPORT.md
+    summary: Employer B isolation (not re-run Stage 11)
+  - id: STG11-MISS-001
+    feature_ids: [EMP-03]
+    summary: Employer self-service shortlist/reject/interview
+  - id: STG11-MISS-002
+    feature_ids: [EMP-03]
+    summary: Employer-side interview scheduling
+  - id: STG11-MISS-003
+    feature_ids: [EMP-08]
+    summary: Employer-to-candidate messaging
+  - id: STG11-MISS-004
+    feature_ids: [CAN-07]
+    summary: Candidate interview accept/decline
+  - id: STG11-MISS-005
+    feature_ids: [CAN-07]
+    summary: Candidate correction-request workflow
+  - id: STG11-NT-001
+    feature_ids: [CAN-09]
+    summary: Shortlist/interview email delivery verification
+  - id: STG11-NT-002
+    feature_ids: [CAN-07]
+    summary: Full browser apply reload re-login matrix (Stage 3 canonical)
+
+# Post-implementation refresh (does not replace canonical run 20261010T113310Z-6782260a)
+post_implementation_runs:
+  - run_id: 20261010T170415Z-f4676464
+    report: docs/OURNEAR_POST_IMPLEMENTATION_REGRESSION_QA_REPORT.md
+    results: qa-agent/artifacts/stage11/20261010T170415Z-f4676464/stage11_results.json
+    notes: >
+      Self-service UI STG11-MISS-002..005 PASS on ONT-A-000051; MISS-001 PASS after harness fix
+      (reject/schedule when shortlist N/A). Lifecycle journey FAIL (admin login env).
+      E2E self-service SKIPPED (429). Prior MISSING run preserved.
+    case_overrides:
+      STG11-MISS-001: PASS
+      STG11-MISS-002: PASS
+      STG11-MISS-003: PASS
+      STG11-MISS-004: PASS
+      STG11-MISS-005: PASS
+      STG11-LCY-001: FAIL

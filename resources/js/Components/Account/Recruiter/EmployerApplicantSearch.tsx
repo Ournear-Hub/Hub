@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useMemo, useState, type FormEvent } from 'react';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 
 type StatusOption = {
     value: string;
@@ -107,7 +107,7 @@ export default function EmployerApplicantSearch({ jobSlug, filters, statusOption
             </div>
             <form onSubmit={submit} className="mt-4 hidden gap-3 md:grid md:grid-cols-[1fr_12rem_auto] md:items-end">
                 {filterFields}
-                <Button type="submit" variant="secondary" className="min-h-11">
+                <Button surface="public" type="submit" variant="secondary" className="min-h-11">
                     Search
                 </Button>
             </form>
@@ -129,7 +129,7 @@ export default function EmployerApplicantSearch({ jobSlug, filters, statusOption
                     </summary>
                     <div className="mt-3 pb-2">{filterFields}</div>
                 </details>
-                <Button type="button" variant="secondary" className="min-h-11 w-full" onClick={() => submit()}>
+                <Button surface="public" type="button" variant="secondary" className="min-h-11 w-full" onClick={() => submit()}>
                     Search
                 </Button>
             </div>

@@ -1,0 +1,61 @@
+# Profile field audit — inventory reference (2026-10-10)
+# Trace: Account/Profile.tsx, CandidateProfessionalSections, UpdateProfileRequest,
+# UpdateProfessionalProfileRequest, EmployerProfile, stage_2/stage_4 registries.
+
+version: 1
+audit: profile_fields
+candidate:
+  modules: [basic, about, professional, experience, education, skills, projects, certifications, languages, preferences, resume]
+  account_put_fields:
+    - { id: name, required: true, storage: users.name }
+    - { id: username, required: true, storage: users.username }
+    - { id: mobile, required: false, storage: users.mobile, note: optional until hiring activation context }
+    - { id: location, required: false, storage: users.location }
+    - { id: bio, required: false, storage: users.bio }
+    - { id: professional_headline, required: false, storage: users.professional_headline }
+    - { id: preferred_language, required: true, storage: users.preferred_language }
+    - { id: experience, required: false, storage: candidate_profiles.experience, note: legacy on main PUT }
+    - { id: qualification, required: false, storage: candidate_profiles.qualification }
+    - { id: photo, required: false, storage: users photo service }
+  professional_put_fields:
+    - current_designation
+    - current_company
+    - industry_id
+    - job_category_id
+    - experience
+    - experience_range_id
+    - qualification
+    - qualification_id
+    - current_salary
+    - expected_salary
+    - notice_period
+    - employment_preference
+    - skills
+    - preferred_location_ids
+    - preferred_employment_type_ids
+    - willing_to_relocate
+    - availability
+  related_crud:
+    - employment_history
+    - educations
+    - projects
+    - certifications
+    - languages
+    - privacy_share_flags
+  resume_surfaces: [/account/resumes, /account/resumes/builder]
+employer:
+  account_put_fields:
+    - { id: company_name, required: false }
+    - { id: contact_person, required: false }
+    - { id: mobile_number, required: false, note: not users.mobile }
+    - { id: industry, required: false }
+    - { id: company_size, required: false }
+    - { id: company_website, required: false, url: true }
+    - { id: about_company, required: false }
+    - { id: company_details, required: false }
+    - { id: location_ids, required: false }
+    - { id: benefits, required: false }
+    - { id: socials, required: false, keys: [linkedin, facebook, twitter, instagram, youtube] }
+    - { id: photo, required: false }
+    - { id: name, required: true, storage: users.name, note: account owner name }
+  privacy: company_public_share

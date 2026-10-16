@@ -27,6 +27,41 @@ class CommunicationPreferenceService
                 ],
             );
         }
+
+        $this->normalizeLegacyInAppDefault($user);
+    }
+
+    /**
+     * In-app recruitment notifications (account notification center).
+     */
+    public function canSendRecruitmentInApp(User $user): bool
+    {
+        return $this->canSend($user, CommunicationChannel::Push);
+    }
+
+    /**
+     * Operational recruitment email (rejected/selected/interview, employer alerts).
+     */
+    public function canSendRecruitmentEmail(User $user): bool
+    {
+        return $this->canSend($user, CommunicationChannel::System);
+    }
+
+    private function normalizeLegacyInAppDefault(User $user): void
+    {
+        $push = $user->communicationPreferences()
+            ->where('channel', CommunicationChannel::Push->value)
+            ->first();
+
+        if ($push === null || $push->source !== 'system_default' || $push->opted_in) {
+            return;
+        }
+
+        $push->fill([
+            'opted_in' => true,
+            'consented_at' => now(),
+            'opted_out_at' => null,
+        ])->save();
     }
 
     public function canSend(User $user, CommunicationChannel $channel): bool

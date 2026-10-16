@@ -14,6 +14,7 @@ class JobLifecycleService
     public function __construct(
         private SecurityAuditService $audit,
         private EmployerPostingEligibilityService $eligibility,
+        private EmployerJobPublicationPolicy $publicationPolicy,
     ) {}
 
     public function publish(Job $job, User $actor): Job
@@ -105,10 +106,30 @@ class JobLifecycleService
             return $job;
         }
 
-        $job->forceFill([
+        $payload = [
             'publishing_status' => $target,
             'active' => $active,
-        ])->save();
+        ];
+
+        if ($target === JobPublishingStatus::Published) {
+            $job->loadMissing('employer');
+            $profile = $job->employer;
+            if ($profile instanceof \App\Models\EmployerProfile) {
+                $package = $this->publicationPolicy->packageForPublish($profile, $job);
+                $payload['posting_tier'] = $package['posting_tier'];
+                $payload['trial_expires_at'] = $package['trial_expires_at'];
+
+                if ($package['mark_trial_used']) {
+                    $profile->forceFill(['trial_job_used_at' => now()])->save();
+                }
+            }
+
+            if ($job->posted_date === null) {
+                $payload['posted_date'] = now()->toDateString();
+            }
+        }
+
+        $job->forceFill($payload)->save();
 
         $this->audit->record(
             action: $this->activityType($target),

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>QA Form Fixture</title>
+  </head>
+  <body>
+    <h1>QA Form Fixture</h1>
+    <form id="demo" action="/submitted" method="get">
+      <label for="full-name">Full name</label>
+      <input id="full-name" name="full_name" type="text" />
+
+      <label for="bio">Bio</label>
+      <textarea id="bio" name="bio"></textarea>
+
+      <label for="country">Country</label>
+      <select id="country" name="country">
+        <option value="">Choose</option>
+        <option value="ca">Canada</option>
+        <option value="in">India</option>
+      </select>
+
+      <label><input type="checkbox" name="agree" /> Accept terms</label>
+
+      <fieldset>
+        <legend>Plan</legend>
+        <label><input type="radio" name="plan" value="basic" /> Basic</label>
+        <label><input type="radio" name="plan" value="pro" /> Pro</label>
+      </fieldset>
+
+      <label for="upload">Upload document</label>
+      <input id="upload" name="upload" type="file" />
+
+      <label for="email-req">Email</label>
+      <input id="email-req" name="email" type="email" required />
+
+      <button type="submit">Send form</button>
+    </form>
+    <div id="result" role="status" hidden></div>
+    <script>
+      document.getElementById("demo").addEventListener("submit", function (event) {
+        event.preventDefault();
+        const result = document.getElementById("result");
+        result.hidden = false;
+        result.textContent = "Saved successfully";
+        const email = document.getElementById("email-req");
+        email.removeAttribute("required");
+      });
+      document.getElementById("email-req").addEventListener("invalid", function () {
+        this.setAttribute("aria-invalid", "true");
+      });
+      document.getElementById("email-req").addEventListener("input", function () {
+        this.removeAttribute("aria-invalid");
+      });
+    </script>
+  </body>
+</html>

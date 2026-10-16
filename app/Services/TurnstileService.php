@@ -36,6 +36,7 @@ class TurnstileService
 
         try {
             $response = Http::asForm()
+                ->connectTimeout(5)
                 ->timeout(8)
                 ->post('https://challenges.cloudflare.com/turnstile/v0/siteverify', [
                     'secret' => $this->secretKey(),

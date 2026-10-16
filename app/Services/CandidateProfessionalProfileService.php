@@ -8,6 +8,7 @@ use App\Models\CandidateEmploymentHistory;
 use App\Models\CandidateProfile;
 use App\Models\EmploymentType;
 use App\Models\Location;
+use App\Models\Qualification;
 use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -22,6 +23,10 @@ class CandidateProfessionalProfileService
      */
     public function updateProfessional(CandidateProfile $profile, array $attributes, ?User $actor = null): CandidateProfile
     {
+        if (array_key_exists('qualification_id', $attributes) || array_key_exists('qualification', $attributes)) {
+            $attributes = $this->resolveQualificationAttributes($attributes);
+        }
+
         foreach ([
             'current_designation',
             'current_company',
@@ -71,6 +76,39 @@ class CandidateProfessionalProfileService
             'jobCategory',
             'user',
         ]) ?? $profile;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function resolveQualificationAttributes(array $attributes): array
+    {
+        $qualificationId = $attributes['qualification_id'] ?? null;
+        $qualificationText = trim((string) ($attributes['qualification'] ?? ''));
+
+        if (filled($qualificationId)) {
+            $qualification = Qualification::query()->find((int) $qualificationId);
+            if ($qualification instanceof Qualification) {
+                $attributes['qualification_id'] = $qualification->id;
+                $attributes['qualification'] = $qualification->name;
+            }
+
+            return $attributes;
+        }
+
+        if ($qualificationText !== '') {
+            $qualification = Qualification::findOrCreateFromName($qualificationText);
+            $attributes['qualification_id'] = $qualification->id;
+            $attributes['qualification'] = $qualification->name;
+
+            return $attributes;
+        }
+
+        $attributes['qualification_id'] = null;
+        $attributes['qualification'] = null;
+
+        return $attributes;
     }
 
     public function addSkill(CandidateProfile $profile, string $name, ?User $actor = null): Skill

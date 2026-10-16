@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\EmployerWorkspaceDestination;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,7 +14,19 @@ class EnsureEmployer
     {
         $user = Auth::guard('account')->user();
 
-        if ($user === null || ! $user->canAccessHiringWorkspace()) {
+        if ($user === null) {
+            abort(403);
+        }
+
+        if (! $user->canAccessHiringWorkspace()) {
+            EmployerWorkspaceDestination::remember($request, $request->getPathInfo());
+
+            if ($request->isMethod('GET')) {
+                return redirect()->route('account.hiring', [
+                    'destination' => $request->getPathInfo(),
+                ]);
+            }
+
             abort(403);
         }
 

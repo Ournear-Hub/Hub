@@ -15,20 +15,35 @@ use Inertia\Response;
 
 class EmployerHiringWorkspaceController extends Controller
 {
+    public function automation(): Response
+    {
+        return Inertia::render('Account/Hiring/Automation/Info');
+    }
+
     public function applications(Request $request): Response
     {
         $profile = $this->profile($request);
 
+        $stageKeys = implode(',', array_unique(array_merge(
+            EmployerApplicationPipeline::employerJobAtsStageKeys(),
+            ['submitted', 'under_review', 'rejected', 'withdrawn'],
+        )));
+
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', 'string', 'in:'.implode(',', array_column(ApplicationStatus::cases(), 'value'))],
+            'stage' => ['nullable', 'string', 'in:'.$stageKeys],
         ]);
 
         $search = trim((string) ($validated['q'] ?? ''));
         $status = $validated['status'] ?? null;
+        $stage = EmployerApplicationPipeline::normalizeLegacyJobStageKey(trim((string) ($validated['stage'] ?? '')));
+        if ($stage === 'all') {
+            $stage = '';
+        }
 
         $query = $profile->applications()
-            ->with(['user.candidateProfile', 'job']);
+            ->with(['user.candidateProfile', 'job', 'placements', 'submissions', 'screening', 'interviews']);
 
         if ($search !== '') {
             $like = '%'.$search.'%';
@@ -38,7 +53,9 @@ class EmployerHiringWorkspaceController extends Controller
             });
         }
 
-        if (is_string($status) && $status !== '') {
+        if ($stage !== '') {
+            EmployerApplicationPipeline::applyEmployerApplicationsAtsStageFilter($query, $profile, $stage);
+        } elseif (is_string($status) && $status !== '') {
             $query->where('status', $status);
         }
 
@@ -51,9 +68,11 @@ class EmployerHiringWorkspaceController extends Controller
         return Inertia::render('Account/Hiring/Applications/Index', [
             'company_name' => $profile->displayCompany(),
             'applications' => $applications,
+            'pipeline_summary' => EmployerApplicationPipeline::summaryForEmployerApplicationsAts($profile),
             'filters' => [
                 'q' => $search,
                 'status' => $status ?? '',
+                'stage' => $stage,
             ],
             'status_options' => collect(ApplicationStatus::cases())
                 ->map(fn (ApplicationStatus $case) => [
@@ -118,7 +137,7 @@ class EmployerHiringWorkspaceController extends Controller
         $this->authorize('viewAny', Job::class);
 
         $profile = $user?->employerProfile;
-        abort_unless($profile instanceof EmployerProfile, 404);
+        abort_unless($profile instanceof EmployerProfile, 403);
 
         return $profile;
     }

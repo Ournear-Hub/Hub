@@ -8,6 +8,7 @@ use App\Models\Job;
 use App\Models\User;
 use App\Support\QaHiringFixtures;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -57,10 +58,13 @@ class EmployerHiringStage25Test extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Hiring/Applications/Index')
                 ->where('company_name', QaHiringFixtures::COMPANY_A)
+                ->has('pipeline_summary', 9)
                 ->has('applications.data', 1)
                 ->where('applications.data.0.application_id', $application->id)
                 ->where('applications.data.0.job.title', QaHiringFixtures::TITLE_PUBLISHED_A)
-                ->where('applications.data.0.status', 'New'));
+                ->where('applications.data.0.status', 'New')
+                ->where('applications.data.0.ats_stage', 'applied')
+                ->where('applications.data.0.pipeline_stage_label', 'Submitted'));
     }
 
     public function test_employer_b_hiring_applications_list_is_empty(): void
@@ -73,7 +77,7 @@ class EmployerHiringStage25Test extends TestCase
                 ->where('company_name', QaHiringFixtures::COMPANY_B));
     }
 
-    public function test_employer_application_detail_uses_contact_snapshot_and_read_only_actions_copy(): void
+    public function test_employer_application_detail_uses_contact_snapshot_and_exposes_recruitment_workflow(): void
     {
         $job = $this->publishedJobA();
         $application = $this->fixtureApplication();
@@ -88,12 +92,18 @@ class EmployerHiringStage25Test extends TestCase
                 ->component('Account/Employer/Applications/Show')
                 ->where('application.application_contact.email', $snapshotEmail)
                 ->where('application.has_resume', true)
+                ->where('recruitment.can_manage', true)
+                ->where('application.ats_stage', 'applied')
+                ->where('application.pipeline_stage_label', 'Submitted')
                 ->missing('application.user'));
     }
 
     public function test_application_resume_snapshot_authorization(): void
     {
         $application = $this->fixtureApplication();
+        $storagePath = $application->resumeStoragePath();
+        $this->assertNotNull($storagePath);
+        Storage::disk('resumes')->assertExists($storagePath);
 
         $this->actingAs($this->employerA())
             ->get(route('account.employer.applications.resume', $application))
@@ -105,7 +115,7 @@ class EmployerHiringStage25Test extends TestCase
 
         $this->actingAs($this->candidate())
             ->get(route('account.employer.applications.resume', $application))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/employer-applications/'.$application->id.'/resume']));
     }
 
     public function test_employer_cannot_update_application_status_via_account_routes(): void
@@ -172,6 +182,8 @@ class EmployerHiringStage25Test extends TestCase
 
         $this->actingAs($this->candidate())
             ->get(route('account.employer.jobs.application', [$job, $application]))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', [
+                'destination' => '/account/jobs/'.$job->slug.'/applications/'.$application->id,
+            ]));
     }
 }

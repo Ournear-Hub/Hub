@@ -1,9 +1,15 @@
+import Badge from '@/Components/atoms/Badge';
+
 type StatusBadgeProps = {
     status: string;
     className?: string;
 };
 
-const tones: Record<string, string> = {
+/**
+ * Admin recruitment / operations status labels → presentation classes.
+ * Domain copy stays as the visible `status` string; Badge remains domain-neutral.
+ */
+const adminStatusPresentation: Record<string, string> = {
     New: 'bg-surface text-ink',
     Reviewing: 'bg-brand/10 text-brand',
     Shortlisted: 'bg-success/10 text-success',
@@ -99,11 +105,11 @@ const tones: Record<string, string> = {
 };
 
 export default function StatusBadge({ status, className = '' }: StatusBadgeProps) {
-    const tone = tones[status] ?? 'bg-surface text-muted';
+    const presentation = adminStatusPresentation[status] ?? 'bg-surface text-muted';
 
     return (
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${tone} ${className}`}>
+        <Badge toneClassName={presentation} weight="medium" className={className}>
             {status}
-        </span>
+        </Badge>
     );
 }

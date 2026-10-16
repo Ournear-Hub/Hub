@@ -52,10 +52,10 @@ class EmployerHiringStage21Test extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->post(route('account.hiring.activate'), [
+            ->post(route('account.hiring.activate'), $this->hiringActivationPayload([
                 'company_name' => 'Dual Role Co',
-                'hiring_email' => $candidate->email,
-            ])
+                'company_email' => $candidate->email,
+            ]))
             ->assertRedirect();
 
         $this->actingAs($candidate->fresh())

@@ -4,16 +4,17 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     SearchBar,
     Select,
     StatusBadge,
     Textarea,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { LabeledOption, StaffUserOption } from '@/types/applications';
 import type { Paginator } from '@/types/jobs';
 
@@ -133,12 +134,13 @@ export default function TasksIndex({ tasks, selected, filters, statuses, staffUs
     ];
 
     return (
-        <AdminLayout title="Tasks">
+        <AdminLayout title="Tasks" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Tasks' }]}>
             <div className="space-y-4">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Tasks</h1>
-                    <p className="mt-1 text-sm text-muted">Staff assignment only. No teams or job ownership fields.</p>
-                </div>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Staff follow-up worklist"
+                    description="Staff assignment only. No teams or job ownership fields."
+                />
 
                 <FilterBar onSubmit={filter}>
                     <SearchBar name="search" defaultValue={filters.search} placeholder="Search tasks" />

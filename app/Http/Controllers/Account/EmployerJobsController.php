@@ -16,16 +16,20 @@ use App\Models\Industry;
 use App\Models\Job;
 use App\Models\JobCategory;
 use App\Models\Location;
+use App\Services\EmployerApplicantCompareService;
+use App\Services\EmployerJobPublicationPolicy;
 use App\Services\EmployerPostingEligibilityService;
 use App\Services\JobLifecycleService;
+use App\Services\JobListingRequirementService;
 use App\Services\MasterData\MasterDataService;
 use App\Support\EmployerApplicationPipeline;
 use App\Support\EmployerVisibleCandidate;
+use App\Services\ApplicationResumeDeliveryService;
 use App\Services\CandidateApplicationViewService;
+use App\Support\EmployerApplicationAccess;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -79,16 +83,22 @@ class EmployerJobsController extends Controller
         return Inertia::render('Account/Employer/Jobs/Form', [
             'job' => null,
             'company_name' => $profile->displayCompany(),
+            'company_industry_id' => $profile->industry_id,
+            'company_industry_name' => $profile->displayIndustry(),
             'lookups' => $masterData->formOptions(),
             'eligibility' => $posting,
-            'next_tier' => $profile->trial_job_used_at === null ? 'trial' : 'basic',
+            'next_tier' => $posting['unlimited_publishing'] || $posting['trial_available']
+                ? ($posting['trial_available'] ? 'trial' : 'basic')
+                : 'basic',
         ]);
     }
 
     public function store(
         StoreJobRequest $request,
         EmployerPostingEligibilityService $eligibility,
+        EmployerJobPublicationPolicy $publicationPolicy,
         JobLifecycleService $lifecycle,
+        JobListingRequirementService $requirements,
     ): RedirectResponse {
         $validated = $request->validated();
         $status = JobPublishingStatus::tryFrom($validated['publishing_status'] ?? 'draft')
@@ -100,7 +110,7 @@ class EmployerJobsController extends Controller
             ]);
         }
 
-        $job = DB::transaction(function () use ($request, $validated, $lifecycle): Job {
+        $job = DB::transaction(function () use ($request, $validated, $lifecycle, $publicationPolicy, $requirements): Job {
             $profile = EmployerProfile::query()
                 ->where('user_id', $request->user()->id)
                 ->lockForUpdate()
@@ -112,11 +122,11 @@ class EmployerJobsController extends Controller
                     ?? JobPublishingStatus::Draft);
 
             if ($status === JobPublishingStatus::Published) {
-                $isTrial = $profile->trial_job_used_at === null;
-                $data['posting_tier'] = $isTrial ? 'trial' : 'basic';
-                $data['trial_expires_at'] = $isTrial ? now()->addHour() : null;
+                $package = $publicationPolicy->packageForPublish($profile);
+                $data['posting_tier'] = $package['posting_tier'];
+                $data['trial_expires_at'] = $package['trial_expires_at'];
 
-                if ($isTrial) {
+                if ($package['mark_trial_used']) {
                     $profile->forceFill(['trial_job_used_at' => now()])->save();
                 }
             } else {
@@ -124,7 +134,14 @@ class EmployerJobsController extends Controller
                 $data['trial_expires_at'] = null;
             }
 
-            return Job::query()->create($data);
+            $created = Job::query()->create($data);
+            $requirements->sync(
+                $created,
+                $request->input('qualification_ids'),
+                $request->input('skill_ids'),
+            );
+
+            return $created;
         });
 
         if ($job->publishing_status !== JobPublishingStatus::Published) {
@@ -152,16 +169,26 @@ class EmployerJobsController extends Controller
         return Inertia::render('Account/Employer/Jobs/Form', [
             'job' => $job->toAdminArray(),
             'company_name' => $profile->displayCompany(),
+            'company_industry_id' => $profile->industry_id,
+            'company_industry_name' => $profile->displayIndustry(),
             'lookups' => $masterData->formOptions(),
             'eligibility' => $eligibility->for($request->user()),
             'next_tier' => $job->posting_tier,
         ]);
     }
 
-    public function update(UpdateJobRequest $request, Job $job): RedirectResponse
-    {
+    public function update(
+        UpdateJobRequest $request,
+        Job $job,
+        JobListingRequirementService $requirements,
+    ): RedirectResponse {
         $this->authorize('update', $job);
         $job->update($this->jobPayload($request->validated(), $this->profile($request), $job, app(JobLifecycleService::class)));
+        $requirements->sync(
+            $job,
+            $request->input('qualification_ids'),
+            $request->input('skill_ids'),
+        );
 
         return redirect()
             ->route('account.employer.jobs.index')
@@ -195,27 +222,31 @@ class EmployerJobsController extends Controller
             ->with('success', 'Job deleted.');
     }
 
-    public function applicants(Request $request, Job $job): Response
+    public function applicants(Request $request, Job $job, EmployerApplicantCompareService $compareService): Response
     {
         $this->authorize('view', $job);
 
-        $stageKeys = implode(',', array_column(EmployerApplicationPipeline::stages(), 'key'));
+        $stageKeys = implode(',', array_unique(array_merge(
+            EmployerApplicationPipeline::employerJobAtsStageKeys(),
+            ['submitted', 'under_review', 'rejected', 'withdrawn'],
+        )));
 
         $validated = $request->validate([
             'q' => ['nullable', 'string', 'max:120'],
             'status' => ['nullable', 'string', 'in:'.implode(',', array_column(ApplicationStatus::cases(), 'value'))],
             'stage' => ['nullable', 'string', 'in:'.$stageKeys],
+            'compare' => ['nullable', 'string', 'max:120'],
         ]);
 
         $search = trim((string) ($validated['q'] ?? ''));
         $status = $validated['status'] ?? null;
-        $stage = trim((string) ($validated['stage'] ?? ''));
+        $stage = EmployerApplicationPipeline::normalizeLegacyJobStageKey(trim((string) ($validated['stage'] ?? '')));
         if ($stage === 'all') {
             $stage = '';
         }
 
         $query = $job->applications()
-            ->with(['user.candidateProfile', 'job']);
+            ->with(['user.candidateProfile', 'job', 'placements', 'submissions', 'screening', 'interviews']);
 
         if ($search !== '') {
             $like = '%'.$search.'%';
@@ -226,10 +257,7 @@ class EmployerJobsController extends Controller
         }
 
         if ($stage !== '') {
-            $stageStatuses = EmployerApplicationPipeline::statusesForStage($stage);
-            if ($stageStatuses !== []) {
-                $query->whereIn('status', array_map(fn (ApplicationStatus $case) => $case->value, $stageStatuses));
-            }
+            EmployerApplicationPipeline::applyEmployerJobAtsStageFilter($query, $job, $stage);
         } elseif (is_string($status) && $status !== '') {
             $query->where('status', $status);
         }
@@ -240,6 +268,21 @@ class EmployerJobsController extends Controller
             ->withQueryString()
             ->through(fn (Application $application) => EmployerVisibleCandidate::fromApplication($application));
 
+        $compareRaw = trim((string) ($validated['compare'] ?? ''));
+        $compareIds = $compareService->parseCompareIds($compareRaw !== '' ? $compareRaw : null);
+        $compareApplications = [];
+        $compareOpen = false;
+        if ($compareIds !== []) {
+            if (count($compareIds) < 2) {
+                throw ValidationException::withMessages([
+                    'compare' => 'Select at least two applicants to compare.',
+                ]);
+            }
+
+            $compareApplications = $compareService->rowsForJob($job, $compareIds);
+            $compareOpen = count($compareApplications) >= 2;
+        }
+
         return Inertia::render('Account/Employer/Applicants/Index', [
             'job' => [
                 'title' => $job->title,
@@ -249,11 +292,17 @@ class EmployerJobsController extends Controller
                 'status_label' => $job->statusLabel(),
             ],
             'applications' => $applications,
-            'pipeline_summary' => EmployerApplicationPipeline::summaryForJob($job),
+            'pipeline_summary' => EmployerApplicationPipeline::summaryForJobAts($job),
             'filters' => [
                 'q' => $search,
                 'status' => $status ?? '',
                 'stage' => $stage,
+                'compare' => $compareRaw,
+            ],
+            'compare' => [
+                'open' => $compareOpen,
+                'application_ids' => $compareIds,
+                'applications' => $compareApplications,
             ],
             'status_options' => collect(ApplicationStatus::cases())
                 ->map(fn (ApplicationStatus $case) => [
@@ -270,6 +319,7 @@ class EmployerJobsController extends Controller
         Job $job,
         Application $application,
         CandidateApplicationViewService $applications,
+        \App\Services\AccountApplicationRecruitmentService $recruitment,
     ): Response {
         $this->authorize('view', $job);
         abort_unless((int) $application->job_id === (int) $job->id, 404);
@@ -295,45 +345,26 @@ class EmployerJobsController extends Controller
                 'status' => trim((string) $request->query('status', '')),
                 'stage' => trim((string) $request->query('stage', '')),
             ],
+            'recruitment' => $recruitment->employerWorkflow($application, $request->user()),
         ]);
     }
 
-    public function resume(Request $request, Application $application): StreamedResponse
-    {
+    public function resume(
+        Request $request,
+        Application $application,
+        ApplicationResumeDeliveryService $resumes,
+    ): StreamedResponse {
+        $user = $request->user();
+        abort_unless($user !== null, 403);
+
         $application->loadMissing(['job', 'submissions']);
-        $ownsJob = $application->job && $request->user()->can('view', $application->job);
-        $ownsSubmission = EmployerVisibleCandidate::employerOwnsSubmission($request->user(), $application);
-        abort_unless($ownsJob || $ownsSubmission, 403);
+        $authorized = EmployerApplicationAccess::managesApplication($user, $application)
+            || EmployerVisibleCandidate::employerOwnsSubmission($user, $application);
+        abort_unless($authorized, 403);
 
-        $path = $application->getRawOriginal('resume_path');
-        abort_unless(is_string($path) && $path !== '' && Storage::disk('resumes')->exists($path), 404);
-
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         $label = $application->business_id ?: 'application-'.$application->id;
-        $downloadName = $extension !== '' ? $label.'.'.$extension : $label;
-        $wantsInline = $request->string('disposition')->toString() === 'inline';
-        $canInline = $extension === 'pdf';
-        $inline = $wantsInline && $canInline;
-        $mime = match ($extension) {
-            'pdf' => 'application/pdf',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            default => 'application/octet-stream',
-        };
 
-        return Storage::disk('resumes')->response(
-            $path,
-            $downloadName,
-            [
-                'Content-Type' => $mime,
-                'Content-Disposition' => sprintf(
-                    '%s; filename="%s"',
-                    $inline ? 'inline' : 'attachment',
-                    str_replace('"', '', $downloadName)
-                ),
-            ],
-            $inline ? 'inline' : 'attachment',
-        );
+        return $resumes->stream($request, $application, $label);
     }
 
     private function profile(Request $request): EmployerProfile
@@ -357,9 +388,21 @@ class EmployerJobsController extends Controller
         unset($data['employer_id'], $data['featured'], $data['active']);
 
         $data['employer_id'] = $profile->id;
-        $data['project'] = $profile->displayCompany();
+
+        $project = trim((string) ($data['project'] ?? ''));
+        $data['project'] = $project !== '' ? $project : $profile->displayCompany();
+
+        if ($profile->industry_id) {
+            $data['industry_id'] = $profile->industry_id;
+            $data['industry'] = Industry::query()->whereKey($profile->industry_id)->value('name') ?? '';
+        }
         $data['featured'] = false;
-        $data['urgent'] = (bool) ($data['urgent'] ?? false);
+        $priority = (string) ($data['listing_priority'] ?? 'standard');
+        if (! in_array($priority, ['standard', 'urgent', 'immediate_requirement'], true)) {
+            $priority = 'standard';
+        }
+        $data['listing_priority'] = $priority;
+        $data['urgent'] = in_array($priority, ['urgent', 'immediate_requirement'], true);
         $data['salary'] = $data['salary'] ?: null;
         $data['joining_date'] = $data['joining_date'] ?? null;
         $data['site'] = ($data['site'] ?? null) ?: null;
@@ -375,6 +418,12 @@ class EmployerJobsController extends Controller
             'employment_type_id' => [EmploymentType::class, 'employment_type'],
             'experience_range_id' => [ExperienceRange::class, 'experience'],
         ] as $idField => [$model, $labelField]) {
+            if ($job !== null && ! array_key_exists($idField, $data)) {
+                unset($data[$idField], $data[$labelField]);
+
+                continue;
+            }
+
             $id = $data[$idField] ?? null;
             if (filled($id)) {
                 $data[$labelField] = $model::query()->whereKey($id)->value('name');

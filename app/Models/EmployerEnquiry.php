@@ -104,6 +104,8 @@ class EmployerEnquiry extends Model
             'project_location' => $this->project_location,
             'workforce_type' => $this->workforce_type,
             'number_of_people' => $this->number_of_people,
+            'fulfilled_joinings_count' => (int) ($this->fulfilled_joinings_count ?? 0),
+            'vacancies_remaining' => max(0, (int) $this->number_of_people - (int) ($this->fulfilled_joinings_count ?? 0)),
             'required_skills' => $this->required_skills,
             'expected_start_date' => $this->expected_start_date?->toDateString(),
             'training_required' => $this->training_required,

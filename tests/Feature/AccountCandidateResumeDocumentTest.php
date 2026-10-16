@@ -86,6 +86,31 @@ class AccountCandidateResumeDocumentTest extends TestCase
         $this->assertSame(1, CandidateResume::query()->where('is_primary', true)->count());
     }
 
+    public function test_failed_resume_replacement_preserves_previous_file_and_metadata(): void
+    {
+        $candidate = $this->makeCandidate();
+        $this->actingAs($candidate)->post(route('account.resumes.store'), [
+            'file' => $this->fakeResume('keep-on-fail.pdf'),
+            'title' => 'Keep on fail',
+        ]);
+        $resume = CandidateResume::query()->first();
+        $this->assertNotNull($resume);
+        $originalPath = $resume->storage_path;
+        $originalFilename = $resume->original_filename;
+
+        $this->actingAs($candidate)
+            ->from(route('account.resumes.index'))
+            ->post(route('account.resumes.replace', $resume), [
+                'file' => $this->fakeResume('notes.txt'),
+            ])
+            ->assertSessionHasErrors('file');
+
+        $resume->refresh();
+        $this->assertSame($originalPath, $resume->storage_path);
+        $this->assertSame($originalFilename, $resume->original_filename);
+        Storage::disk('candidate_files')->assertExists($originalPath);
+    }
+
     public function test_candidate_can_download_view_replace_archive_and_delete_own_resume(): void
     {
         $candidate = $this->makeCandidate();

@@ -6,6 +6,7 @@ use App\Contracts\SmsOtpGateway;
 use App\Contracts\WhatsAppGateway;
 use App\Models\Application;
 use App\Models\CandidateResume;
+use App\Models\Industry;
 use App\Models\Job;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
@@ -24,6 +25,9 @@ abstract class TestCase extends BaseTestCase
 
     protected RecordingWhatsAppGateway $whatsAppGateway;
 
+    /** @var array<string, string>|null */
+    protected ?array $storageFakeRoots = null;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,11 +39,44 @@ abstract class TestCase extends BaseTestCase
         $this->app->instance(WhatsAppGateway::class, $this->whatsAppGateway);
 
         $this->withoutVite();
-        Storage::fake('resumes');
-        Storage::fake('candidate_files');
-        Storage::fake('employer_files');
-        Storage::fake('freelancer_files');
-        Storage::fake('public');
+        $this->configureStorageFakes(resetDirectories: true);
+
+        $this->app->terminating(function (): void {
+            $this->configureStorageFakes(resetDirectories: false);
+        });
+    }
+
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $this->configureStorageFakes(resetDirectories: false);
+
+        return tap(parent::call($method, $uri, $parameters, $cookies, $files, $server, $content), function () {
+            $this->configureStorageFakes(resetDirectories: false);
+        });
+    }
+
+    protected function configureStorageFakes(bool $resetDirectories = false): void
+    {
+        $disks = ['resumes', 'candidate_files', 'employer_files', 'freelancer_files', 'public'];
+        $filesystem = new \Illuminate\Filesystem\Filesystem;
+
+        if ($resetDirectories || $this->storageFakeRoots === null) {
+            $this->storageFakeRoots = [];
+            foreach ($disks as $disk) {
+                $this->storageFakeRoots[$disk] = storage_path(
+                    'framework/testing/disks/'.$disk.'/'.str_replace('.', '', uniqid('', true))
+                );
+            }
+        }
+
+        foreach ($disks as $disk) {
+            $root = $this->storageFakeRoots[$disk];
+            if (! is_dir($root)) {
+                $filesystem->makeDirectory($root, 0755, true);
+            }
+
+            Storage::persistentFake($disk, ['root' => $root]);
+        }
     }
 
     public function actingAs(Authenticatable $user, $guard = null)
@@ -92,11 +129,39 @@ abstract class TestCase extends BaseTestCase
         return User::factory()->employer()->create($overrides);
     }
 
+    protected function industryId(): int
+    {
+        $existing = Industry::query()->where('is_active', true)->orderBy('id')->value('id');
+        if ($existing !== null) {
+            return (int) $existing;
+        }
+
+        return Industry::query()->create([
+            'name' => 'General',
+            'is_active' => true,
+            'sort_order' => 1,
+        ])->id;
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, mixed>
+     */
+    protected function hiringActivationPayload(array $overrides = []): array
+    {
+        return array_merge([
+            'company_name' => 'Test Co',
+            'company_phone' => '+919876543210',
+            'company_email' => 'employer@example.test',
+            'industry_id' => $this->industryId(),
+        ], $overrides);
+    }
+
     protected function fakeResume(string $name = 'resume.pdf'): UploadedFile
     {
         return UploadedFile::fake()->createWithContent(
             $name,
-            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n"
+            \App\Support\ReadablePdfFixture::minimalOnePage(),
         );
     }
 
@@ -128,7 +193,10 @@ abstract class TestCase extends BaseTestCase
             $this->giveCandidateResume($candidate);
         }
 
-        $this->actingAs($candidate)->post(route('jobs.apply.store', $job))->assertRedirect();
+        $this->actingAs($candidate)
+            ->post(route('jobs.apply.store', $job))
+            ->assertRedirect()
+            ->assertSessionDoesntHaveErrors();
 
         $application = Application::query()
             ->where('user_id', $candidate->id)
@@ -157,9 +225,9 @@ abstract class TestCase extends BaseTestCase
             'name' => 'Registration User',
             'username' => 'reguser'.fake()->unique()->numerify('####'),
             'email' => fake()->unique()->safeEmail(),
+            'mobile' => '+97150'.fake()->unique()->numerify('######'),
             'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
-            'role' => 'candidate',
             'accept_terms' => true,
         ], $overrides);
     }

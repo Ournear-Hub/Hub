@@ -538,6 +538,34 @@ class AdminAlertService
     /**
      * @param  array<string, mixed>  $context
      */
+    public function talentPoolAssignmentProgress(string $title, string $body, string $url, array $context): void
+    {
+        $this->send(
+            AdminNotificationEvent::TalentPoolAssignmentProgress,
+            $title,
+            $body,
+            $url,
+            $context,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    public function staffingAccessRequested(string $companyName, int $employerProfileId, array $context = []): void
+    {
+        $this->send(
+            AdminNotificationEvent::StaffingAccessRequested,
+            'Staffing access requested',
+            trim($companyName.' requested Staffing module access.'),
+            '/admin/employers?employer='.$employerProfileId,
+            array_merge(['employer_profile_id' => $employerProfileId], $context),
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
     private function send(
         AdminNotificationEvent $event,
         string $title,

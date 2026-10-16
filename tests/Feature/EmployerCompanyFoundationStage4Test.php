@@ -75,7 +75,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
                 ->where('company.company_name', 'Share Company')
                 ->where('company.company_website', 'https://share.example')
                 ->where('company.about_company', 'Public about')
-                ->where('company.ournear_verified', false)
+                ->missing('company.ournear_verified')
                 ->where('company.locations', [])
                 ->where('company.benefits', [])
                 ->missing('company.contact_person')
@@ -118,7 +118,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
 
         $this->get(route('companies.show', $profile))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page->where('company.ournear_verified', false));
+            ->assertInertia(fn (Assert $page) => $page->missing('company.ournear_verified'));
 
         $admin = $this->makeAdmin();
         $this->actingAs($admin)
@@ -135,6 +135,11 @@ class EmployerCompanyFoundationStage4Test extends TestCase
         $employer = $this->eligibleEmployer();
         $profile = $employer->employerProfile;
         $this->assertNotNull($profile);
+        $profile->update([
+            'company_name' => 'Restricted Post Co',
+            'mobile_number' => '+919876543210',
+        ]);
+        $employer->forceFill(['hiring_email' => $employer->email])->save();
         $admin = $this->makeAdmin();
 
         $this->actingAs($admin)
@@ -150,6 +155,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
         );
 
         $this->actingAs($employer)
+            ->from(route('account.employer.jobs.create'))
             ->post(route('account.employer.jobs.store'), $this->jobPayload())
             ->assertSessionHasErrors('posting');
         $this->assertSame(0, Job::query()->count());
@@ -169,6 +175,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
             ->assertRedirect();
 
         $this->actingAs($unverified)
+            ->from(route('account.employer.jobs.create'))
             ->post(route('account.employer.jobs.store'), $this->jobPayload(['title' => 'Approved But Restricted']))
             ->assertSessionHasErrors('posting');
 
@@ -180,7 +187,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
             ->post(route('account.employer.jobs.store'), $this->jobPayload())
             ->assertRedirect(route('account.employer.jobs.index'));
         $this->assertSame(1, Job::query()->count());
-        $this->assertSame('trial', Job::query()->first()?->posting_tier);
+        $this->assertSame('basic', Job::query()->first()?->posting_tier);
     }
 
     public function test_zero_job_employers_remain_in_search_and_timeline(): void
@@ -295,7 +302,7 @@ class EmployerCompanyFoundationStage4Test extends TestCase
         $this->assertTrue(Schema::hasColumn('employer_profiles', 'socials'));
         $this->assertTrue(Schema::hasColumn('employer_profiles', 'public_share'));
         $this->assertTrue(Schema::hasColumn('employer_profiles', 'posting_restricted_at'));
-        $this->assertFalse(Schema::hasColumn('employer_profiles', 'logo_path'));
+        $this->assertTrue(Schema::hasColumn('employer_profiles', 'logo_path'));
         $this->assertTrue(EmployerPublicShare::defaults()['enabled']);
         $this->assertTrue(EmployerPublicShare::defaults()['website']);
         $this->assertFalse(EmployerPublicShare::defaults()['locations']);

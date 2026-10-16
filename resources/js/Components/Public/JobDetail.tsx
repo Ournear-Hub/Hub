@@ -1,7 +1,14 @@
+import { useState } from 'react';
 import { Link, usePage } from '@inertiajs/react';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import ApplicationConfirmation from '@/Components/Public/ApplicationConfirmation';
+import CompanyVerificationIndicator from '@/Components/Public/CompanyVerificationIndicator';
 import JobActions from '@/Components/Public/JobActions';
+import JobCompanyTabPanel from '@/Components/Public/JobCompanyTabPanel';
 import Alert from '@/Components/UI/Alert';
+import Tabs from '@/Components/molecules/Tabs';
+import CompanyLogo from '@/Components/Public/CompanyLogo';
+import OurNearIcon from '@/icons/OurNearIcon';
 import type { PublicJobDetail } from '@/types/jobs';
 import type { SharedPageProps } from '@/types/page';
 
@@ -18,89 +25,142 @@ function Block({ title, body }: { title: string; body: string | null | undefined
     );
 }
 
+function MetaChip({ icon, text }: { icon: string; text: string }) {
+    return (
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted">
+            <OurNearIcon name={icon} size="sm" className="shrink-0 text-muted" />
+            <span>{text}</span>
+        </span>
+    );
+}
+
 type JobDetailProps = {
     job: PublicJobDetail;
     backHref?: string;
     layout?: 'standalone' | 'pane' | 'page';
+    openJobsLinkMode?: 'job_page' | 'jobs_index';
 };
 
-export default function JobDetail({ job, backHref, layout = 'standalone' }: JobDetailProps) {
+export default function JobDetail({ job, backHref, layout = 'standalone', openJobsLinkMode = 'job_page' }: JobDetailProps) {
     const { flash, errors } = usePage<SharedPageProps>().props;
     const confirmation = flash.application_confirmation;
     const success = flash.success;
     const isPane = layout === 'pane';
     const isPage = layout === 'page' || Boolean(backHref);
-    const companyInitials =
-        job.company_name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join('')
-            .toUpperCase() || 'CO';
+    const [activeTab, setActiveTab] = useState('details');
+
+    const companyLabel = job.company_name?.trim() || 'Company';
+    const showCompanyTab = () => {
+        setActiveTab('company');
+    };
+
+    const logoSize = isPane ? 'h-12 w-12' : 'h-14 w-14';
+    const titleClass = isPane ? 'text-lg font-semibold text-ink sm:text-xl' : 'text-xl font-semibold text-ink sm:text-2xl';
+
+    const logoVisual = <CompanyLogo name={companyLabel} src={job.company_logo_url} sizeClass={logoSize} shape="rounded-lg" />;
+
+    const logoNode =
+        isPane ? (
+            <button
+                type="button"
+                onClick={showCompanyTab}
+                className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+                aria-label={`${companyLabel} — show company tab`}
+            >
+                {logoVisual}
+            </button>
+        ) : job.company_logo_url && job.company_url ? (
+            <Link href={job.company_url} className="shrink-0">
+                {logoVisual}
+            </Link>
+        ) : (
+            logoVisual
+        );
+
+    const companyNameNode =
+        isPane ? (
+            <button
+                type="button"
+                onClick={showCompanyTab}
+                className="text-sm font-medium text-ink hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40"
+            >
+                {companyLabel}
+            </button>
+        ) : job.company_url ? (
+            <Link href={job.company_url} className="text-sm font-medium text-brand hover:underline">
+                {companyLabel}
+            </Link>
+        ) : (
+            <p className="text-sm font-medium text-ink">{companyLabel}</p>
+        );
+
+    const metaRow = (
+        <div className={`mt-2 flex min-w-0 flex-wrap gap-x-4 gap-y-1 ${isPane ? '' : 'hidden'}`}>
+            {job.location ? <MetaChip icon="building" text={job.location} /> : null}
+            {job.experience ? <MetaChip icon="briefcase" text={job.experience} /> : null}
+            {job.employment_type ? <MetaChip icon="clipboard" text={job.employment_type} /> : null}
+            {job.salary ? <MetaChip icon="file" text={job.salary} /> : null}
+        </div>
+    );
+
+    const metaLine = !isPane ? (
+        <p className="mt-1 text-sm text-muted">
+            {[job.location, job.employment_type, job.experience, job.salary].filter(Boolean).join(' · ')}
+        </p>
+    ) : null;
+
+    const alerts = (
+        <>
+            {errors.job ? (
+                <Alert tone="error" title="Application" className="mt-3">
+                    {Array.isArray(errors.job) ? errors.job[0] : errors.job}
+                </Alert>
+            ) : null}
+            {success && !confirmation ? (
+                <Alert tone="success" className="mt-3">
+                    {success}
+                </Alert>
+            ) : null}
+            {confirmation ? <ApplicationConfirmation confirmation={confirmation} className="mt-3" /> : null}
+        </>
+    );
 
     const header = (
-        <>
-            <div className="flex flex-wrap gap-2">
-                {job.featured ? <p className="text-xs font-medium uppercase tracking-wide text-accent">Featured</p> : null}
-                {job.urgent ? <p className="text-xs font-medium uppercase tracking-wide text-accent">Urgent</p> : null}
-            </div>
-            <div className="mt-2 flex min-w-0 items-start gap-3">
-                {job.company_logo_url ? (
-                    job.company_url ? (
-                        <Link href={job.company_url} className="shrink-0">
-                            <img
-                                src={job.company_logo_url}
-                                alt={`${job.company_name} logo`}
-                                className="h-14 w-14 rounded-lg border border-line object-cover"
-                            />
-                        </Link>
-                    ) : (
-                        <img
-                            src={job.company_logo_url}
-                            alt={`${job.company_name} logo`}
-                            className="h-14 w-14 shrink-0 rounded-lg border border-line object-cover"
-                        />
-                    )
-                ) : (
-                    <div
-                        aria-label={`${job.company_name} logo placeholder`}
-                        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-base font-semibold text-brand"
-                    >
-                        {companyInitials}
+        <div className={`min-w-0 shrink-0 ${isPane ? 'pb-3' : 'border-b border-line pb-4'}`}>
+            <div
+                className={`flex min-w-0 gap-3 ${isPane ? 'flex-col gap-4 sm:flex-row sm:items-start sm:justify-between' : 'items-start'}`}
+            >
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                    {logoNode}
+                    <div className="min-w-0 flex-1">
+                        <h1 className={titleClass}>{job.title}</h1>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                            {companyNameNode}
+                            <CompanyVerificationIndicator verified={job.company_verified === true} />
+                        </div>
+                        {metaRow}
+                        {metaLine}
                     </div>
-                )}
-                <div className="min-w-0">
-                    <h1 className="text-xl font-semibold text-ink sm:text-2xl">{job.title}</h1>
-                    {job.company_url ? (
-                        <Link href={job.company_url} className="mt-1 inline-block text-sm font-medium text-brand hover:underline">
-                            {job.company_name}
-                        </Link>
-                    ) : (
-                        <p className="mt-1 text-sm font-medium text-brand">{job.company_name}</p>
-                    )}
-                    <p className="mt-0.5 text-sm text-muted">{job.location}</p>
                 </div>
+                {isPane ? (
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:max-w-[20rem] sm:pt-0.5">
+                        <JobActions job={job} variant="detail" />
+                    </div>
+                ) : null}
             </div>
-            <dl className="mt-4 grid gap-2 rounded-lg bg-surface p-3 text-sm sm:grid-cols-2">
-                {job.salary ? (
-                    <div>
-                        <dt className="font-medium text-ink">Salary / CTC</dt>
-                        <dd className="mt-0.5 text-muted">{job.salary}</dd>
-                    </div>
-                ) : null}
-                {job.experience ? (
-                    <div>
-                        <dt className="font-medium text-ink">Experience</dt>
-                        <dd className="mt-0.5 text-muted">{job.experience}</dd>
-                    </div>
-                ) : null}
-                {job.employment_type ? (
-                    <div>
-                        <dt className="font-medium text-ink">Employment type</dt>
-                        <dd className="mt-0.5 text-muted">{job.employment_type}</dd>
-                    </div>
-                ) : null}
+            {alerts}
+        </div>
+    );
+
+    const primaryActions = isPane ? null : (
+        <div className="mt-4 border-b border-line pb-4">
+            <JobActions job={job} variant="detail" />
+        </div>
+    );
+
+    const jobDetailsPanel = (
+        <>
+            <dl className="mt-2 grid gap-3 text-sm sm:grid-cols-2">
                 {job.industry ? (
                     <div>
                         <dt className="font-medium text-ink">Industry</dt>
@@ -138,69 +198,85 @@ export default function JobDetail({ job, backHref, layout = 'standalone' }: JobD
                     </div>
                 ) : null}
             </dl>
-            {errors.job ? (
-                <Alert tone="error" title="Application" className="mt-3">
-                    {Array.isArray(errors.job) ? errors.job[0] : errors.job}
-                </Alert>
-            ) : null}
-            {success && !confirmation ? (
-                <Alert tone="success" className="mt-3">
-                    {success}
-                </Alert>
-            ) : null}
-            {confirmation ? <ApplicationConfirmation confirmation={confirmation} className="mt-3" /> : null}
-        </>
-    );
-
-    const body = (
-        <>
-            {header}
-            {!isPane ? (
-                <div className="mt-4 hidden sm:block">
-                    <JobActions job={job} variant="detail" />
-                </div>
+            {(job.qualifications?.length ?? 0) > 0 || (job.skills?.length ?? 0) > 0 ? (
+                <section className="mt-6 space-y-4">
+                    {(job.qualifications?.length ?? 0) > 0 ? (
+                        <div>
+                            <h2 className="text-base font-semibold text-ink">Qualifications</h2>
+                            <ul className="mt-2 flex flex-wrap gap-2">
+                                {job.qualifications?.map((item) => (
+                                    <li
+                                        key={item}
+                                        className="rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink"
+                                    >
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
+                    {(job.skills?.length ?? 0) > 0 ? (
+                        <div>
+                            <h2 className="text-base font-semibold text-ink">Skills</h2>
+                            <ul className="mt-2 flex flex-wrap gap-2">
+                                {job.skills?.map((item) => (
+                                    <li
+                                        key={item}
+                                        className="rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-ink"
+                                    >
+                                        {item}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
+                </section>
             ) : null}
             <section className="mt-6">
-                <h2 className="text-base font-semibold text-ink">About this role</h2>
+                <h2 className="text-base font-semibold text-ink">Job description</h2>
                 <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted">{job.description}</p>
             </section>
             <Block title="Responsibilities" body={job.responsibilities} />
             <Block title="Requirements" body={job.requirements} />
             <Block title="Benefits / What we offer" body={job.what_we_offer} />
             <Block title="Accommodation" body={job.accommodation} />
-            {backHref ? (
-                <Link href={backHref} className="mt-6 inline-block text-sm font-medium text-brand">
-                    Back to jobs
-                </Link>
-            ) : isPage ? null : (
-                <Link href={`/jobs/${job.slug}`} className="mt-6 inline-block text-sm font-medium text-brand lg:hidden">
-                    Open full job page
-                </Link>
-            )}
         </>
     );
 
-    if (isPane) {
-        return (
-            <div className="flex h-full min-h-0 flex-col bg-white">
-                <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5">{body}</div>
-                <div className="shrink-0 border-t border-line bg-white px-5 py-3">
-                    <JobActions job={job} variant="detail" />
-                </div>
-            </div>
-        );
-    }
+    const tabs = (
+        <Tabs
+            aria-label="Job content"
+            tabs={[
+                { id: 'details', label: 'Job Details' },
+                { id: 'company', label: 'Company' },
+            ]}
+            active={activeTab}
+            onChange={setActiveTab}
+            panels={{
+                details: jobDetailsPanel,
+                company: <JobCompanyTabPanel company={job.company_profile} openJobsLinkMode={openJobsLinkMode} />,
+            }}
+            className={
+                isPane
+                    ? 'mt-0 flex min-h-0 flex-1 flex-col border-t border-line pt-3 [&_[role=tablist]]:shrink-0'
+                    : 'mt-4'
+            }
+            panelsClassName={isPane ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain pt-4' : ''}
+        />
+    );
+
+    const shellClass = isPage
+        ? ''
+        : isPane
+          ? 'flex h-full min-h-0 flex-col'
+          : 'min-w-0 rounded-xl border border-line bg-white p-4 sm:p-6';
 
     return (
-        <div
-            className={`rounded-xl border border-line bg-white ${
-                isPage ? 'p-4 pb-24 sm:p-6 sm:pb-6' : 'max-h-[calc(100vh-8rem)] overflow-y-auto p-6'
-            }`}
-        >
-            {body}
-            <div className="sticky bottom-0 z-10 -mx-4 mt-6 border-t border-line bg-white px-4 py-3 shadow-[0_-8px_16px_rgba(33,68,73,0.08)] pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:hidden">
-                <JobActions job={job} variant="detail" />
-            </div>
+        <div className={shellClass}>
+            {backHref ? <BackNavLink href={backHref} label="Back to jobs" className="mb-4" /> : null}
+            {header}
+            {primaryActions}
+            {tabs}
         </div>
     );
 }

@@ -1,5 +1,5 @@
 import PageContainer from '@/Components/Public/PageContainer';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 
 type CtaSectionProps = {
     title: string;
@@ -16,7 +16,7 @@ export default function CtaSection({ title, description, actionLabel, actionHref
                     <h2 className="text-2xl font-semibold text-white sm:text-3xl">{title}</h2>
                     <p className="mt-2 text-white/80">{description}</p>
                 </div>
-                <Button href={actionHref} variant="accent">
+                <Button surface="public" href={actionHref} variant="accent">
                     {actionLabel}
                 </Button>
             </PageContainer>

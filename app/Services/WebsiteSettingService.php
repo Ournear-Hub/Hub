@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\MediaAsset;
 use App\Models\WebsiteSetting;
 use App\Support\PublicContent;
+use Illuminate\Validation\ValidationException;
 use App\Support\WhatsAppNumber;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Envelope;
@@ -79,6 +81,7 @@ class WebsiteSettingService
 
         $next = [
             'logo_path' => $row->logo_path,
+            'wordmark_path' => Schema::hasColumn('website_settings', 'wordmark_path') ? $row->wordmark_path : null,
             'icon_path' => $row->icon_path,
             'favicon_path' => $row->favicon_path,
         ];
@@ -86,7 +89,53 @@ class WebsiteSettingService
         $pendingDeletes = [];
 
         try {
-            foreach (['logo' => 'logo_path', 'icon' => 'icon_path', 'favicon' => 'favicon_path'] as $field => $column) {
+            $assetFields = [
+                'logo' => 'logo_path',
+                'wordmark' => 'wordmark_path',
+                'icon' => 'icon_path',
+                'favicon' => 'favicon_path',
+            ];
+
+            if (! Schema::hasColumn('website_settings', 'wordmark_path')) {
+                unset($assetFields['wordmark']);
+            }
+
+            $mediaFieldMap = [
+                'logo_media_id' => ['column' => 'logo_path', 'field' => 'logo'],
+                'wordmark_media_id' => ['column' => 'wordmark_path', 'field' => 'wordmark'],
+            ];
+
+            foreach ($mediaFieldMap as $payloadKey => $meta) {
+                if (! Schema::hasColumn('website_settings', $meta['column'])) {
+                    continue;
+                }
+
+                $mediaId = (int) ($payload[$payloadKey] ?? 0);
+                $field = $meta['field'];
+                $column = $meta['column'];
+                $upload = $payload[$field] ?? null;
+                $remove = (bool) ($payload['remove_'.$field] ?? false);
+
+                if ($mediaId <= 0 || $remove || $upload instanceof \Illuminate\Http\UploadedFile) {
+                    continue;
+                }
+
+                $asset = MediaAsset::query()->find($mediaId);
+                if ($asset === null) {
+                    throw ValidationException::withMessages([
+                        $payloadKey => 'The selected media asset could not be found.',
+                    ]);
+                }
+
+                $stored = $this->brandingAssets->copyFromMediaAsset($asset, $field);
+                $storedNew[] = $stored;
+                if (is_string($row->{$column}) && $row->{$column} !== '') {
+                    $pendingDeletes[] = $row->{$column};
+                }
+                $next[$column] = $stored;
+            }
+
+            foreach ($assetFields as $field => $column) {
                 $upload = $payload[$field] ?? null;
                 $remove = (bool) ($payload['remove_'.$field] ?? false);
 
@@ -105,12 +154,24 @@ class WebsiteSettingService
                 }
             }
 
-            $row->update([
+            $attributes = [
                 'website_name' => $name,
                 'logo_path' => $next['logo_path'],
                 'icon_path' => $next['icon_path'],
                 'favicon_path' => $next['favicon_path'],
-            ]);
+            ];
+
+            if (Schema::hasColumn('website_settings', 'wordmark_path')) {
+                $attributes['wordmark_path'] = $next['wordmark_path'];
+            }
+
+            $row->update($attributes);
+
+            if (($payload['remove_auth_splash'] ?? false) === true) {
+                $this->brandingAssets->removeAuthSplashVideo();
+            } elseif ($payload['auth_splash'] ?? null instanceof \Illuminate\Http\UploadedFile) {
+                $this->brandingAssets->storeAuthSplashVideo($payload['auth_splash']);
+            }
         } catch (\Throwable $exception) {
             foreach ($storedNew as $path) {
                 $this->brandingAssets->delete($path);
@@ -131,7 +192,20 @@ class WebsiteSettingService
      */
     public function publicBranding(): array
     {
-        return $this->current()->toPublicBrandingArray();
+        $base = $this->current()->toPublicBrandingArray();
+        $bundledSplash = public_path('brand/ournear-splash.mp4');
+        $managedSplash = $this->brandingAssets->authSplashPublicUrl();
+
+        return [
+            ...$base,
+            'header_logo_url' => $base['logo_url'],
+            'footer_logo_url' => $base['wordmark_url'],
+            'hire_wordmark_url' => $base['wordmark_url'] ?? asset('brand/ournear-hire-wordmark.jpeg'),
+            'auth_symbol_url' => $base['icon_url'] ?? asset('brand/ournear-symbol.jpeg'),
+            'auth_wordmark_url' => $base['wordmark_url'] ?? $base['logo_url'] ?? asset('brand/ournear-hire-wordmark.jpeg'),
+            'auth_splash_video_url' => $managedSplash ?? (is_file($bundledSplash) ? asset('brand/ournear-splash.mp4') : null),
+            'auth_splash_poster_url' => asset('brand/ournear-symbol.jpeg'),
+        ];
     }
 
     public function websiteName(): string
@@ -291,7 +365,11 @@ class WebsiteSettingService
 
     public function applyRuntimeMailIdentity(): void
     {
-        if (! Schema::hasTable('website_settings')) {
+        try {
+            if (! Schema::hasTable('website_settings')) {
+                return;
+            }
+        } catch (\Throwable) {
             return;
         }
 
@@ -357,14 +435,12 @@ class WebsiteSettingService
      */
     public function publicCommunication(): array
     {
-        $placeholder = PublicContent::fallbackContact();
-
         return [
-            'email' => $this->primaryEmail() ?? $placeholder['email'],
+            'email' => $this->primaryEmail() ?? '',
             'support_email' => $this->supportEmail(),
             'recruitment_email' => $this->recruitmentEmail(),
-            'phone' => $this->nullableString($this->current()->office_phone) ?? $placeholder['phone'],
-            'whatsapp' => $this->primaryWhatsappDisplay() ?? $placeholder['whatsapp'],
+            'phone' => $this->nullableString($this->current()->office_phone) ?? '',
+            'whatsapp' => $this->primaryWhatsappDisplay() ?? '',
             'whatsapp_url' => $this->primaryWhatsappUrl(),
             'recruitment_whatsapp' => $this->recruitmentWhatsappDisplay(),
             'recruitment_whatsapp_url' => $this->recruitmentWhatsappUrl(),

@@ -6,10 +6,8 @@ import Pagination from '@/Components/Pagination';
 import {
     ActivityFeed,
     Button,
-    DataTable,
     Drawer,
     EmptyState,
-    FilterBar,
     Input,
     Label,
     SearchBar,
@@ -17,9 +15,13 @@ import {
     StatusBadge,
     Tabs,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { AdminCandidate, CandidateLibraryFile, CandidateWorkspaceProps } from '@/types/candidates';
 import FollowUpTaskForm from '@/Components/Admin/FollowUpTaskForm';
+import AssignRecruiterTalentPoolForm from '@/Components/Admin/AssignRecruiterTalentPoolForm';
 
 const talentFilterKeys = [
     'search',
@@ -63,6 +65,8 @@ export default function CandidatesIndex({
     jobs = [],
     saved_searches = [],
     can_manage = false,
+    can_assign_talent_pool = false,
+    talent_pool_recruiters = [],
     can_create_task = false,
     staffUsers = [],
 }: CandidateWorkspaceProps) {
@@ -220,10 +224,11 @@ export default function CandidatesIndex({
                 aria-hidden={selected ? true : undefined}
             >
                 <div className="mb-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Candidates</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Candidate profiles attached to platform users. Guest applications remain in Applications until they have an account.
-                    </p>
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Candidate talent library"
+                        description="Candidate profiles attached to platform users. Guest applications remain in Applications until they have an account."
+                    />
                 </div>
 
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
@@ -626,12 +631,26 @@ export default function CandidatesIndex({
                                     {(recruitment?.shortlisted.length ?? 0) === 0 ? (
                                         <p className="mt-2 text-sm text-muted">Not shortlisted for any job yet.</p>
                                     ) : (
-                                        <ul className="mt-2 space-y-2 text-sm">
+                                        <ul className="mt-2 space-y-3 text-sm">
                                             {recruitment?.shortlisted.map((item) => (
                                                 <li key={item.id}>
                                                     <Link href={item.href} className="font-medium text-brand">
                                                         {item.job_title ?? item.business_id}
                                                     </Link>
+                                                    {can_assign_talent_pool &&
+                                                    item.can_assign &&
+                                                    selected?.user_id &&
+                                                    item.job_id ? (
+                                                        <AssignRecruiterTalentPoolForm
+                                                            candidateUserId={selected.user_id}
+                                                            candidateProfileId={selected.id}
+                                                            applicationId={item.application_id}
+                                                            jobId={item.job_id}
+                                                            defaultRecruiterUserId={item.default_recruiter_user_id}
+                                                            recruiters={talent_pool_recruiters}
+                                                            jobLabel={item.job_title ?? item.business_id ?? 'Job'}
+                                                        />
+                                                    ) : null}
                                                 </li>
                                             ))}
                                         </ul>

@@ -19,17 +19,49 @@ export type PublicJobCard = {
     is_closed?: boolean;
     featured: boolean;
     urgent?: boolean;
+    listing_priority?: string;
+    listing_priority_label?: string | null;
     joining_date?: string | null;
     site?: string | null;
     accommodation?: string | null;
     is_saved?: boolean | null;
     has_applied?: boolean;
     has_resume?: boolean;
-    apply_state?: 'guest' | 'apply' | 'upload_resume' | 'applied' | 'closed' | 'hidden';
+    apply_state?: 'guest' | 'apply' | 'upload_resume' | 'applied' | 'closed' | 'hidden' | 'own_company';
     referral_code?: string | null;
+    company_verified?: boolean;
+    skills?: string[];
+    status_label?: string;
+    share_url?: string;
+};
+
+export type PublicJobCompanyProfile = {
+    id?: number;
+    company_name: string;
+    logo_url?: string | null;
+    company_verified?: boolean;
+    profile_available?: boolean;
+    public_profile_url?: string | null;
+    about_company?: string | null;
+    company_size?: string | null;
+    industry?: string | null;
+    company_details?: string | null;
+    company_website?: string | null;
+    locations?: string[];
+    benefits?: string[];
+    socials?: Record<string, string | null>;
+    open_jobs?: Array<{
+        title: string;
+        slug: string;
+        location: string | null;
+        employment_type: string | null;
+    }>;
+    public_jobs_url?: string;
 };
 
 export type PublicJobDetail = PublicJobCard & {
+    skills?: string[];
+    qualifications?: string[];
     description: string;
     responsibilities: string | null;
     requirements: string | null;
@@ -38,6 +70,7 @@ export type PublicJobDetail = PublicJobCard & {
     site?: string | null;
     accommodation?: string | null;
     accepts_applications: boolean;
+    company_profile?: PublicJobCompanyProfile | null;
 };
 
 export type AdminJob = {
@@ -77,6 +110,8 @@ export type AdminJob = {
     accommodation?: string | null;
     featured: boolean;
     urgent?: boolean;
+    listing_priority?: string;
+    listing_priority_label?: string | null;
     posting_tier?: 'trial' | 'basic';
     trial_expires_at?: string | null;
     active: boolean;
@@ -94,7 +129,10 @@ export type AdminJob = {
     applications_count: number;
     created_at: string | null;
     updated_at: string | null;
-    skills?: string | null;
+    skill_ids?: number[];
+    qualification_ids?: number[];
+    skills?: string[];
+    qualifications?: string[];
     notice_period?: string | null;
     keywords?: string | null;
     qualification?: string | null;

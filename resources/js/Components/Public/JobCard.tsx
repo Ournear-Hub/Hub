@@ -1,186 +1,173 @@
-import type { MouseEvent } from 'react';
 import { Link } from '@inertiajs/react';
+import CompanyVerificationIndicator from '@/Components/Public/CompanyVerificationIndicator';
 import JobActions from '@/Components/Public/JobActions';
+import OurNearIcon from '@/icons/OurNearIcon';
 import type { PublicJobCard } from '@/types/jobs';
+import { publicJobsWorkspaceWithJob } from '@/utils/publicJobsUrl';
 
 type JobCardProps = {
     job: PublicJobCard;
+    compact?: boolean;
     selected?: boolean;
     onSelect?: (slug: string) => void;
-    compact?: boolean;
-    /** Compact jobs-board list row (desktop split + mobile list). */
-    list?: boolean;
+    hideActions?: boolean;
+    linkable?: boolean;
+    /** Open title and “View job” in the split-view jobs board instead of the standalone job page. */
+    openInWorkspace?: boolean;
 };
 
-export default function JobCard({ job, selected = false, onSelect, compact = false, list = false }: JobCardProps) {
-    const dense = list || compact;
-    const companyInitials =
-        job.company_name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join('')
-            .toUpperCase() || 'CO';
+function MetaRow({ icon, text }: { icon: string; text: string }) {
+    return (
+        <span className="inline-flex min-w-0 max-w-full items-center gap-1.5 text-xs text-muted">
+            <OurNearIcon name={icon} size="sm" className="shrink-0 text-brand/70" decorative />
+            <span className="line-clamp-2 break-words sm:truncate">{text}</span>
+        </span>
+    );
+}
 
-    const select = () => {
-        if (onSelect) {
-            onSelect(job.slug);
-            return;
-        }
-        window.location.assign(`/jobs/${job.slug}`);
-    };
+export default function JobCard({
+    job,
+    compact = false,
+    selected = false,
+    onSelect,
+    hideActions = false,
+    linkable = true,
+    openInWorkspace = false,
+}: JobCardProps) {
+    const jobHref = openInWorkspace ? publicJobsWorkspaceWithJob(job.slug) : `/jobs/${job.slug}`;
+    const useSplitSelect = Boolean(onSelect);
+    const skills = job.skills ?? [];
+    const priorityLabel = job.listing_priority_label ?? (job.urgent ? 'Urgent' : null);
+    const showStatus = job.is_closed || job.status_label || priorityLabel;
+    const companyHref = job.company_url;
 
-    const stop = (event: MouseEvent) => {
-        event.stopPropagation();
-    };
+    const cardSurface = selected
+        ? 'border-accent bg-white shadow-md ring-2 ring-accent/20'
+        : 'border-line bg-white shadow-sm hover:border-[#214449]/35 hover:shadow-md';
 
-    const metaParts = [job.experience, job.employment_type, job.salary].filter(Boolean);
+    const titleControl = useSplitSelect ? (
+        <button
+            type="button"
+            onClick={() => onSelect?.(job.slug)}
+            className={`line-clamp-3 w-full break-words text-left font-semibold leading-snug text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${compact ? 'text-base' : 'text-base sm:text-lg'}`}
+        >
+            {job.title}
+        </button>
+    ) : linkable ? (
+        <Link
+            href={jobHref}
+            className={`line-clamp-3 break-words font-semibold leading-snug text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${compact ? 'text-base' : 'text-base sm:text-lg'}`}
+        >
+            {job.title}
+        </Link>
+    ) : (
+        <p className={`line-clamp-3 break-words font-semibold leading-snug text-brand ${compact ? 'text-base' : 'text-base sm:text-lg'}`}>
+            {job.title}
+        </p>
+    );
+
+    const companyNameControl = companyHref ? (
+        <Link
+            href={companyHref}
+            className="line-clamp-2 min-w-0 text-sm font-medium text-brand hover:underline"
+            onClick={(event) => event.stopPropagation()}
+        >
+            {job.company_name}
+        </Link>
+    ) : (
+        <span className="line-clamp-2 min-w-0 text-sm font-medium text-ink">{job.company_name}</span>
+    );
+
+    const padding = compact ? 'p-3 sm:p-4' : 'p-4 sm:p-5';
+    const showSideActions = !hideActions && !useSplitSelect;
 
     return (
         <article
-            role="button"
-            tabIndex={0}
+            className={`rounded-xl border border-l-4 border-l-[#214449] transition-all focus-within:ring-2 focus-within:ring-brand/25 ${cardSurface}`}
             aria-current={selected ? 'true' : undefined}
-            onClick={select}
-            onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    select();
-                }
-            }}
-            className={`min-w-0 max-w-full cursor-pointer overflow-hidden rounded-lg border bg-white text-left transition-colors ${
-                dense ? 'p-3' : 'p-5'
-            } ${
-                selected
-                    ? 'border-brand bg-brand/[0.04] shadow-[inset_3px_0_0_0_var(--color-accent,#F15A24)]'
-                    : 'border-line hover:border-brand/40 hover:bg-surface/40'
-            }`}
         >
-            <div className="flex min-w-0 items-start gap-2.5">
-                {!list && (job.company_logo_url ? (
-                    job.company_url ? (
-                        <a href={job.company_url} className="shrink-0" onClick={stop}>
-                            <img
-                                src={job.company_logo_url}
-                                alt=""
-                                className={`rounded-md border border-line object-cover ${dense ? 'h-10 w-10' : 'h-12 w-12'}`}
-                            />
-                        </a>
-                    ) : (
-                        <img
-                            src={job.company_logo_url}
-                            alt=""
-                            className={`shrink-0 rounded-md border border-line object-cover ${dense ? 'h-10 w-10' : 'h-12 w-12'}`}
-                        />
-                    )
-                ) : (
-                    <div
-                        aria-hidden
-                        className={`flex shrink-0 items-center justify-center rounded-md bg-brand/10 text-xs font-semibold text-brand ${dense ? 'h-10 w-10' : 'h-12 w-12'}`}
-                    >
-                        {companyInitials}
+            <div
+                className={`flex min-w-0 flex-col gap-3 ${padding} ${showSideActions ? 'sm:flex-row sm:items-start sm:justify-between sm:gap-4' : ''}`}
+            >
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <div className="flex flex-wrap items-start gap-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                            {titleControl}
+                            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                                {companyNameControl}
+                                <CompanyVerificationIndicator verified={job.company_verified === true} />
+                            </div>
+                        </div>
+                        {showStatus ? (
+                            <span
+                                className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${
+                                    job.is_closed ? 'bg-surface text-muted' : 'bg-brand/10 text-brand'
+                                }`}
+                            >
+                                {job.is_closed
+                                    ? 'Closed'
+                                    : priorityLabel ?? job.status_label ?? 'Open'}
+                            </span>
+                        ) : null}
                     </div>
-                ))}
 
-                <div className="min-w-0 flex-1">
-                    {job.urgent && !list ? (
-                        <p className="text-[10px] font-semibold uppercase tracking-wide text-accent">Urgent</p>
+                    <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-1.5">
+                        {job.location ? <MetaRow icon="building" text={job.location} /> : null}
+                        {job.employment_type ? <MetaRow icon="clipboard" text={job.employment_type} /> : null}
+                        {job.experience ? <MetaRow icon="briefcase" text={job.experience} /> : null}
+                        {job.salary ? <MetaRow icon="file" text={job.salary} /> : null}
+                    </div>
+
+                    {!compact && skills.length > 0 ? (
+                        <ul className="flex flex-wrap gap-1.5">
+                            {skills.slice(0, 4).map((skill) => (
+                                <li
+                                    key={skill}
+                                    className="rounded-full border border-line bg-surface px-2.5 py-0.5 text-[11px] font-medium text-ink"
+                                >
+                                    {skill}
+                                </li>
+                            ))}
+                            {skills.length > 4 ? (
+                                <li className="rounded-full px-2 py-0.5 text-[11px] text-muted">+{skills.length - 4} more</li>
+                            ) : null}
+                        </ul>
                     ) : null}
-                    {list ? (
-                        <Link
-                            href={`/jobs/${job.slug}`}
-                            className={`break-words font-semibold leading-snug text-ink hover:text-brand ${list ? 'text-sm' : dense ? 'text-base' : 'text-lg'}`}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                if (window.matchMedia('(min-width: 1024px)').matches && onSelect) {
-                                    event.preventDefault();
-                                    onSelect(job.slug);
-                                }
-                            }}
-                        >
-                            {job.title}
-                        </Link>
-                    ) : (
-                        <h3
-                            className={`break-words font-semibold leading-snug text-ink ${dense ? 'text-base' : 'text-lg'}`}
-                        >
-                            {job.title}
-                        </h3>
-                    )}
-                    {job.company_url ? (
-                        <a
-                            href={job.company_url}
-                            className="mt-0.5 block truncate text-xs font-medium text-brand hover:underline sm:text-sm"
-                            onClick={stop}
-                        >
-                            {job.company_name}
-                        </a>
-                    ) : (
-                        <p className="mt-0.5 truncate text-xs font-medium text-brand sm:text-sm">{job.company_name}</p>
-                    )}
-                    <p className="mt-0.5 truncate text-xs text-muted">{job.location}</p>
-                    {list && metaParts.length > 0 ? (
-                        <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted">{metaParts.join(' · ')}</p>
+
+                    {!compact ? (
+                        <p className="text-xs text-muted">
+                            Posted {job.posted_label ?? '—'}
+                            {job.closing_label ? ` · Closes ${job.closing_label.replace(/^Closes /i, '')}` : ''}
+                        </p>
+                    ) : null}
+
+                    {!hideActions && !useSplitSelect && linkable ? (
+                        <div className="flex flex-wrap items-center gap-2 pt-1 sm:hidden">
+                            <Link
+                                href={jobHref}
+                                className="inline-flex min-h-9 items-center rounded-md bg-[#F15A24] px-3.5 text-sm font-semibold text-white hover:opacity-95"
+                            >
+                                View job
+                            </Link>
+                        </div>
                     ) : null}
                 </div>
-            </div>
 
-            {!list ? (
-                <>
-                    <dl className={`mt-3 grid gap-x-4 gap-y-1.5 text-xs text-muted ${dense ? 'grid-cols-1' : 'sm:grid-cols-2 lg:grid-cols-1'}`}>
-                        {job.employment_type ? (
-                            <div>
-                                <dt className="inline font-medium text-ink">Type: </dt>
-                                <dd className="inline">{job.employment_type}</dd>
-                            </div>
-                        ) : null}
-                        {job.salary ? (
-                            <div>
-                                <dt className="inline font-medium text-ink">Salary / CTC: </dt>
-                                <dd className="inline">{job.salary}</dd>
-                            </div>
-                        ) : null}
-                        {job.experience ? (
-                            <div>
-                                <dt className="inline font-medium text-ink">Experience: </dt>
-                                <dd className="inline">{job.experience}</dd>
-                            </div>
-                        ) : null}
-                        {!dense && job.joining_date ? (
-                            <div>
-                                <dt className="inline font-medium text-ink">Joining: </dt>
-                                <dd className="inline">{job.joining_date}</dd>
-                            </div>
-                        ) : null}
-                        {!dense && job.site ? (
-                            <div>
-                                <dt className="inline font-medium text-ink">Site: </dt>
-                                <dd className="inline">{job.site}</dd>
-                            </div>
-                        ) : null}
-                        {!dense && job.accommodation ? (
-                            <div className="sm:col-span-2 lg:col-span-1">
-                                <dt className="inline font-medium text-ink">Accommodation: </dt>
-                                <dd className="inline">{job.accommodation}</dd>
-                            </div>
-                        ) : null}
-                        <div>
-                            <dt className="inline font-medium text-ink">Posted: </dt>
-                            <dd className="inline">{job.posted_label ?? '—'}</dd>
+                {showSideActions ? (
+                    <div className="flex shrink-0 flex-row items-center justify-between gap-2 sm:flex-col sm:items-end sm:justify-start">
+                        <div className="hidden sm:flex sm:flex-col sm:items-end sm:gap-1">
+                            {linkable ? (
+                                <Link
+                                    href={jobHref}
+                                    className="inline-flex min-h-9 items-center rounded-md bg-[#F15A24] px-3.5 text-sm font-semibold text-white hover:opacity-95"
+                                >
+                                    View job
+                                </Link>
+                            ) : null}
                         </div>
-                    </dl>
-                    <p className="mt-2 text-xs text-muted">{job.closing_label ?? (job.is_closed ? 'Closed' : 'Open')}</p>
-                </>
-            ) : (
-                <p className="mt-1.5 text-[11px] text-muted">
-                    Posted {job.posted_label ?? '—'}
-                    {job.closing_label ? ` · ${job.closing_label}` : ''}
-                </p>
-            )}
-
-            <div className={`${list ? 'mt-2 border-t border-line/80 pt-2' : 'mt-4 border-t border-line pt-4'}`} onClick={stop}>
-                <JobActions job={job} variant={list ? 'list' : 'card'} />
+                        <JobActions job={job} variant="card" layout="icon" />
+                    </div>
+                ) : null}
             </div>
         </article>
     );

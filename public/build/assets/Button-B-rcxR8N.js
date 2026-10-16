@@ -1,0 +1,1 @@
+import{j as e}from"./app-2VvbXxLL.js";import{B as i}from"./Button-B_ed1PKz.js";function p({variant:t="primary",className:r="",type:n="button",children:o,...a}){const s=t==="danger"?"destructive":t;return e.jsx(i,{surface:"admin",variant:s,type:n,className:r,...a,children:o})}export{p as B};

@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Services\AccountDashboardService;
 use App\Services\EmployerPostingEligibilityService;
 use App\Services\HiringActivationService;
+use App\Services\MasterData\MasterDataService;
+use App\Support\EmployerWorkspaceDestination;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -18,9 +21,12 @@ class HiringDashboardController extends Controller
         HiringActivationService $hiring,
         EmployerPostingEligibilityService $eligibility,
         AccountDashboardService $dashboards,
+        MasterDataService $masterData,
     ): Response {
         $user = $request->user();
         $this->authorize('update', $user);
+
+        EmployerWorkspaceDestination::remember($request);
 
         $gate = $hiring->gate($user);
 
@@ -32,6 +38,7 @@ class HiringDashboardController extends Controller
             'gate' => $gate,
             'eligibility' => $user->employerProfile ? $eligibility->for($user) : null,
             'workspace' => $workspace,
+            'industries' => $masterData->formOptions()['industries'] ?? [],
         ]);
     }
 
@@ -42,16 +49,24 @@ class HiringDashboardController extends Controller
 
         $validated = $request->validate([
             'company_name' => ['required', 'string', 'max:160'],
-            'hiring_email' => ['nullable', 'email', 'max:190'],
+            'company_phone' => ['required', 'string', 'max:40'],
+            'company_email' => ['required', 'email', 'max:190'],
+            'industry_id' => ['required', 'integer', Rule::exists('industries', 'id')],
         ]);
 
         $hiring->activate(
             $user,
             $validated['company_name'],
-            $validated['hiring_email'] ?? null,
+            $validated['company_phone'],
+            $validated['company_email'],
+            (int) $validated['industry_id'],
         );
 
-        return back()->with('success', 'Hiring services active');
+        $destination = EmployerWorkspaceDestination::pull($request, route('account.hiring'));
+
+        return redirect()
+            ->to($destination)
+            ->with('success', 'Employer workspace activated.');
     }
 
     public function sendHiringEmail(Request $request, HiringActivationService $hiring): RedirectResponse

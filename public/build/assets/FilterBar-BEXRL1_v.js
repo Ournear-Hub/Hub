@@ -1,0 +1,1 @@
+import{j as m}from"./app-2VvbXxLL.js";import{bl as s}from"./classNames-BAHVgBTk.js";function e({onSubmit:r,children:t,className:o=""}){return m.jsx("form",{onSubmit:r,className:`${s} ${o}`.trim(),children:t})}export{e as F};

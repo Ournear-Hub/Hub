@@ -1,0 +1,68 @@
+# Stage 8 — candidate ↔ admin workflow (schema v1)
+
+version: 1
+stage: 8
+title: Candidate and admin application visibility
+module: candidate_admin
+
+cases:
+  - id: STG8-CAND-001
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Candidate application list shows owned ONT-A-* record
+  - id: STG8-CAND-002
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Detail shows Shortlisted status and application identity
+  - id: STG8-CAND-003
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Timeline reflects shortlist and prior review events
+  - id: STG8-CAND-004
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Active filter includes in-progress application
+  - id: STG8-CAND-005
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Detail persists after reload and re-login
+  - id: STG8-ADM-001
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin opens application drawer for correlation record
+  - id: STG8-ADM-002
+    feature_ids: [ADM-04]
+    route: /admin/candidates
+    summary: Candidate tab and workspace link association
+  - id: STG8-ADM-003
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin status Shortlisted to Interview with persistence
+  - id: STG8-CAND-006
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Candidate sees Interview after admin update
+  - id: STG8-CORR-001
+    feature_ids: [CAN-04, X-03]
+    route: /account/profile/edit
+    summary: Profile editable; application resume snapshot unchanged
+  - id: STG8-CORR-002
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Post-submission correction-request workflow
+  - id: STG8-NOTIF-001
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: Shortlist notification present; mark read survives reload
+  - id: STG8-NOTIF-002
+    feature_ids: [CAN-09]
+    route: email
+    summary: Interview status email (product scope)
+  - id: STG8-AUTH-001
+    feature_ids: [X-03]
+    route: /account/applications/{id}
+    summary: Non-owner cannot access candidate application
+  - id: STG8-AUTH-002
+    feature_ids: [X-03]
+    route: /admin/applications
+    summary: Candidate cannot access admin application workspace

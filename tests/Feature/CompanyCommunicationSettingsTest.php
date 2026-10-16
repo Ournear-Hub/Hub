@@ -29,7 +29,8 @@ class CompanyCommunicationSettingsTest extends TestCase
                 'primary_whatsapp' => '9876543210',
                 'recruitment_whatsapp' => '+91 99887 76655',
             ]))
-            ->assertRedirect(route('admin.settings.edit', ['tab' => 'website']));
+            ->assertRedirect(route('admin.settings.edit', ['tab' => 'website']))
+            ->assertSessionHas('success', 'Website settings saved.');
 
         $row = WebsiteSetting::query()->where('lock_key', 'default')->first();
         $this->assertNotNull($row);

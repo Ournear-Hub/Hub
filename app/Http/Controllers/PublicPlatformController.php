@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserRole;
 use App\Models\EmployerProfile;
+use App\Models\Job;
 use App\Models\Location;
-use App\Models\User;
+use App\Services\ShowcaseContentService;
 use App\Services\WebsiteContentService;
 use App\Support\PublicContent;
 use Illuminate\Http\Request;
@@ -41,19 +41,27 @@ class PublicPlatformController extends Controller
                     && $employer->shareAllows('enabled'),
             )
             ->take(60)
-            ->map(fn (EmployerProfile $employer) => [
-                'id' => $employer->id,
-                'name' => $employer->publicDisplayCompany(),
-                'industry' => $employer->shareAllows('industry_size') ? $employer->displayIndustry() : null,
-                'about' => $employer->shareAllows('about') ? $employer->about_company : null,
-                'location' => $employer->shareAllows('locations')
-                    ? $employer->locations->pluck('name')->filter()->implode(', ') ?: null
-                    : null,
-                'logo_url' => $employer->user?->photoUrl(),
-                'ournear_verified' => $employer->ournearVerified(),
-                'open_jobs' => (int) $employer->open_jobs_count,
-                'url' => route('companies.show', $employer),
-            ])
+            ->map(function (EmployerProfile $employer) {
+                $row = [
+                    'id' => $employer->id,
+                    'name' => $employer->publicDisplayCompany(),
+                    'industry' => $employer->shareAllows('industry_size') ? $employer->displayIndustry() : null,
+                    'about' => $employer->shareAllows('about') ? $employer->about_company : null,
+                    'location' => $employer->shareAllows('locations')
+                        ? $employer->locations->pluck('name')->filter()->implode(', ') ?: null
+                        : null,
+                    'logo_url' => $employer->logoUrl(false),
+                    'open_jobs' => (int) $employer->open_jobs_count,
+                    'url' => route('companies.show', $employer),
+                    'public_jobs_url' => route('jobs.index', ['employer' => $employer->id]),
+                ];
+
+                if ($employer->ournearVerified()) {
+                    $row['ournear_verified'] = true;
+                }
+
+                return $row;
+            })
             ->values();
 
         return Inertia::render('Companies/Index', [
@@ -83,69 +91,40 @@ class PublicPlatformController extends Controller
         ]);
     }
 
-    public function hire(WebsiteContentService $cms): Response
+    public function hire(WebsiteContentService $cms, \App\Services\HireLandingPresentationService $hireLanding): Response
     {
+        $sampleJob = Job::query()->publiclyVisible()->latest('id')->first();
+
         return Inertia::render('Platform/Hire', [
             'content' => PublicContent::common(),
             'cms' => $cms->publicPage('hire'),
+            'sampleShareUrl' => $sampleJob !== null
+                ? route('jobs.show', $sampleJob)
+                : route('jobs.index'),
+            'hirePresentation' => $hireLanding->payloadFor(request()->user()),
         ]);
     }
 
-    public function talentPool(Request $request, WebsiteContentService $cms): Response
+    public function talentPool(WebsiteContentService $cms, ShowcaseContentService $showcase): Response
     {
-        $keyword = trim($request->string('q')->toString());
-        $location = trim($request->string('location')->toString());
-
-        $people = User::query()
-            ->where('role', UserRole::Candidate)
-            ->whereNotNull('username')
-            ->whereHas('candidateProfile')
-            ->when($keyword !== '', function ($query) use ($keyword) {
-                $like = '%'.$keyword.'%';
-                $query->where(function ($builder) use ($like) {
-                    $builder->where('name', 'like', $like)
-                        ->orWhereHas('candidateProfile', fn ($profile) => $profile->where('current_designation', 'like', $like));
-                });
-            })
-            ->when($location !== '', function ($query) use ($location) {
-                $query->whereHas('candidateProfile', fn ($profile) => $profile->where('location', 'like', '%'.$location.'%'));
-            })
-            ->with('candidateProfile')
-            ->latest('id')
-            ->limit(48)
-            ->get()
-            ->filter(fn (User $user) => $user->candidateProfile?->shareAllows('enabled') === true)
-            ->take(24)
-            ->map(function (User $user) {
-                $profile = $user->candidateProfile;
-
-                return [
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'headline' => $profile?->shareAllows('current_role') ? $profile->current_designation : null,
-                    'location' => $profile?->shareAllows('location') ? $profile->location : null,
-                    'url' => route('profiles.show', $user),
-                ];
-            })
-            ->values();
-
         return Inertia::render('Platform/TalentPool', [
             'content' => PublicContent::common(),
             'cms' => $cms->publicPage('talent-pool'),
-            'people' => $people,
-            'filters' => [
-                'q' => $keyword,
-                'location' => $location,
-            ],
-            'result_count' => $people->count(),
+            'industries' => PublicContent::industries(),
+            'talentPoolShowcaseCompanies' => $showcase->publicCompaniesFor('talent_pool'),
         ]);
     }
 
-    public function staffing(WebsiteContentService $cms): Response
+    public function staffing(WebsiteContentService $cms, ShowcaseContentService $showcase): Response
     {
         return Inertia::render('Platform/Staffing', [
             'content' => PublicContent::common(),
             'cms' => $cms->publicPage('staffing'),
+            'staffing_form' => [
+                'industries' => PublicContent::industries(),
+                'workforce_types' => ['Permanent', 'Contract', 'Temporary', 'Project teams'],
+            ],
+            'staffingShowcaseCompanies' => $showcase->publicCompaniesFor('staffing'),
         ]);
     }
 }

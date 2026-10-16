@@ -8,6 +8,7 @@ use App\Mail\ApplicationSelectedMail;
 use App\Mail\InterviewScheduledMail;
 use App\Models\Application;
 use App\Models\ApplicationInterview;
+use App\Models\User;
 use Illuminate\Mail\Mailable;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,7 @@ class RecruitmentNotificationService
     public function __construct(
         private CandidateNotificationService $candidates,
         private EmployerNotificationService $employers,
+        private ?CommunicationPreferenceService $preferences = null,
     ) {}
 
     public function notifyApplicationSubmitted(Application $application): void
@@ -71,6 +73,10 @@ class RecruitmentNotificationService
 
     private function queueToApplicationEmail(Application $application, Mailable $mailable): void
     {
+        if (! $this->candidateAllowsOperationalEmail($application)) {
+            return;
+        }
+
         $email = strtolower(trim((string) $application->email));
 
         if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -78,7 +84,7 @@ class RecruitmentNotificationService
         }
 
         try {
-            Mail::to($email)->send($mailable);
+            Mail::to($email)->queue($mailable);
         } catch (\Throwable $exception) {
             Log::warning('Operational email could not be queued.', [
                 'mailable' => $mailable::class,
@@ -86,5 +92,20 @@ class RecruitmentNotificationService
                 'message' => $exception->getMessage(),
             ]);
         }
+    }
+
+    private function candidateAllowsOperationalEmail(Application $application): bool
+    {
+        if ($application->user_id === null) {
+            return true;
+        }
+
+        $user = User::query()->find($application->user_id);
+        if (! $user instanceof User) {
+            return true;
+        }
+
+        return ($this->preferences ?? app(CommunicationPreferenceService::class))
+            ->canSendRecruitmentEmail($user);
     }
 }

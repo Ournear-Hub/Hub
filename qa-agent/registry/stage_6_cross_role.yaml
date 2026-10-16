@@ -1,0 +1,72 @@
+# Stage 6 — cross-role workflow (schema v1)
+
+version: 1
+stage: 6
+title: Candidate → Employer → Admin application handoff
+module: cross_role
+
+cases:
+  - id: STG6-CAND-001
+    feature_ids: [X-01, JRN-CROSS-ROLE-01]
+    route: /jobs/{slug}/apply
+    summary: Candidate submission confirmation and correlation identifiers
+  - id: STG6-CAND-002
+    feature_ids: [CAN-05]
+    route: /account/applications
+    summary: Application appears in candidate history with correct job link
+  - id: STG6-CAND-003
+    feature_ids: [CAN-05]
+    route: /account/applications/{id}
+    summary: Candidate detail persists after reload
+  - id: STG6-EMP-001
+    feature_ids: [EMP-04, JRN-EMPLOYER-RESUME-01]
+    route: /account/hiring/applications
+    summary: Employer receives application on hiring list
+  - id: STG6-EMP-002
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer detail matches candidate submission
+  - id: STG6-EMP-003
+    feature_ids: [EMP-03]
+    route: /account/employer-applications/{id}/resume
+    summary: Employer resume view/download readable
+  - id: STG6-ADM-001
+    feature_ids: [ADM-03, JRN-ADMIN-APPLICATION-01]
+    route: /admin/applications
+    summary: Staff locates same application by search and drawer
+  - id: STG6-ADM-002
+    feature_ids: [ADM-03]
+    route: /admin/applications/{id}/resume
+    summary: Admin resume tab readable download
+  - id: STG6-ADM-003
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin status update when application is New
+  - id: STG6-X-001
+    feature_ids: [X-01]
+    route: cross-role
+    summary: Shared application identity and job title consistent across roles
+  - id: STG6-X-002
+    feature_ids: [X-01]
+    route: cross-role
+    summary: Status visibility after admin change (employer vs candidate rules)
+  - id: STG6-AUTH-001
+    feature_ids: [EMP-09]
+    route: /account/hiring/applications
+    summary: Employer B cannot access Employer A application or resume
+  - id: STG6-AUTH-002
+    feature_ids: [X-03]
+    route: /admin/applications
+    summary: Candidate cannot access admin applications workspace
+  - id: STG6-AUTH-003
+    feature_ids: [X-03]
+    route: /admin/applications
+    summary: Employer A cannot access admin applications workspace
+  - id: STG6-ACT-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer self-service pipeline actions (Stage 5 dependency)
+  - id: STG6-ACT-002
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin/staff status action persistence after reload

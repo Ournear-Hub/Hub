@@ -29,34 +29,53 @@ class ApplicationPipelineService
 
     public function changeStatus(Application $application, ApplicationStatus $status, User $actor): Application
     {
-        $from = $application->status;
+        /** @var array{application: Application, from: ApplicationStatus, changed: bool} $result */
+        $result = DB::transaction(function () use ($application, $status, $actor) {
+            $locked = Application::query()
+                ->whereKey($application->id)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-        if ($from === $status) {
-            return $application;
-        }
+            $from = $locked->status;
 
-        $this->assertAllowedTransition($application, $from, $status);
+            if ($from === $status) {
+                return [
+                    'application' => $locked,
+                    'from' => $from,
+                    'changed' => false,
+                ];
+            }
 
-        DB::transaction(function () use ($application, $status, $actor, $from) {
-            $application->update(['status' => $status]);
+            $this->assertAllowedTransition($locked, $from, $status);
+
+            $locked->update(['status' => $status]);
 
             $this->activities->record(
                 actor: $actor,
                 type: RecruitmentActivityType::StatusChanged,
-                application: $application,
+                application: $locked,
                 fromStatus: $from->value,
                 toStatus: $status->value,
             );
+
+            return [
+                'application' => $locked->fresh() ?? $locked,
+                'from' => $from,
+                'changed' => true,
+            ];
         });
 
-        $fresh = $application->fresh() ?? $application;
-        $this->notifications->notifyStatusChanged($fresh, $from, $status);
-        RecruitmentAutomationHooks::fire(AutomationTrigger::ApplicationStatusChanged, [
-            'application' => $fresh,
-            'actor' => $actor,
-            'from_status' => $from->value,
-            'to_status' => $status->value,
-        ]);
+        $fresh = $result['application'];
+        if ($result['changed']) {
+            $from = $result['from'];
+            $this->notifications->notifyStatusChanged($fresh, $from, $status);
+            RecruitmentAutomationHooks::fire(AutomationTrigger::ApplicationStatusChanged, [
+                'application' => $fresh,
+                'actor' => $actor,
+                'from_status' => $from->value,
+                'to_status' => $status->value,
+            ]);
+        }
 
         return $fresh;
     }
@@ -314,6 +333,17 @@ class ApplicationPipelineService
             ScreeningDecision::Suitable => $this->markSuitable($application, $actor, $notes),
             ScreeningDecision::Pending => $application,
         };
+    }
+
+    public function selectForEmployer(Application $application, User $actor, ?string $notes = null): Application
+    {
+        if (! in_array($application->status, [ApplicationStatus::Shortlisted, ApplicationStatus::Interview], true)) {
+            throw ValidationException::withMessages([
+                'status' => 'Only shortlisted or interviewed applications can be selected.',
+            ]);
+        }
+
+        return $this->changeStatus($application, ApplicationStatus::Selected, $actor);
     }
 
     public function shortlist(Application $application, User $actor, ?string $notes = null): Application

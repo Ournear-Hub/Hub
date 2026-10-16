@@ -1,0 +1,226 @@
+# Machine-readable feature registry — synced with docs/OURNEAR_QA_AGENT_PHASE_A_INVENTORY.md §4
+# Schema v2: optional phpunit, depends_on (features); optional journeys block (see registry_validate.py)
+version: 2
+features:
+  - {id: PUB-01, module: public, name: Home and CMS hero, routes: ["/"], roles: [guest], status: implemented, risk: P1, human: partial, phpunit: [PublicWebsiteTest]}
+  - {id: PUB-02, module: public, name: Jobs list search filters, routes: ["/jobs"], roles: [guest], status: implemented, risk: P0, human: partial, phpunit: [QaDefectRegressionTest, JobApplicationTest]}
+  - {id: PUB-03, module: public, name: Job detail and apply, routes: ["/jobs/{slug}", "/jobs/{slug}/apply"], roles: [guest, candidate], status: implemented, risk: P0, human: verified, phpunit: [ApplicationExperienceTest, JobApplicationTest], depends_on: [CAN-04]}
+  - {id: PUB-04, module: public, name: Companies index show, routes: ["/companies"], roles: [guest], status: implemented, risk: P2, human: none}
+  - {id: PUB-05, module: public, name: Hire talent pool staffing, routes: ["/hire", "/talent-pool", "/staffing"], roles: [guest], status: implemented, risk: P2, human: none}
+  - {id: PUB-06, module: public, name: Public candidate profile, routes: ["/profiles/{username}"], roles: [guest], status: implemented, risk: P1, human: none}
+  - {id: PUB-07, module: public, name: Contact for employers enquiries, routes: ["/contact", "/for-employers"], roles: [guest], status: implemented, risk: P2, human: none}
+  - {id: PUB-08, module: public, name: Legal pages, routes: ["/privacy-policy", "/terms-and-conditions"], roles: [guest], status: implemented, risk: P3, human: none}
+  - {id: PUB-09, module: public, name: Freelancer intake, routes: ["/freelancers"], roles: [guest], status: implemented, risk: P3, human: none}
+  - {id: ACC-AUTH-01, module: account, name: Register login logout, routes: ["/register", "/login"], roles: [guest, member], status: implemented, risk: P0, human: partial, phpunit: [AccountAuthExperienceTest]}
+  - {id: ACC-AUTH-02, module: account, name: Password reset, routes: ["/forgot-password"], roles: [guest], status: implemented, risk: P1, human: none}
+  - {id: ACC-AUTH-03, module: account, name: Email verification, routes: ["/email/verify"], roles: [candidate], status: implemented, risk: P1, human: none}
+  - {id: ACC-AUTH-04, module: account, name: Mobile WhatsApp OTP settings, routes: ["/account/settings/security"], roles: [member], status: partial, risk: P1, human: none}
+  - {id: ACC-AUTH-05, module: account, name: Account switch, routes: ["/account/switch"], roles: [member], status: implemented, risk: P2, human: none}
+  - {id: CAN-01, module: candidate, name: Candidate dashboard, routes: ["/account"], roles: [candidate], status: implemented, risk: P1, human: partial, phpunit: [AccountCandidateDashboardTest], depends_on: [ACC-AUTH-01]}
+  - {id: CAN-02, module: candidate, name: Profile completion, routes: ["/account/profile"], roles: [candidate], status: implemented, risk: P0, human: partial, phpunit: [AccountCandidateProfessionalTest, UnifiedProfileStage23FTest, QaDefectRegressionTest]}
+  - {id: CAN-03, module: candidate, name: Professional sections, routes: ["/account/profile"], roles: [candidate], status: implemented, risk: P1, human: partial}
+  - {id: CAN-04, module: candidate, name: Resume library, routes: ["/account/resumes"], roles: [candidate], status: implemented, risk: P0, human: verified, phpunit: [AccountCandidateResumeDocumentTest]}
+  - {id: CAN-05, module: candidate, name: Hire resume builder, routes: ["/account/resumes/builder"], roles: [candidate], status: implemented, risk: P2, human: none}
+  - {id: CAN-06, module: candidate, name: Private documents, routes: ["/account/documents"], roles: [candidate], status: implemented, risk: P2, human: none}
+  - {id: CAN-07, module: candidate, name: Applications, routes: ["/account/applications"], roles: [candidate], status: implemented, risk: P0, human: verified, phpunit: [ApplicationExperienceTest], depends_on: [PUB-03]}
+  - {id: CAN-08, module: candidate, name: Saved jobs, routes: ["/account/saved-jobs"], roles: [candidate], status: implemented, risk: P2, human: none}
+  - {id: CAN-09, module: candidate, name: Notifications comms, routes: ["/account/notifications"], roles: [candidate], status: implemented, risk: P1, human: none}
+  - {id: CAN-10, module: candidate, name: Privacy visibility, routes: ["/account/profile"], roles: [candidate], status: implemented, risk: P1, human: partial}
+  - {id: EMP-01, module: employer, name: Hiring command center, routes: ["/account/hiring"], roles: [employer], status: implemented, risk: P1, human: partial}
+  - {id: EMP-02, module: employer, name: Job CRUD lifecycle, routes: ["/account/jobs"], roles: [employer], status: implemented, risk: P0, human: partial, phpunit: [EmployerAccountWorkspaceTest, EmployerWorkspaceTest]}
+  - {id: EMP-03, module: employer, name: Applicant detail resume, routes: ["/account/jobs/{slug}/applications/{id}"], roles: [employer], status: implemented, risk: P0, human: verified, phpunit: [EmployerHiringStage25Test], depends_on: [EMP-02]}
+  - {id: EMP-04, module: employer, name: Hiring applications talent pool, routes: ["/account/hiring/applications"], roles: [employer], status: implemented, risk: P1, human: none}
+  - {id: EMP-05, module: employer, name: Recruitment partnership, routes: ["/account/submissions"], roles: [employer], status: implemented, risk: P2, human: partial, phpunit: [EmployerSubmissionTest]}
+  - {id: EMP-06, module: employer, name: Staffing enquiries, routes: ["/account/enquiries"], roles: [employer], status: implemented, risk: P2, human: partial, phpunit: [EmployerAccountTest]}
+  - {id: EMP-07, module: employer, name: Company profile documents, routes: ["/account/profile"], roles: [employer], status: implemented, risk: P1, human: none}
+  - {id: EMP-08, module: employer, name: Employer notifications, routes: ["/account/notifications"], roles: [employer], status: implemented, risk: P1, human: none}
+  - {id: EMP-09, module: employer, name: Employer isolation, routes: ["/account/employer-applications/{id}/resume"], roles: [employer_b], status: implemented, risk: P0, human: partial, phpunit: [PolicyFoundationTest, EmployerHiringStage25Test]}
+  - {id: ADM-01, module: admin, name: Dashboard analytics, routes: ["/admin", "/admin/analytics"], roles: [admin], status: implemented, risk: P1, human: partial}
+  - {id: ADM-02, module: admin, name: Admin jobs CRUD, routes: ["/admin/jobs"], roles: [admin], status: implemented, risk: P0, human: none, phpunit: [JobsWorkspaceTest]}
+  - {id: ADM-03, module: admin, name: Applications workspace, routes: ["/admin/applications"], roles: [admin], status: implemented, risk: P0, human: partial, phpunit: [ApplicationsWorkspaceTest]}
+  - {id: ADM-04, module: admin, name: Candidates import, routes: ["/admin/candidates"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-05, module: admin, name: Interviews tasks work, routes: ["/admin/interviews"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-06, module: admin, name: Submissions enquiries, routes: ["/admin/submissions"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-07, module: admin, name: Placements finance, routes: ["/admin/placements"], roles: [admin], status: implemented, risk: P2, human: none}
+  - {id: ADM-08, module: admin, name: Master data, routes: ["/admin/master-data"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-09, module: admin, name: Users roles RBAC, routes: ["/admin/users"], roles: [admin], status: implemented, risk: P0, human: none}
+  - {id: ADM-10, module: admin, name: CRM campaigns partners, routes: ["/admin/crm"], roles: [admin], status: implemented, risk: P2, human: none}
+  - {id: ADM-11, module: admin, name: Automations, routes: ["/admin/automations"], roles: [admin], status: partial, risk: P1, human: none}
+  - {id: ADM-12, module: admin, name: Website CMS, routes: ["/admin/website-content"], roles: [admin], status: implemented, risk: P2, human: none}
+  - {id: ADM-13, module: admin, name: Communication settings, routes: ["/admin/messages"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-14, module: admin, name: Hiring command center, routes: ["/admin/hiring"], roles: [admin], status: implemented, risk: P1, human: none}
+  - {id: ADM-15, module: admin, name: Design system lab, routes: ["/admin/design-system"], roles: [admin], status: implemented, risk: P3, human: none}
+  - {id: X-01, module: cross, name: Screening match, routes: [], roles: [admin], status: implemented, risk: P0, human: none, phpunit: [ScreeningMatchServiceTest]}
+  - {id: X-02, module: cross, name: ATS pipeline stages, routes: [], roles: [admin, employer], status: implemented, risk: P0, human: partial, phpunit: [QaDefectRegressionTest]}
+  - {id: X-03, module: cross, name: Resume snapshot integrity, routes: [], roles: [candidate, employer, admin], status: implemented, risk: P0, human: verified, phpunit: [AccountCandidateResumeDocumentTest], depends_on: [CAN-04]}
+  - {id: X-04, module: cross, name: WhatsApp webhooks, routes: ["/webhooks/whatsapp"], roles: [system], status: partial, risk: P2, human: none}
+  - {id: X-05, module: cross, name: Responsive smoke, routes: [], roles: [guest], status: partial, risk: P2, human: none}
+
+journeys:
+  - id: JRN-SMOKE-HOME-01
+    status: partial
+    feature_ids: [PUB-01]
+    role: guest
+    purpose: Confirm public home loads without browser console errors
+    prerequisites:
+      - Local Laravel at OURNEAR_BASE_URL
+      - OURNEAR_ALLOW_RUN=local
+    steps:
+      - Navigate to /
+      - Assert HTTP 200 and document title present
+      - Assert no captured console errors
+    expected_outcomes:
+      - Home page renders for anonymous visitor
+    assertions:
+      - pytest:tests/smoke/test_public_home.py::test_home_loads
+    test_data: []
+    risk: P1
+
+  - id: JRN-SMOKE-LOGIN-01
+    status: partial
+    feature_ids: [ACC-AUTH-01, CAN-01]
+    role: candidate
+    purpose: QA fixture candidate can log in and reach account dashboard
+    prerequisites:
+      - qa:hiring-fixtures candidate account
+      - OURNEAR_QA_CANDIDATE_* in config/local.env
+    steps:
+      - Navigate to /login
+      - Fill labeled login fields and submit
+      - Wait for /account URL and Dashboard heading
+    expected_outcomes:
+      - Authenticated candidate session on account home
+    assertions:
+      - pytest:tests/smoke/test_account_login.py::test_candidate_login_reaches_account
+    test_data:
+      - qa-candidate@example.test (local fixtures)
+    risk: P0
+
+  - id: JRN-CANDIDATE-APPLY-01
+    status: implemented
+    feature_ids: [PUB-03, CAN-04, CAN-07, X-03]
+    role: candidate
+    purpose: Apply to a published job using library resume; verify application and snapshot integrity
+    prerequisites:
+      - qa:hiring-fixtures
+      - Readable resume in candidate library
+      - Unapplied published job slug available
+    steps:
+      - Login and confirm Dashboard
+      - Search /jobs and open eligible fixture job
+      - Apply page shows resume ready; submit application
+      - Confirm Application submitted with ONT-A-* reference
+      - Verify /account/applications persistence after reload
+      - Duplicate apply redirects; Applied state on job detail
+    expected_outcomes:
+      - New application row with stable snapshot separate from library file
+    assertions:
+      - scripts/qa-provision-journey-apply-job.php then pytest:tests/journey/test_candidate_apply_journey.py::test_jrn_candidate_apply_new_application
+      - pytest:tests/journey/test_candidate_apply_journey.py::test_jrn_candidate_apply_duplicate_and_persistence
+    test_data:
+      - Fixture job slugs from QaHiringFixtures
+    risk: P0
+    depends_on: [JRN-SMOKE-LOGIN-01]
+    phpunit: [ApplicationExperienceTest]
+
+  - id: JRN-EMPLOYER-JOB-PUBLISH-01
+    status: implemented
+    feature_ids: [EMP-01, EMP-02, PUB-02, PUB-03, X-03]
+    role: employer
+    purpose: Employer job draft, validation, publish, public visibility, edit, close, and cross-role denial
+    prerequisites:
+      - php artisan qa:hiring-fixtures
+      - QA employer A/B and candidate credentials in config/local.env
+      - Local Laravel at OURNEAR_BASE_URL
+    steps:
+      - Employer A hiring dashboard and job management
+      - Create draft with validation; reopen persisted draft
+      - Publish; public list/detail; pause; hidden from public; republish (reactivation)
+      - Edit published job; close job; confirm not public
+      - Employer B and candidate denied employer job management URLs
+    expected_outcomes:
+      - Lifecycle matches employer UI (draft, publish, pause, republish, close)
+      - Public jobs only while published and active; authorization enforced
+    assertions:
+      - pytest:tests/journey/test_employer_job_publish_journey.py::test_jrn_employer_job_publish_lifecycle
+      - pytest:tests/journey/test_employer_job_publish_journey.py::test_jrn_employer_job_publish_authorization
+      - pytest:tests/test_employer_job_publish_unit.py
+      - phpunit:EmployerAccountWorkspaceTest
+    test_data:
+      - scripts/inspect-qa-employer-job-form-defaults.php
+      - QaHiringFixtures SLUG_PUBLISHED_A for isolation
+    risk: P0
+    depends_on: [JRN-SMOKE-LOGIN-01]
+    phpunit: [EmployerAccountWorkspaceTest, PolicyFoundationTest]
+
+  - id: JRN-EMPLOYER-RESUME-01
+    status: implemented
+    feature_ids: [EMP-03, EMP-09, X-03]
+    role: employer
+    purpose: Owning employer views applicant resume; non-owner receives forbidden
+    prerequisites:
+      - Existing application with snapshot from apply journey
+      - qa-employer-a and qa-employer-b accounts
+    steps:
+      - Employer A opens application detail inline resume
+      - Employer B attempts same application resume URL
+    expected_outcomes:
+      - Employer A sees readable resume; Employer B blocked
+    assertions:
+      - pytest:tests/journey/test_employer_resume_journey.py::test_jrn_employer_resume_owner_workflow
+      - pytest:tests/journey/test_employer_resume_journey.py::test_jrn_employer_resume_employer_b_isolation
+      - phpunit:EmployerHiringStage25Test
+    test_data:
+      - ONT-A-* application numbers from fixtures
+    risk: P0
+    depends_on: [JRN-CANDIDATE-APPLY-01]
+    phpunit: [EmployerHiringStage25Test, PolicyFoundationTest]
+
+  - id: JRN-ADMIN-APPLICATION-01
+    status: implemented
+    feature_ids: [ADM-03]
+    role: admin
+    purpose: Admin reviews QA application, resume snapshot, and supported status update
+    prerequisites:
+      - QA application from candidate apply journey with resume snapshot
+      - Local admin account (OURNEAR_QA_ADMIN_*)
+    steps:
+      - Admin login and operations dashboard
+      - Open /admin/applications for QA ONT-A-* record
+      - View/download readable resume; optional New to Reviewing status when still New
+    expected_outcomes:
+      - Admin can manage permitted application workspace; account roles cannot access admin routes
+    assertions:
+      - pytest:tests/journey/test_admin_application_journey.py::test_jrn_admin_application_review_workflow
+      - pytest:tests/journey/test_admin_application_journey.py::test_jrn_admin_application_account_role_isolation
+      - pytest:tests/journey/test_admin_application_journey.py::test_jrn_admin_application_employer_role_isolation
+      - phpunit:ApplicationsWorkspaceTest
+    test_data:
+      - scripts/inspect-qa-employer-journey-target.php
+    risk: P0
+    depends_on: [JRN-CANDIDATE-APPLY-01]
+    phpunit: [ApplicationsWorkspaceTest]
+
+  - id: JRN-CROSS-ROLE-01
+    status: implemented
+    feature_ids: [PUB-03, CAN-07, EMP-03, EMP-09, ADM-03, X-03]
+    role: cross-role
+    purpose: One QA application flows candidate apply, employer A review, admin workspace
+    prerequisites:
+      - scripts/qa-provision-journey-apply-job.php eligible slug
+      - ournear-qa preflight-journey (apply budget + provision slots)
+      - QA credentials for candidate, employer A/B, admin
+    steps:
+      - Candidate apply → ONT-A-*; candidate applications list persistence
+      - Employer A applicants, detail, readable resume, hiring applications list
+      - Admin drawer, resume, New→Reviewing when applicable, reload persistence
+      - Employer B isolation; candidate and employer A denied admin routes
+    expected_outcomes:
+      - Same business_id across permitted roles; admin-only routes denied for account roles
+    assertions:
+      - pytest:tests/journey/test_cross_role_e2e.py::test_jrn_cross_role_application_e2e
+    test_data:
+      - scripts/inspect-qa-application-by-business-id.php
+    risk: P0
+    depends_on: [JRN-CANDIDATE-APPLY-01, JRN-EMPLOYER-RESUME-01, JRN-ADMIN-APPLICATION-01]
+    phpunit: [ApplicationsWorkspaceTest, EmployerHiringStage25Test]

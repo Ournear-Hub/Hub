@@ -22,6 +22,16 @@ export function CloseIcon({ className = 'h-5 w-5', title = 'Close' }: IconProps)
     );
 }
 
+export function SearchIcon({ className = 'h-5 w-5', title = 'Search' }: IconProps) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden={title ? undefined : true}>
+            {title ? <title>{title}</title> : null}
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" strokeLinecap="round" />
+        </svg>
+    );
+}
+
 export function MenuIcon({ className = 'h-5 w-5', title = 'Menu' }: IconProps) {
     return (
         <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden={title ? undefined : true}>

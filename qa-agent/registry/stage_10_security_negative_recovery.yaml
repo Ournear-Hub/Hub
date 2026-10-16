@@ -1,0 +1,111 @@
+# Stage 10 — security, negative cases, recovery (schema v1)
+
+version: 1
+stage: 10
+title: Security, negative cases, and recovery
+module: security
+
+cases:
+  - id: STG10-AUTH-001
+    feature_ids: [X-01]
+    route: /account
+    summary: Guest redirected from account workspace
+  - id: STG10-AUTH-002
+    feature_ids: [X-01]
+    route: /admin
+    summary: Guest redirected from admin workspace
+  - id: STG10-AUTH-003
+    feature_ids: [X-01]
+    route: /account/hiring
+    summary: Guest redirected from employer hiring workspace
+  - id: STG10-AUTH-004
+    feature_ids: [ACC-AUTH-01]
+    route: /account/profile
+    summary: After logout, protected profile requires login
+  - id: STG10-AUTH-005
+    feature_ids: [X-03]
+    route: /admin/applications
+    summary: Candidate cannot access admin applications workspace
+  - id: STG10-AUTH-006
+    feature_ids: [X-03]
+    route: /admin/applications
+    summary: Employer cannot access admin applications workspace
+  - id: STG10-AUTH-007
+    feature_ids: [EMP-09]
+    route: /account/hiring/applications
+    summary: Employer B hiring list excludes Employer A application
+  - id: STG10-AUTH-008
+    feature_ids: [EMP-09]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer B forbidden on Employer A application detail
+  - id: STG10-AUTH-009
+    feature_ids: [EMP-09]
+    route: /account/employer-applications/{id}/resume
+    summary: Employer B forbidden on Employer A resume snapshot
+  - id: STG10-AUTH-010
+    feature_ids: [X-03]
+    route: /account/employer-applications/{id}/resume
+    summary: Guest forbidden on private application resume URL
+  - id: STG10-AUTH-011
+    feature_ids: [X-03]
+    route: /account/applications/{id}
+    summary: Non-owning account member forbidden on another user application
+  - id: STG10-VAL-001
+    feature_ids: [CAN-07]
+    automation: phpunit
+    test: ApplicationExperienceTest::test_duplicate_post_does_not_create_a_second_application
+    summary: Duplicate apply POST does not create second application
+  - id: STG10-VAL-002
+    feature_ids: [CAN-07]
+    automation: phpunit
+    test: ApplicationExperienceTest::test_guest_apply_redirects_to_login_and_does_not_create_an_application
+    summary: Guest apply does not persist application
+  - id: STG10-VAL-003
+    feature_ids: [CAN-02]
+    automation: phpunit
+    test: UnifiedProfileStage23FTest::test_candidate_owns_education_and_projects_and_cross_user_is_blocked
+    summary: Cross-user profile related-record mutation blocked
+  - id: STG10-VAL-004
+    feature_ids: [CAN-02]
+    automation: phpunit
+    test: AccountCandidateProfessionalTest::test_professional_salary_and_notice_period_are_validated
+    summary: Invalid professional salary rejected
+  - id: STG10-VAL-005
+    feature_ids: [X-03]
+    automation: phpunit
+    test: UnifiedProfileStage23FTest::test_employer_cannot_edit_candidate_profile_or_create_a_second_identity
+    summary: Employer blocked from candidate profile edit
+  - id: STG10-FILE-001
+    feature_ids: [EMP-09]
+    automation: phpunit
+    test: EmployerHiringStage25Test::test_application_resume_snapshot_authorization
+    summary: Resume snapshot authorization matrix
+  - id: STG10-FILE-002
+    feature_ids: [CAN-10]
+    automation: phpunit
+    test: ProductionUxStage14Test::test_public_profile_does_not_expose_private_resume_files
+    summary: Public profile does not expose private resume files
+  - id: STG10-REC-001
+    feature_ids: [CAN-07]
+    automation: phpunit
+    test: ApplicationExperienceTest::test_existing_notifications_continue_without_duplicates
+    summary: Notification dedup on repeated events
+  - id: STG10-PHP-AUTH-001
+    feature_ids: [X-03]
+    automation: phpunit
+    test: DualGuardAuthenticationTest
+    summary: Dual guard session isolation
+  - id: STG10-PHP-AUTH-002
+    feature_ids: [X-03]
+    automation: phpunit
+    test: UsersRolesSecurityTest
+    summary: Staff RBAC authorization matrix
+  - id: STG10-PHP-AUTH-003
+    feature_ids: [X-03]
+    automation: phpunit
+    test: PolicyFoundationTest
+    summary: Policy foundation denies cross-domain access
+  - id: STG10-KNOWN-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer self-service pipeline controls remain MISSING (preserved)

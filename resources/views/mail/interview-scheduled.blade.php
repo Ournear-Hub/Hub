@@ -3,7 +3,11 @@
 
 Hello {{ $application->full_name }},
 
+@if (! empty($introLine))
+{{ $introLine }}
+@else
 Your interview for **{{ $job?->title ?? 'this role' }}** has been scheduled.
+@endif
 
 **Date and time:** {{ $interview->scheduled_at?->timezone(config('app.timezone'))->format('l, j F Y \a\t H:i') }}  
 **Mode:** {{ str_replace('_', ' ', $interview->mode->value) }}

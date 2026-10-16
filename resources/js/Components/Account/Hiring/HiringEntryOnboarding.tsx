@@ -1,7 +1,8 @@
 import { Link, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
+import type { AccountLookupOption } from '@/types/account';
 
 type Gate = {
     email_verified: boolean;
@@ -10,10 +11,15 @@ type Gate = {
     is_employer: boolean;
     has_company?: boolean;
     company_name?: string | null;
+    company_phone?: string | null;
+    industry_id?: number | null;
     hiring_email?: string;
     hiring_email_verified?: boolean;
     uses_account_email?: boolean;
     hiring_active: boolean;
+    workspace_ready?: boolean;
+    unlimited_publishing?: boolean;
+    trial_available?: boolean;
     message: string;
 };
 
@@ -25,7 +31,9 @@ type Eligibility = {
 
 type HiringActivateForm = {
     company_name: string;
-    hiring_email: string;
+    company_phone: string;
+    company_email: string;
+    industry_id: string;
 };
 
 type HiringActivateErrors = Partial<Record<keyof HiringActivateForm | 'email' | 'mobile', string>>;
@@ -33,14 +41,17 @@ type HiringActivateErrors = Partial<Record<keyof HiringActivateForm | 'email' | 
 type Props = {
     gate: Gate;
     eligibility: Eligibility;
+    industries: AccountLookupOption[];
     successMessage?: string | null;
     canAdminHiring: boolean;
 };
 
-export default function HiringEntryOnboarding({ gate, eligibility, successMessage, canAdminHiring }: Props) {
+export default function HiringEntryOnboarding({ gate, eligibility, industries, successMessage, canAdminHiring }: Props) {
     const form = useForm<HiringActivateForm>({
         company_name: gate.company_name ?? '',
-        hiring_email: gate.hiring_email ?? '',
+        company_phone: gate.company_phone ?? '',
+        company_email: gate.hiring_email ?? '',
+        industry_id: gate.industry_id ? String(gate.industry_id) : '',
     });
     const errors = form.errors as HiringActivateErrors;
 
@@ -49,15 +60,9 @@ export default function HiringEntryOnboarding({ gate, eligibility, successMessag
         form.post('/account/hiring');
     };
 
-    const sendEmail = () => {
-        form.post('/account/hiring/email/send');
-    };
-
-    const setupRequired = !gate.email_verified || !gate.mobile_verified || !gate.hiring_email_verified || !gate.has_company;
-
     return (
         <div className="mx-auto flex max-w-2xl flex-col gap-4">
-            <Card as="section" density="standard">
+            <Card as="section" padding="standard">
                 <p className="text-sm font-semibold text-brand">Hire with OurNear</p>
                 <h1 className="mt-2 text-2xl font-semibold text-ink">Hiring workspace</h1>
                 <p className="mt-3 text-sm text-muted">
@@ -70,59 +75,49 @@ export default function HiringEntryOnboarding({ gate, eligibility, successMessag
                     </p>
                 ) : null}
                 <p className="mt-4 text-sm text-ink">{gate.message}</p>
-                {setupRequired ? (
-                    <p className="mt-2 text-sm font-medium text-ink">Set up your hiring profile to enter the workspace.</p>
-                ) : null}
             </Card>
 
-            <Card as="section" density="compact">
-                <h2 className="text-base font-semibold text-ink">Verification checklist</h2>
-                <ul className="mt-3 space-y-2 text-sm text-ink">
-                    <li>Email — {gate.email_verified ? 'Verified' : 'Required'}</li>
-                    <li>Mobile — {gate.mobile_verified ? 'Verified' : 'Required to activate hiring'}</li>
-                    <li>
-                        Recruiter email — {gate.hiring_email_verified ? 'Verified' : 'Verify if different from account email'}
-                        {gate.uses_account_email ? ' · using your account email' : ''}
-                    </li>
-                    <li>WhatsApp — optional; verification is not required.</li>
-                </ul>
-                <div className="mt-4 flex flex-wrap gap-2">
-                    {!gate.email_verified ? (
-                        <Button href="/account/settings/security" variant="primary" className="min-h-11">
-                            Verify email
+            {gate.hiring_active ? (
+                <Card as="section" padding="compact">
+                    <h2 className="text-base font-semibold text-ink">Optional verification</h2>
+                    <p className="mt-2 text-sm text-muted">
+                        Email and mobile verification are not required to open the workspace or publish your one-hour trial job.
+                        Verify both to publish unlimited jobs.
+                    </p>
+                    <ul className="mt-3 space-y-2 text-sm text-ink">
+                        <li>Email — {gate.email_verified ? 'Verified' : 'Not verified yet'}</li>
+                        <li>Mobile — {gate.mobile_verified ? 'Verified' : 'Not verified yet'}</li>
+                        <li>WhatsApp — optional; verification is not required.</li>
+                    </ul>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                        <Button surface="public" href="/account/settings/verification" variant="primary" className="min-h-11">
+                            Verification settings
                         </Button>
-                    ) : null}
-                    {!gate.mobile_verified ? (
-                        <Button href="/account/settings/security" variant="primary" className="min-h-11">
-                            Verify mobile
+                        <Button surface="public" href="/account/jobs/create" variant="secondary" className="min-h-11">
+                            Create Job
                         </Button>
-                    ) : null}
-                    <Button href="/contact" variant="outline" className="min-h-11">
-                        Send hiring request
-                    </Button>
-                    {canAdminHiring ? (
-                        <Button href="/admin/hiring" variant="outline" className="min-h-11">
-                            Staff command center
-                        </Button>
-                    ) : null}
-                </div>
-            </Card>
+                        {canAdminHiring ? (
+                            <Button surface="public" href="/admin/hiring" variant="outline" className="min-h-11">
+                                Staff command center
+                            </Button>
+                        ) : null}
+                    </div>
+                </Card>
+            ) : null}
 
-            {eligibility && !eligibility.eligible && eligibility.reason ? (
-                <Card as="section" density="compact">
+            {eligibility && !eligibility.eligible && eligibility.reason && gate.hiring_active ? (
+                <Card as="section" padding="compact">
                     <p className="text-sm text-ink">{eligibility.reason}</p>
                     {eligibility.next_action ? <p className="mt-2 text-sm text-muted">{eligibility.next_action}</p> : null}
-                    <Link href="/account/profile" className="mt-3 inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
-                        Continue company setup
-                    </Link>
                 </Card>
             ) : null}
 
             {!gate.hiring_active ? (
                 <form onSubmit={activate} className="space-y-4 rounded-xl border border-line bg-white p-4 sm:p-6">
-                    <h2 className="text-lg font-semibold text-ink">Activate hiring on this account</h2>
+                    <h2 className="text-lg font-semibold text-ink">Activate employer workspace</h2>
                     <p className="text-sm text-muted">
-                        This uses your existing OurNear account. Recruiter email can match your login email or be verified separately.
+                        Enter your company details to access the employer dashboard. This does not verify your email or mobile
+                        number.
                     </p>
                     <label className="block text-sm font-medium text-ink" htmlFor="company_name">
                         Company name
@@ -134,34 +129,61 @@ export default function HiringEntryOnboarding({ gate, eligibility, successMessag
                         onChange={(event) => form.setData('company_name', event.target.value)}
                     />
                     {errors.company_name ? <p className="text-sm text-danger">{errors.company_name}</p> : null}
-                    <label className="block text-sm font-medium text-ink" htmlFor="hiring_email">
-                        Recruiter email
+                    <label className="block text-sm font-medium text-ink" htmlFor="company_phone">
+                        Company phone number
                     </label>
                     <input
-                        id="hiring_email"
+                        id="company_phone"
+                        type="tel"
+                        className="w-full rounded-md border border-line px-3 py-2 text-sm"
+                        value={form.data.company_phone}
+                        onChange={(event) => form.setData('company_phone', event.target.value)}
+                    />
+                    {errors.company_phone ? <p className="text-sm text-danger">{errors.company_phone}</p> : null}
+                    <label className="block text-sm font-medium text-ink" htmlFor="company_email">
+                        Company email address
+                    </label>
+                    <input
+                        id="company_email"
                         type="email"
                         className="w-full rounded-md border border-line px-3 py-2 text-sm"
-                        value={form.data.hiring_email}
-                        onChange={(event) => form.setData('hiring_email', event.target.value)}
+                        value={form.data.company_email}
+                        onChange={(event) => form.setData('company_email', event.target.value)}
                     />
-                    {errors.hiring_email ? <p className="text-sm text-danger">{errors.hiring_email}</p> : null}
-                    {errors.email ? <p className="text-sm text-danger">{errors.email}</p> : null}
-                    {errors.mobile ? <p className="text-sm text-danger">{errors.mobile}</p> : null}
+                    {errors.company_email ? <p className="text-sm text-danger">{errors.company_email}</p> : null}
+                    <label className="block text-sm font-medium text-ink" htmlFor="industry_id">
+                        Industry
+                    </label>
+                    <select
+                        id="industry_id"
+                        className="w-full rounded-md border border-line px-3 py-2 text-sm"
+                        value={form.data.industry_id}
+                        onChange={(event) => form.setData('industry_id', event.target.value)}
+                    >
+                        <option value="">Select industry</option>
+                        {industries
+                            .filter(
+                                (industry) =>
+                                    industry.selectable !== false || String(industry.id) === form.data.industry_id,
+                            )
+                            .map((industry) => (
+                                <option key={industry.id} value={industry.id}>
+                                    {industry.name}
+                                </option>
+                            ))}
+                    </select>
+                    {errors.industry_id ? <p className="text-sm text-danger">{errors.industry_id}</p> : null}
                     <div className="flex flex-wrap gap-3">
                         <button
                             type="submit"
                             disabled={form.processing}
                             className="min-h-11 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled"
                         >
-                            Enter hiring workspace
+                            Activate workspace
                         </button>
-                        <button
-                            type="button"
-                            className="min-h-11 rounded-md border border-line px-4 py-2 text-sm font-semibold text-ink"
-                            onClick={sendEmail}
-                        >
-                            Verify recruiter email
-                        </button>
+                        <Link href="/account/settings/verification" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
+                            Verify contact details (optional)
+                        </Link>
                     </div>
                 </form>
             ) : null}

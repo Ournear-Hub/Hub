@@ -1,5 +1,12 @@
 import { Link, router, usePage } from '@inertiajs/react';
+import AccountStatusBadge from '@/Components/Account/StatusBadge';
+import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
+import Alert from '@/Components/molecules/Alert';
+import AccountPageStack from '@/Components/Account/AccountPageStack';
 import AccountLayout from '@/Layouts/AccountLayout';
+import { accountLayout } from '@/design-system/classNames';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
 import type { SharedPageProps } from '@/types/page';
@@ -31,6 +38,10 @@ type AccountApplication = {
 
 type ApplicationsProps = {
     applications: Paginator<AccountApplication>;
+    summary: {
+        total: number;
+        in_progress: number;
+    };
     filters: {
         filter: string;
     };
@@ -41,11 +52,33 @@ const filterOptions = [
     { value: 'active', label: 'Active' },
     { value: 'completed', label: 'Completed' },
     { value: 'rejected', label: 'Rejected' },
-];
+] as const;
 
-export default function Applications({ applications, filters }: ApplicationsProps) {
-    const flash = usePage<SharedPageProps>().props.flash;
+const filterClass = (active: boolean) =>
+    `inline-flex min-h-10 items-center rounded-md px-3 py-1.5 text-sm font-medium ${
+        active ? 'bg-brand text-white' : 'text-muted hover:bg-surface hover:text-ink'
+    }`;
+
+function formatUpdatedAt(iso: string | null): string | null {
+    if (!iso) {
+        return null;
+    }
+
+    const updated = new Date(iso);
+    if (Number.isNaN(updated.getTime())) {
+        return null;
+    }
+
+    return updated.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+export default function Applications({ applications, summary, filters }: ApplicationsProps) {
+    const page = usePage<SharedPageProps>();
+    const flash = page.props.flash;
+    const errors = page.props.errors as Record<string, string | undefined> | undefined;
     const activeFilter = filters.filter || 'all';
+    const isFiltered = activeFilter !== 'all';
+    const hasAnyApplications = summary.total > 0;
 
     const withdraw = (application: AccountApplication) => {
         const message = application.withdraw_requires_confirmation
@@ -61,94 +94,140 @@ export default function Applications({ applications, filters }: ApplicationsProp
 
     return (
         <AccountLayout
-            title="Applications"
-            description="Track applications submitted from this account."
+            title="My Applications"
+            description="Track your applications and stay updated on your job search."
             breadcrumbs={[
-                { label: 'Account', href: '/account' },
-                { label: 'Applications' },
+                { label: 'Personal Dashboard', href: '/account' },
+                { label: 'My Applications' },
             ]}
         >
-            {flash.success ? <p className="mb-4 text-sm text-success">{flash.success}</p> : null}
-            <div className="mb-4 flex flex-wrap gap-2">
-                {filterOptions.map((option) => {
-                    const href = option.value === 'all' ? '/account/applications' : `/account/applications?filter=${option.value}`;
-                    const active = activeFilter === option.value;
+            <AccountPageStack className="max-w-none">
+                {flash.success ? (
+                    <Alert variant="success">
+                        {flash.success}
+                    </Alert>
+                ) : null}
+                {errors?.application ? (
+                    <Alert variant="error">
+                        {errors.application}
+                    </Alert>
+                ) : null}
 
-                    return (
-                        <Link
-                            key={option.value}
-                            href={href}
-                            className={`rounded-full px-3 py-1 text-sm font-medium ${
-                                active ? 'bg-brand text-white' : 'border border-line text-muted hover:text-ink'
-                            }`}
-                        >
-                            {option.label}
-                        </Link>
-                    );
-                })}
-            </div>
-            {applications.data.length === 0 ? (
-                <p className="text-sm text-muted">No applications are linked to this account yet.</p>
-            ) : (
-                <>
-                    <ul className="space-y-4">
-                        {applications.data.map((application) => (
-                            <li key={application.id} className="rounded-xl border border-line bg-white p-6">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div className="min-w-0">
-                                        <p className="text-xs font-medium uppercase tracking-wide text-muted">
-                                            {application.business_id ?? `Application #${application.id}`}
-                                        </p>
-                                        <h2 className="mt-1 text-lg font-semibold text-ink">
-                                            {application.job?.title ?? 'Role'}
-                                        </h2>
-                                        <p className="mt-1 text-sm text-muted">
-                                            {[application.job?.company, application.job?.location].filter(Boolean).join(' · ')}
-                                        </p>
-                                    </div>
-                                    <span className="rounded-full bg-surface px-3 py-1 text-sm font-medium text-ink">
-                                        {application.status}
-                                    </span>
-                                </div>
-                                <p className="mt-3 text-sm text-muted">
-                                    Applied {application.applied_at ?? '—'}
-                                    {application.last_updated_at ? ` · Updated ${application.last_updated_at}` : ''}
+                <div className="grid grid-cols-2 gap-3 sm:max-w-md">
+                    <Card padding="compact" className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted">Total</p>
+                        <p className="mt-1 text-2xl font-semibold text-ink">{summary.total}</p>
+                    </Card>
+                    <Card padding="compact" className="min-w-0">
+                        <p className="text-xs font-medium uppercase tracking-wide text-muted">In progress</p>
+                        <p className="mt-1 text-2xl font-semibold text-ink">{summary.in_progress}</p>
+                        <p className="mt-0.5 text-xs text-muted">Submitted through interview</p>
+                    </Card>
+                </div>
+
+                <nav className="flex flex-wrap gap-2" aria-label="Filter applications">
+                    {filterOptions.map((option) => {
+                        const href =
+                            option.value === 'all' ? '/account/applications' : `/account/applications?filter=${option.value}`;
+                        const active = activeFilter === option.value;
+
+                        return (
+                            <Link key={option.value} href={href} className={filterClass(active)} aria-current={active ? 'true' : undefined}>
+                                {option.label}
+                            </Link>
+                        );
+                    })}
+                </nav>
+
+                {applications.data.length === 0 ? (
+                    <Card padding="compact" className="min-w-0">
+                        {!hasAnyApplications ? (
+                            <>
+                                <h2 className="text-base font-semibold text-ink">No applications yet</h2>
+                                <p className={`${accountLayout.headingToBody} text-sm text-muted`}>
+                                    When you apply to roles, they will appear here with status updates and a timeline on each
+                                    application.
                                 </p>
-                                {application.job?.is_closed ? (
-                                    <p className="mt-2 text-sm text-muted">This job is closed.</p>
-                                ) : null}
-                                <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
-                                    <Link href={application.href} className="font-medium text-brand">
-                                        Open application
+                                <Button surface="public" href="/jobs" variant="primary" className="mt-3 min-h-11">
+                                    Browse jobs
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <h2 className="text-base font-semibold text-ink">No applications match this filter</h2>
+                                <p className="mt-2 text-sm text-muted">Try another status or view all applications.</p>
+                                {isFiltered ? (
+                                    <Link
+                                        href="/account/applications"
+                                        className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline"
+                                    >
+                                        Show all applications
                                     </Link>
-                                    {application.job?.href ? (
-                                        <Link href={application.job.href} className="font-medium text-brand">
-                                            View job
-                                        </Link>
-                                    ) : application.job?.slug ? (
-                                        <span className="text-muted">Job listing unavailable</span>
-                                    ) : null}
-                                    {application.can_withdraw ? (
-                                        <button
-                                            type="button"
-                                            className="font-medium text-danger"
-                                            onClick={() => withdraw(application)}
-                                        >
-                                            Withdraw
-                                        </button>
-                                    ) : null}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                    <Pagination links={applications.links} />
-                </>
-            )}
-            <p className="mt-6 text-sm">
-                <Link href="/account" className="font-medium text-brand hover:underline">
-                    Back to account
-                </Link>
-            </p>
+                                ) : null}
+                            </>
+                        )}
+                    </Card>
+                ) : (
+                    <>
+                        <ul className="divide-y divide-line rounded-xl border border-line bg-white">
+                            {applications.data.map((application) => {
+                                const meta = [application.job?.company, application.job?.location].filter(Boolean).join(' · ');
+
+                                return (
+                                    <li key={application.id} className={`min-w-0 p-4 ${accountLayout.listDivideRow}`}>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                            <div className="min-w-0 flex-1">
+                                                <h2 className="text-base font-semibold text-ink">{application.job?.title ?? 'Role'}</h2>
+                                                {meta ? <p className="mt-0.5 text-sm text-muted">{meta}</p> : null}
+                                                <p className="mt-2 text-sm text-muted">
+                                                    {formatAppliedAt(application.applied_at)}
+                                                    {application.last_updated_at &&
+                                                    application.last_updated_at !== application.applied_at &&
+                                                    formatUpdatedAt(application.last_updated_at)
+                                                        ? ` · Updated ${formatUpdatedAt(application.last_updated_at)}`
+                                                        : null}
+                                                </p>
+                                                {application.job?.is_closed ? (
+                                                    <p className="mt-1 text-xs text-muted">Job closed — application history kept</p>
+                                                ) : null}
+                                            </div>
+                                            <AccountStatusBadge status={application.status} className="shrink-0 self-start" />
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                                            <Link
+                                                href={application.href}
+                                                className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline"
+                                            >
+                                                View details
+                                            </Link>
+                                            {application.job?.href ? (
+                                                <Link
+                                                    href={application.job.href}
+                                                    className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline"
+                                                >
+                                                    View job
+                                                </Link>
+                                            ) : application.job ? (
+                                                <span className="text-muted">Job listing unavailable</span>
+                                            ) : null}
+                                            {application.can_withdraw ? (
+                                                <button
+                                                    type="button"
+                                                    className="inline-flex min-h-10 items-center font-semibold text-danger"
+                                                    onClick={() => withdraw(application)}
+                                                >
+                                                    Withdraw
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                        <Pagination links={applications.links} />
+                    </>
+                )}
+            </AccountPageStack>
         </AccountLayout>
     );
 }

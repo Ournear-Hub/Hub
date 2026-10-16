@@ -24,6 +24,32 @@ class WebsiteContentDefaults
                         'image_path' => '',
                     ],
                     [
+                        'key' => 'hero_slider',
+                        'label' => 'Hero carousel slides',
+                        'heading' => 'Homepage hero carousel',
+                        'body' => 'Each slide: title, description, optional image, and four bullet lines (primary label, primary link, secondary label, secondary link).',
+                    ],
+                    [
+                        'key' => 'hiring_features',
+                        'label' => 'Hiring feature cards',
+                        'heading' => 'For employers & hiring teams',
+                        'body' => 'Cards shown on the homepage for hiring workflows.',
+                    ],
+                    [
+                        'key' => 'candidate_features',
+                        'label' => 'Candidate feature cards',
+                        'heading' => 'For job seekers',
+                        'body' => 'Cards shown on the homepage for candidate workflows.',
+                    ],
+                    [
+                        'key' => 'promo_banner',
+                        'label' => 'Promotional banner',
+                        'heading' => 'Activate hiring on OurNear Hire',
+                        'body' => 'Post roles, review applicants in ATS stages, and move candidates through to joining.',
+                        'primary_button_label' => 'Start Hiring',
+                        'extra' => ['primary_href' => '/hire'],
+                    ],
+                    [
                         'key' => 'what_we_do',
                         'label' => 'What We Do',
                         'heading' => 'What We Do',
@@ -348,24 +374,31 @@ class WebsiteContentDefaults
                     [
                         'key' => 'hero',
                         'label' => 'Talent Pool hero',
-                        'heading' => 'Find people for your team.',
-                        'body' => 'OurNear Hire Talent Pool shows candidates who already allow a public profile. It does not invent people for display.',
-                        'primary_button_label' => 'Submit a requirement',
-                        'secondary_button_label' => 'Hire Talent',
+                        'heading' => 'Your Recruitment Partner.',
+                        'body' => 'Hiring shouldn\'t consume your time, energy and resources. OurNear Hire sources, screens and shortlists suitable candidates for your requirements, so your team can focus on running the business.',
+                        'primary_button_label' => 'Submit Hiring Requirement',
+                        'secondary_button_label' => 'How It Works',
+                        'image_path' => '',
+                    ],
+                    [
+                        'key' => 'manual_work',
+                        'label' => 'Manual work reduction',
+                        'heading' => 'Reduce Manual Recruitment Work',
+                        'body' => 'Our recruitment team and ATS platform help reduce time-consuming administrative tasks, so you can focus on your business.',
                         'image_path' => '',
                     ],
                     [
                         'key' => 'how_it_works',
-                        'label' => 'How it works',
-                        'heading' => 'How talent discovery works',
-                        'body' => 'Public cards respect privacy settings. Screening still uses structured profile and Hire Resume fields.',
+                        'label' => 'How it works (legacy key)',
+                        'heading' => 'A Smoother Way to Hire',
+                        'body' => 'From requirement to shortlisted talent — managed in one place.',
                     ],
                     [
                         'key' => 'cta',
                         'label' => 'Talent Pool CTA',
-                        'heading' => 'Need a shortlist?',
-                        'body' => 'Send a hiring requirement. OurNear Hire uses the existing recruitment records.',
-                        'primary_button_label' => 'Hiring Support',
+                        'heading' => 'Your Next Great Hire Starts Here.',
+                        'body' => 'Share your recruitment requirements and let OurNear Hire source, shortlist and coordinate the right talent — while your team focuses on growing the business.',
+                        'primary_button_label' => 'Submit Your Hiring Requirement',
                         'image_path' => '',
                     ],
                 ],
@@ -376,12 +409,18 @@ class WebsiteContentDefaults
                 'sections' => [
                     [
                         'key' => 'hero',
-                        'label' => 'Staffing hero',
+                        'label' => 'Staffing Hero Image',
                         'heading' => 'The workforce you need, when you need it.',
-                        'body' => 'OurNear Staffing uses existing placement, employee, and replacement records. It does not invent workforce claims.',
+                        'body' => 'Hero photograph on the public Staffing page (left copy is fixed in the page component).',
                         'primary_button_label' => 'Request manpower',
                         'secondary_button_label' => 'Hire Talent',
                         'image_path' => '',
+                        'extra' => [
+                            'image_enabled' => '1',
+                            'image_object_position' => 'center center',
+                            'mobile_image_object_position' => 'center center',
+                            'image_alt' => 'Workforce team coordinating on site',
+                        ],
                     ],
                     [
                         'key' => 'process',
@@ -389,6 +428,19 @@ class WebsiteContentDefaults
                         'heading' => 'How staffing works',
                         'body' => 'Requirement, sourcing, deployment, and follow-up stay inside the current ATS pipeline.',
                         'image_path' => '',
+                    ],
+                    [
+                        'key' => 'workforce_partner',
+                        'label' => 'Workforce Partner Section',
+                        'heading' => 'More Than Manpower. A True Workforce Partner.',
+                        'body' => 'Support illustration on the left of the workforce partner section on the Staffing page.',
+                        'image_path' => '',
+                        'extra' => [
+                            'image_enabled' => '0',
+                            'image_object_position' => 'center center',
+                            'mobile_image_object_position' => 'center center',
+                            'image_alt' => '',
+                        ],
                     ],
                     [
                         'key' => 'cta',
@@ -439,6 +491,33 @@ class WebsiteContentDefaults
                 ['title' => 'Mining', 'description' => 'Operational and project roles in mining environments.', 'icon' => 'industry'],
                 ['title' => 'Infrastructure', 'description' => 'Civil, utilities, and infrastructure project support.', 'icon' => 'industry'],
                 ['title' => 'Construction', 'description' => 'Site, trade, and project construction workforce.', 'icon' => 'industry'],
+                ['title' => 'Oil & Gas', 'description' => 'Project and operational roles in energy sectors.', 'icon' => 'industry'],
+                ['title' => 'Manufacturing', 'description' => 'Production, maintenance, and technical staff.', 'icon' => 'industry'],
+                ['title' => 'Logistics', 'description' => 'Drivers, warehouse, and supply-chain roles.', 'icon' => 'industry'],
+            ],
+            'home_hero_slides' => [
+                [
+                    'title' => 'Recruit faster with one connected hiring platform.',
+                    'description' => 'Jobs, applicant tracking, talent discovery, and staffing on shared OurNear records.',
+                    'bullets' => ['Start Hiring', '/hire', 'Find Jobs', '/jobs'],
+                ],
+                [
+                    'title' => 'From apply to joining — tracked in ATS stages.',
+                    'description' => 'Screening, interviews, offers, and onboarding stay on the same application record.',
+                    'bullets' => ['Explore Hiring', '/hire', 'Browse jobs', '/jobs'],
+                ],
+            ],
+            'home_hiring_features' => [
+                ['title' => 'Post & manage jobs', 'description' => 'Publish roles, pause listings, and keep master-data aligned.', 'icon' => 'briefcase', 'bullets' => ['/account/jobs']],
+                ['title' => 'Review applicants', 'description' => 'Job-scoped applicant lists with ATS stage filters and compare.', 'icon' => 'clipboard', 'bullets' => ['/account/hiring/applications']],
+                ['title' => 'Screen with match evidence', 'description' => 'Structured screening uses profile and job requirements—human decisions stay in control.', 'icon' => 'check', 'bullets' => ['/hire']],
+                ['title' => 'Staffing & partnerships', 'description' => 'Workforce requests and recruitment partnerships on existing enquiry records.', 'icon' => 'building', 'bullets' => ['/staffing']],
+            ],
+            'home_candidate_features' => [
+                ['title' => 'One profile & resume', 'description' => 'Apply with your Hire Resume and library upload—snapshots stay with each application.', 'icon' => 'user', 'bullets' => ['/account/profile']],
+                ['title' => 'Search open roles', 'description' => 'Keyword, location, and company filters on live published jobs.', 'icon' => 'search', 'bullets' => ['/jobs']],
+                ['title' => 'Track applications', 'description' => 'See status updates and notifications on roles you applied for.', 'icon' => 'message', 'bullets' => ['/account/applications']],
+                ['title' => 'Share your profile', 'description' => 'Optional public talent profile when you choose to be discoverable.', 'icon' => 'share', 'bullets' => ['/talent-pool']],
             ],
             'core_services' => [
                 ['title' => 'Manpower Supply', 'description' => 'Reliable people for permanent, contract, and project roles.', 'icon' => 'people', 'bullets' => ['Screened candidates', 'Role-fit matching']],
@@ -562,6 +641,43 @@ class WebsiteContentDefaults
      *
      * @return array<string, array<string, string>>
      */
+    /**
+     * Sections added after initial home seed (runtime ensure for existing databases).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function homeExtensionSections(): array
+    {
+        return [
+            [
+                'key' => 'hero_slider',
+                'label' => 'Hero carousel slides',
+                'heading' => 'Homepage hero carousel',
+                'body' => 'Each slide: title, description, optional image, and four bullet lines (primary label, primary link, secondary label, secondary link).',
+            ],
+            [
+                'key' => 'hiring_features',
+                'label' => 'Hiring feature cards',
+                'heading' => 'For employers & hiring teams',
+                'body' => 'Cards shown on the homepage for hiring workflows.',
+            ],
+            [
+                'key' => 'candidate_features',
+                'label' => 'Candidate feature cards',
+                'heading' => 'For job seekers',
+                'body' => 'Cards shown on the homepage for candidate workflows.',
+            ],
+            [
+                'key' => 'promo_banner',
+                'label' => 'Promotional banner',
+                'heading' => 'Activate hiring on OurNear Hire',
+                'body' => 'Post roles, review applicants in ATS stages, and move candidates through to joining.',
+                'primary_button_label' => 'Start Hiring',
+                'extra' => ['primary_href' => '/hire'],
+            ],
+        ];
+    }
+
     public static function sectionGroups(): array
     {
         return [
@@ -572,6 +688,9 @@ class WebsiteContentDefaults
                 'how_we_work' => 'home_how_we_work',
                 'why_choose_us' => 'benefits',
                 'our_commitment' => 'home_commitment',
+                'hero_slider' => 'home_hero_slides',
+                'hiring_features' => 'home_hiring_features',
+                'candidate_features' => 'home_candidate_features',
             ],
             'about' => [
                 'who_we_are' => 'about_who_we_are',
@@ -604,6 +723,50 @@ class WebsiteContentDefaults
             'staffing' => [],
             'privacy-policy' => [],
             'terms-and-conditions' => [],
+        ];
+    }
+
+    /**
+     * Ordered homepage industry catalogue (master {@see Industry} records). Reuses established names where they already exist in the database.
+     *
+     * @return list<array{title: string, description: string|null, icon: string}>
+     */
+    public static function homepageIndustryCatalogue(): array
+    {
+        return [
+            ['title' => 'Mining', 'description' => 'Operational and project roles in mining environments.', 'icon' => 'building'],
+            ['title' => 'Infrastructure', 'description' => 'Civil, utilities, and infrastructure project support.', 'icon' => 'building'],
+            ['title' => 'Construction', 'description' => 'Site, trade, and project construction workforce.', 'icon' => 'building'],
+            ['title' => 'Oil & Gas', 'description' => 'Project and operational roles in energy sectors.', 'icon' => 'building'],
+            ['title' => 'Manufacturing', 'description' => 'Production, maintenance, and technical staff.', 'icon' => 'briefcase'],
+            ['title' => 'Logistics', 'description' => 'Drivers, warehouse, and supply-chain roles.', 'icon' => 'search'],
+            ['title' => 'Facilities', 'description' => 'Facilities management and on-site support roles.', 'icon' => 'building'],
+            ['title' => 'Hospitality', 'description' => 'Hotels, food service, and guest-facing operations.', 'icon' => 'user'],
+            ['title' => 'Office and professional', 'description' => 'Office, admin, and professional services roles.', 'icon' => 'briefcase'],
+            ['title' => 'Information Technology', 'description' => 'Software, infrastructure, and IT operations.', 'icon' => 'settings'],
+            ['title' => 'Healthcare', 'description' => 'Clinical, allied health, and care settings.', 'icon' => 'user'],
+            ['title' => 'Education', 'description' => 'Teaching, training, and academic support.', 'icon' => 'clipboard'],
+            ['title' => 'Retail', 'description' => 'Store, sales floor, and retail operations.', 'icon' => 'briefcase'],
+            ['title' => 'Banking and Financial Services', 'description' => 'Banking, finance, and insurance roles.', 'icon' => 'briefcase'],
+            ['title' => 'Agriculture and Agribusiness', 'description' => 'Farming, agri-processing, and rural operations.', 'icon' => 'briefcase'],
+            ['title' => 'Energy and Power', 'description' => 'Power generation, utilities, and energy projects.', 'icon' => 'building'],
+            ['title' => 'Telecommunications', 'description' => 'Network, field, and telecom operations.', 'icon' => 'settings'],
+            ['title' => 'Automotive', 'description' => 'Manufacturing, service, and dealership roles.', 'icon' => 'briefcase'],
+            ['title' => 'Pharmaceuticals and Life Sciences', 'description' => 'Pharma, biotech, and regulated production.', 'icon' => 'check'],
+            ['title' => 'Chemicals and Petrochemicals', 'description' => 'Process, plant, and chemical operations.', 'icon' => 'building'],
+            ['title' => 'FMCG and Consumer Goods', 'description' => 'FMCG production, sales, and distribution.', 'icon' => 'briefcase'],
+            ['title' => 'E-commerce', 'description' => 'Fulfillment, operations, and digital retail.', 'icon' => 'search'],
+            ['title' => 'Aviation and Aerospace', 'description' => 'Airport, MRO, and aerospace project roles.', 'icon' => 'building'],
+            ['title' => 'Railways and Transportation', 'description' => 'Rail, transit, and mobility operations.', 'icon' => 'search'],
+            ['title' => 'Real Estate and Property Management', 'description' => 'Property, facilities, and estate operations.', 'icon' => 'building'],
+            ['title' => 'Security Services', 'description' => 'Guarding, surveillance, and security operations.', 'icon' => 'alert'],
+            ['title' => 'Food Processing', 'description' => 'Processing, quality, and plant operations.', 'icon' => 'briefcase'],
+            ['title' => 'Textiles and Apparel', 'description' => 'Garment, textile, and production roles.', 'icon' => 'briefcase'],
+            ['title' => 'Media and Entertainment', 'description' => 'Content, production, and broadcast roles.', 'icon' => 'share'],
+            ['title' => 'Consulting and Business Services', 'description' => 'Advisory, consulting, and B2B services.', 'icon' => 'message'],
+            ['title' => 'Human Resources and Recruitment', 'description' => 'HR, talent acquisition, and people operations.', 'icon' => 'user'],
+            ['title' => 'Government and Public Services', 'description' => 'Public sector and civic operations.', 'icon' => 'building'],
+            ['title' => 'Renewable Energy', 'description' => 'Solar, wind, and clean-energy projects.', 'icon' => 'building'],
         ];
     }
 }

@@ -203,8 +203,12 @@ class ProductionUxStage17Test extends TestCase
         $this->assertNotNull($document);
 
         $candidate = $this->makeCandidate();
-        $this->actingAs($candidate)->get(route('account.employer.documents.index'))->assertForbidden();
-        $this->actingAs($candidate)->get(route('account.employer.documents.download', $document))->assertForbidden();
+        $this->actingAs($candidate)
+            ->get(route('account.employer.documents.index'))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/company-documents']));
+        $this->actingAs($candidate)
+            ->get(route('account.employer.documents.download', $document))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/company-documents/'.$document->id.'/download']));
         $this->actingAs($candidate)->post(route('account.employer.documents.store'), [
             'file' => $this->fakeDocument('candidate.pdf'),
             'document_type' => EmployerDocumentType::CompanyDocument->value,

@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import Footer from '@/Components/Public/Footer';
 import Header from '@/Components/Public/Header';
+import PublicMobileBottomNav from '@/Components/Public/PublicMobileBottomNav';
 import type { LayoutProps } from '@/types/layout';
 import type { SharedPageProps } from '@/types/page';
 
@@ -8,12 +9,12 @@ export default function PublicLayout({ title, description, children }: LayoutPro
     const page = usePage<SharedPageProps>().props;
     const seo = page.seo;
     const pageSeo = page.pageSeo;
-    const documentTitle = page.cms?.seo_title || pageSeo?.title || title || seo?.default_title;
+    const documentTitle = title || page.cms?.seo_title || pageSeo?.title || seo?.default_title;
     const documentDescription =
         pageSeo?.description || description || page.cms?.meta_description || seo?.default_description || '';
 
     return (
-        <div className="flex min-h-screen flex-col overflow-x-hidden bg-canvas text-ink">
+        <div className="flex min-h-screen flex-col overflow-x-hidden bg-canvas text-ink [scroll-padding-top:4rem] sm:[scroll-padding-top:4.5rem]">
             <Head title={documentTitle}>
                 {page.branding?.favicon_url ? (
                     <link head-key="favicon" rel="icon" href={page.branding.favicon_url} />
@@ -52,9 +53,14 @@ export default function PublicLayout({ title, description, children }: LayoutPro
                     <meta head-key="twitter:image" name="twitter:image" content={pageSeo.twitter_image} />
                 ) : null}
             </Head>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
+            <div className="resume-print-hide">
+                <Header />
+            </div>
+            <main className="flex-1 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</main>
+            <div className="resume-print-hide">
+                <Footer />
+                <PublicMobileBottomNav />
+            </div>
         </div>
     );
 }

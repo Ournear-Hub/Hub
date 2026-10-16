@@ -10,9 +10,11 @@ use App\Http\Requests\Admin\StoreEnquiryNoteRequest;
 use App\Http\Requests\Admin\UpdateContactEnquiryStatusRequest;
 use App\Http\Requests\Admin\UpdateWebsiteContentRequest;
 use App\Models\ContactEnquiry;
+use App\Models\EmployerProfile;
 use App\Services\CrmLeadService;
 use App\Models\MediaAsset;
 use App\Models\WebsiteSection;
+use App\Services\ShowcaseContentService;
 use App\Services\WebsiteContentService;
 use App\Support\AppendsEnquiryNotes;
 use App\Support\ContactEnquiryQuery;
@@ -25,23 +27,31 @@ class WebsiteContentController extends Controller
 {
     use AppendsEnquiryNotes;
 
-    public function index(Request $request, ContactEnquiryQuery $enquiries, WebsiteContentService $content): Response
-    {
+    public function index(
+        Request $request,
+        ContactEnquiryQuery $enquiries,
+        WebsiteContentService $content,
+        ShowcaseContentService $showcase,
+    ): Response {
         abort_unless($request->user()?->canManageWebsite() === true, 403);
 
         $content->ensureSeeded();
 
-        $allowed = collect($content->pageTabs())->pluck('slug');
+        $allowed = collect($content->editorialPageTabs())->pluck('slug');
         $pageSlug = $request->string('page')->toString();
         if (! $allowed->contains($pageSlug)) {
             $pageSlug = 'home';
         }
 
-        $cmsPage = $content->adminPage($pageSlug);
+        $isShowcasePage = $content->isShowcaseAdminPage($pageSlug);
+        $cmsPage = $isShowcasePage ? ['slug' => $pageSlug, 'sections' => []] : $content->adminPage($pageSlug);
         $sectionKeys = collect($cmsPage['sections'])->pluck('key');
         $sectionKey = $request->string('section')->toString();
-        if (! $sectionKeys->contains($sectionKey)) {
+        if (! $isShowcasePage && ! $sectionKeys->contains($sectionKey)) {
             $sectionKey = $sectionKeys->first() ?? 'hero';
+        }
+        if ($isShowcasePage) {
+            $sectionKey = '';
         }
 
         $page = $enquiries->adminIndex($request)->through(fn (ContactEnquiry $enquiry) => $enquiry->toAdminArray());
@@ -59,11 +69,35 @@ class WebsiteContentController extends Controller
         }
 
         return Inertia::render('Admin/WebsiteContent/Index', [
-            'tabs' => $content->pageTabs(),
+            'tabs' => $content->editorialPageTabs(),
             'cmsPage' => $cmsPage,
             'contentVersion' => WebsiteSection::query()->max('updated_at'),
             'activePage' => $pageSlug,
             'activeSection' => $sectionKey,
+            'showcaseStatistics' => $isShowcasePage && $pageSlug === 'showcase-statistics'
+                ? $showcase->statistics()->toAdminArray()
+                : null,
+            'showcaseCompanies' => $isShowcasePage && $pageSlug !== 'showcase-statistics'
+                ? $showcase->adminCompanies()
+                : [],
+            'showcaseSurface' => match ($pageSlug) {
+                'showcase-home-companies' => 'home',
+                'showcase-talent-pool-companies' => 'talent_pool',
+                'showcase-staffing-companies' => 'staffing',
+                default => null,
+            },
+            'showcaseTablesReady' => $showcase->tablesReady(),
+            'showcaseEmployerOptions' => $isShowcasePage && $pageSlug !== 'showcase-statistics'
+                ? EmployerProfile::query()
+                    ->orderBy('company_name')
+                    ->get(['id', 'company_name'])
+                    ->map(fn (EmployerProfile $profile) => [
+                        'id' => $profile->id,
+                        'name' => $profile->displayCompany(),
+                    ])
+                    ->values()
+                    ->all()
+                : [],
             'enquiries' => $page,
             'selected' => $selected?->toAdminArray(),
             'filters' => [
@@ -104,8 +138,8 @@ class WebsiteContentController extends Controller
 
     private function assertPageSlug(string $page, WebsiteContentService $content): void
     {
-        $allowed = collect($content->pageTabs())->pluck('slug');
-        abort_unless($allowed->contains($page), 404);
+        $allowed = collect($content->editorialPageTabs())->pluck('slug');
+        abort_unless($allowed->contains($page) && ! $content->isShowcaseAdminPage($page), 404);
     }
 
     public function updateContactStatus(UpdateContactEnquiryStatusRequest $request, ContactEnquiry $contactEnquiry): RedirectResponse

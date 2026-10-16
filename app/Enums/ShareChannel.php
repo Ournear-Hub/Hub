@@ -5,6 +5,7 @@ namespace App\Enums;
 enum ShareChannel: string
 {
     case Whatsapp = 'whatsapp';
+    case Email = 'email';
     case Copy = 'copy';
     case Native = 'native';
 
@@ -12,6 +13,7 @@ enum ShareChannel: string
     {
         return match ($this) {
             self::Whatsapp => 'WhatsApp',
+            self::Email => 'Email',
             self::Copy => 'Copy link',
             self::Native => 'Native share',
         };

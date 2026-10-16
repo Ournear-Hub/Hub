@@ -23,7 +23,8 @@ class MetaWhatsAppCloudGateway implements WhatsAppGateway
         $to = ltrim($message->recipientE164, '+');
 
         try {
-            $response = Http::timeout(WhatsAppCloudConfig::timeoutSeconds())
+            $response = Http::connectTimeout(5)
+                ->timeout(WhatsAppCloudConfig::timeoutSeconds())
                 ->acceptJson()
                 ->withToken(WhatsAppCloudConfig::accessToken())
                 ->post(WhatsAppCloudConfig::messagesEndpoint(), $this->payload($message, $to));

@@ -121,7 +121,7 @@ class EmployerHiringStage24Test extends TestCase
     {
         $this->actingAs($this->candidate())
             ->get(route('account.hiring.candidates'))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/hiring/candidates']));
     }
 
     public function test_employer_application_detail_has_no_candidate_owner_controls_in_props(): void

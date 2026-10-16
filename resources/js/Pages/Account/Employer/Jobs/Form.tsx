@@ -1,6 +1,7 @@
 import { router, usePage } from '@inertiajs/react';
 import JobForm from '@/Components/Admin/JobForm';
 import AccountLayout from '@/Layouts/AccountLayout';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import type { AdminJob } from '@/types/jobs';
 import type { JobFormLookups } from '@/types/masterData';
 import type { SharedPageProps } from '@/types/page';
@@ -8,6 +9,8 @@ import type { SharedPageProps } from '@/types/page';
 type Props = {
     job: AdminJob | null;
     company_name: string;
+    company_industry_id: number | null;
+    company_industry_name: string | null;
     lookups: JobFormLookups;
     eligibility: {
         eligible: boolean;
@@ -17,20 +20,29 @@ type Props = {
     next_tier: 'trial' | 'basic';
 };
 
-export default function EmployerJobForm({ job, company_name, lookups, eligibility, next_tier }: Props) {
+export default function EmployerJobForm({
+    job,
+    company_name,
+    company_industry_id,
+    company_industry_name,
+    lookups,
+    eligibility,
+    next_tier,
+}: Props) {
     const errors = usePage<SharedPageProps>().props.errors ?? {};
     const publishBlocked = eligibility?.eligible === false;
 
     return (
         <AccountLayout
             title={job ? 'Edit Job' : 'Create Job'}
-            description="Save drafts anytime. Publishing checks email and mobile verification (or admin approval)."
+            description="Save drafts anytime. Unverified employers may publish one trial job for one hour; verify email and mobile for unlimited publishing."
             breadcrumbs={[
                 { label: 'Dashboard', href: '/account' },
                 { label: 'Jobs', href: '/account/jobs' },
                 { label: job ? 'Edit job' : 'Post job' },
             ]}
         >
+            <BackNavLink href="/account/jobs" label="Back to jobs" className="mb-4" />
             {!job ? (
                 <section className="mb-5 rounded-xl border border-line bg-white p-4 text-sm">
                     <p className="font-semibold text-ink">
@@ -58,6 +70,8 @@ export default function EmployerJobForm({ job, company_name, lookups, eligibilit
                     lookups={lookups}
                     scope="employer"
                     companyName={company_name}
+                    companyIndustryId={company_industry_id}
+                    companyIndustryName={company_industry_name}
                     onCancel={() => router.get('/account/jobs')}
                 />
             </section>

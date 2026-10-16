@@ -1,0 +1,1 @@
+function i(t){if(!t)return"Applied recently";const r=new Date(t);if(Number.isNaN(r.getTime()))return"Applied recently";const a=new Date;a.setHours(0,0,0,0);const n=new Date(r);n.setHours(0,0,0,0);const p=1e3*60*60*24,e=Math.floor((a.getTime()-n.getTime())/p);return e<=0?"Applied today":e===1?"Applied 1 day ago":`Applied ${e} days ago`}export{i as f};

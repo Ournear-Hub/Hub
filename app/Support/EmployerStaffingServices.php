@@ -9,8 +9,6 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class EmployerStaffingServices
 {
-    public const REQUEST_HREF = '/for-employers';
-
     public const SUPPORT_CONTACT_HREF = '/contact';
 
     /**

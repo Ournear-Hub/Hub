@@ -24,13 +24,23 @@ class AuthenticatedSessionController extends Controller
 
         IntendedUrl::remember($request);
 
-        return Inertia::render('Account/Login');
+        $tab = $request->string('tab')->toString() === 'signup' ? 'signup' : 'login';
+
+        return Inertia::render('Account/Login', [
+            'tab' => $tab,
+            'registeredEmail' => $request->session()->get('registered_email'),
+        ]);
     }
 
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
         $request->session()->regenerate();
+
+        $user = Auth::guard('account')->user();
+        if ($user instanceof User && $user->isCandidate() && ! $user->hasVerifiedEmail()) {
+            $request->session()->put('prompt_email_verification', true);
+        }
 
         return redirect()->to(IntendedUrl::pullAllowed(
             $request,

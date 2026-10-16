@@ -28,5 +28,6 @@ export type AdminNavItem = {
 export type NavSection = {
     id: string;
     label: string;
+    icon?: string;
     items: AdminNavItem[];
 };

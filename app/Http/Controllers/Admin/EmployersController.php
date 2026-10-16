@@ -27,7 +27,13 @@ use App\Models\Payment;
 use App\Models\Placement;
 use App\Models\Replacement;
 use App\Models\Tag;
+use App\Http\Requests\Admin\DecideEmployerStaffingAccessRequest;
+use App\Http\Requests\Admin\StoreCompanyRelationshipRecruiterAssignmentRequest;
+use App\Models\CompanyRelationshipRecruiterAssignment;
+use App\Services\CompanyRelationshipRecruiterAssignmentService;
+use App\Support\OurNearInternalRecruiters;
 use App\Services\EmployerCompanyService;
+use App\Services\EmployerStaffingAccessService;
 use App\Services\EmployerDocumentLibraryService;
 use App\Services\EmployerPrivateFileService;
 use App\Services\MasterData\MasterDataService;
@@ -240,7 +246,35 @@ class EmployersController extends Controller
                 ])->all(),
             ],
             'can_manage' => $actor?->hasPermission(PermissionName::EmployersManage->value) === true,
+            'relationship_recruiter' => $selected ? $this->relationshipRecruiterPayload($selected) : null,
+            'internal_recruiters' => OurNearInternalRecruiters::optionsForAdmin(),
+            'can_assign_relationship_recruiter' => $actor?->can('create', CompanyRelationshipRecruiterAssignment::class) === true,
         ]);
+    }
+
+    public function assignRelationshipRecruiter(
+        StoreCompanyRelationshipRecruiterAssignmentRequest $request,
+        EmployerProfile $employer,
+        CompanyRelationshipRecruiterAssignmentService $service,
+    ): RedirectResponse {
+        $recruiter = \App\Models\User::query()->findOrFail($request->integer('assigned_recruiter_user_id'));
+        $service->assign($employer, $recruiter, $request->user(), $request->input('notes'));
+
+        return back()->with('success', 'OurNear recruiter assigned to this company relationship.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function relationshipRecruiterPayload(EmployerProfile $employer): array
+    {
+        $service = app(CompanyRelationshipRecruiterAssignmentService::class);
+        $active = $service->activeForEmployer($employer);
+
+        return [
+            'active' => $active?->toAdminArray(),
+            'history' => $service->historyForEmployer($employer),
+        ];
     }
 
     /**
@@ -446,6 +480,39 @@ class EmployersController extends Controller
         abort_unless((int) $document->employer_profile_id === (int) $employer->id, 403);
 
         return $document;
+    }
+
+    public function approveStaffingAccess(
+        DecideEmployerStaffingAccessRequest $request,
+        EmployerProfile $employer,
+        EmployerStaffingAccessService $staffingAccess,
+    ): RedirectResponse {
+        $this->authorize('update', $employer);
+        $staffingAccess->approve($request->user(), $employer, $request->input('notes'));
+
+        return back()->with('success', 'Staffing access approved for this company.');
+    }
+
+    public function rejectStaffingAccess(
+        DecideEmployerStaffingAccessRequest $request,
+        EmployerProfile $employer,
+        EmployerStaffingAccessService $staffingAccess,
+    ): RedirectResponse {
+        $this->authorize('update', $employer);
+        $staffingAccess->reject($request->user(), $employer, (string) $request->input('reason', ''));
+
+        return back()->with('success', 'Staffing access request rejected.');
+    }
+
+    public function revokeStaffingAccess(
+        DecideEmployerStaffingAccessRequest $request,
+        EmployerProfile $employer,
+        EmployerStaffingAccessService $staffingAccess,
+    ): RedirectResponse {
+        $this->authorize('update', $employer);
+        $staffingAccess->revoke($request->user(), $employer, $request->input('notes'));
+
+        return back()->with('success', 'Staffing access revoked for this company.');
     }
 
 }

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MediaAsset;
 use App\Http\Requests\Admin\UpdateBrandingRequest;
 use App\Http\Requests\Admin\UpdatePasswordRequest;
 use App\Http\Requests\Admin\UpdateProfileRequest;
 use App\Http\Requests\Admin\UpdateWebsiteSettingsRequest;
+use App\Services\MailConfigurationService;
+use App\Services\MailDiagnosticService;
 use App\Services\WebsiteSettingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -19,6 +22,7 @@ class SettingsController extends Controller
     {
         $tab = match ($request->string('tab')->toString()) {
             'branding' => 'branding',
+            'email' => 'email',
             'account' => 'account',
             default => 'website',
         };
@@ -31,16 +35,32 @@ class SettingsController extends Controller
 
         $current = $settings->current();
 
+        $mailDiagnostics = app(MailDiagnosticService::class);
+
         return Inertia::render('Admin/Settings', [
             'tab' => $tab,
             'websiteSettings' => $current->toAdminArray(),
             'branding' => $current->toAdminBrandingArray(),
+            'brandingMediaOptions' => $tab === 'branding'
+                ? MediaAsset::query()
+                    ->where('mime_type', 'like', 'image/%')
+                    ->orderByDesc('id')
+                    ->limit(200)
+                    ->get()
+                    ->map(fn (MediaAsset $asset) => $asset->toPickerArray())
+                    ->values()
+                    ->all()
+                : [],
+            'mailSettings' => $current->toAdminMailArray(),
+            'mailEffective' => app(MailConfigurationService::class)->effectiveConfigurationSummary(),
+            'mailPrerequisites' => $mailDiagnostics->externalPrerequisites(),
         ]);
     }
 
     public function updateWebsite(UpdateWebsiteSettingsRequest $request, WebsiteSettingService $settings): RedirectResponse
     {
         $settings->update($request->validated());
+        app(MailConfigurationService::class)->applyRuntimeConfiguration();
 
         return redirect()
             ->route('admin.settings.edit', ['tab' => 'website'])

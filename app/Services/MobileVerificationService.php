@@ -141,6 +141,8 @@ class MobileVerificationService
             'Mobile number was verified.',
             $user,
         );
+
+        app(EmployerPostingEligibilityService::class)->syncPublishingBenefits($user->fresh());
     }
 
     public function retryAfterSeconds(User $user): int

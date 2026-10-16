@@ -10,9 +10,11 @@ use App\Http\Controllers\Admin\Auth\NewPasswordController;
 use App\Http\Controllers\Admin\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Admin\CampaignsController;
 use App\Http\Controllers\Admin\CandidatesController;
+use App\Http\Controllers\Admin\RecruiterTalentPoolAssignmentsController;
 use App\Http\Controllers\Admin\CommissionController;
 use App\Http\Controllers\Admin\CrmController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\DesignSystemController;
 use App\Http\Controllers\Admin\EmployeesController;
 use App\Http\Controllers\Admin\FinanceController;
 use App\Http\Controllers\Admin\FreelancersController;
@@ -20,6 +22,7 @@ use App\Http\Controllers\Admin\HiringCommandCenterController;
 use App\Http\Controllers\Admin\InterviewsController;
 use App\Http\Controllers\Admin\InvestorsController;
 use App\Http\Controllers\Admin\LoginLogsController;
+use App\Http\Controllers\Admin\MessageTemplatesController;
 use App\Http\Controllers\Admin\MessagesController;
 use App\Http\Controllers\Admin\NotificationsController;
 use App\Http\Controllers\Admin\EmployerEnquiriesController;
@@ -33,12 +36,16 @@ use App\Http\Controllers\Admin\ResumeImportController;
 use App\Http\Controllers\Admin\RolesController;
 use App\Http\Controllers\Admin\ScorecardTemplatesController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\Admin\TalentPoolJobsController;
 use App\Http\Controllers\Admin\TasksController;
 use App\Http\Controllers\Admin\UsersController;
 use App\Enums\MasterEntityType;
 use App\Http\Controllers\Admin\MasterDataController;
+use App\Http\Controllers\Admin\MasterDataExcelController;
 use App\Http\Controllers\Admin\MediaSocialController;
+use App\Http\Controllers\Admin\EmailSettingsController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\ShowcaseWebsiteContentController;
 use App\Http\Controllers\Admin\WebsiteContentController;
 use App\Http\Controllers\Admin\WorkController;
 use Illuminate\Support\Facades\Route;
@@ -83,8 +90,54 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('jobs/{job}/lifecycle', [JobsController::class, 'lifecycle'])->name('jobs.lifecycle');
 
         Route::get('candidates', [CandidatesController::class, 'index'])->name('candidates.index');
+        Route::get('talent-pool-assignments', [RecruiterTalentPoolAssignmentsController::class, 'index'])
+            ->name('talent-pool-assignments.index');
+        Route::post('talent-pool-assignments', [RecruiterTalentPoolAssignmentsController::class, 'store'])
+            ->name('talent-pool-assignments.store');
+        Route::put('talent-pool-assignments/{assignment}/status', [RecruiterTalentPoolAssignmentsController::class, 'updateStatus'])
+            ->name('talent-pool-assignments.status.update');
+        Route::post('talent-pool-assignments/{assignment}/archive', [RecruiterTalentPoolAssignmentsController::class, 'archive'])
+            ->name('talent-pool-assignments.archive');
+        Route::post('talent-pool-company-submissions', [RecruiterTalentPoolAssignmentsController::class, 'storeCompanySubmission'])
+            ->name('talent-pool-company-submissions.store');
+        Route::post('talent-pool-assignments/{assignment}/submit-to-company', [RecruiterTalentPoolAssignmentsController::class, 'submitAssignmentToCompany'])
+            ->name('talent-pool-assignments.submit-to-company');
+        Route::post('talent-pool-assignments/{assignment}/submit-to-staffing-client', [RecruiterTalentPoolAssignmentsController::class, 'submitAssignmentToStaffingClient'])
+            ->name('talent-pool-assignments.submit-to-staffing-client');
+        Route::get('staffing-workspace', [\App\Http\Controllers\Admin\StaffingOperationsController::class, 'index'])
+            ->name('staffing-workspace.index');
+        Route::get('staffing-candidate-submissions/{staffingSubmission}', [\App\Http\Controllers\Admin\StaffingCandidateSubmissionsController::class, 'show'])
+            ->name('staffing-candidate-submissions.show');
+        Route::post('staffing-candidate-submissions/{staffingSubmission}/follow-ups', [\App\Http\Controllers\Admin\StaffingCandidateSubmissionsController::class, 'storeFollowUp'])
+            ->name('staffing-candidate-submissions.follow-ups.store');
+        Route::post('staffing-candidate-submissions/{staffingSubmission}/messages', [\App\Http\Controllers\Admin\StaffingCandidateSubmissionsController::class, 'storeMessage'])
+            ->name('staffing-candidate-submissions.messages.store');
+        Route::get('talent-pool-jobs', [TalentPoolJobsController::class, 'index'])
+            ->name('talent-pool-jobs.index');
+        Route::get('talent-pool-jobs/create', [TalentPoolJobsController::class, 'create'])
+            ->name('talent-pool-jobs.create');
+        Route::post('talent-pool-jobs', [TalentPoolJobsController::class, 'store'])
+            ->name('talent-pool-jobs.store');
+        Route::get('talent-pool-workspace', [\App\Http\Controllers\Admin\RecruiterTalentPoolWorkspaceController::class, 'index'])
+            ->name('talent-pool-workspace.index');
+        Route::get('talent-pool-company-submissions/{submission}', [\App\Http\Controllers\Admin\TalentPoolCompanySubmissionsController::class, 'show'])
+            ->name('talent-pool-company-submissions.show');
+        Route::post('talent-pool-company-submissions/{submission}/follow-ups', [\App\Http\Controllers\Admin\TalentPoolCompanySubmissionsController::class, 'storeFollowUp'])
+            ->name('talent-pool-company-submissions.follow-ups.store');
+        Route::post('talent-pool-company-submissions/{submission}/messages', [\App\Http\Controllers\Admin\TalentPoolCompanySubmissionsController::class, 'storeMessage'])
+            ->name('talent-pool-company-submissions.messages.store');
+        Route::get('candidates/internal-resumes', [\App\Http\Controllers\Admin\InternalCandidateResumeController::class, 'index'])
+            ->name('candidates.internal-resumes.index');
+        Route::post('candidates/internal-resumes', [\App\Http\Controllers\Admin\InternalCandidateResumeController::class, 'store'])
+            ->name('candidates.internal-resumes.store');
+        Route::get('candidates/internal-resumes/{internalResume}/download', [\App\Http\Controllers\Admin\InternalCandidateResumeController::class, 'download'])
+            ->whereNumber('internalResume')
+            ->name('candidates.internal-resumes.download');
         Route::get('candidates/imports', [ResumeImportController::class, 'index'])->name('candidates.imports.index');
         Route::post('candidates/imports', [ResumeImportController::class, 'store'])->name('candidates.imports.store');
+        Route::post('candidates/imports/{batch}/confirm', [ResumeImportController::class, 'confirm'])
+            ->whereNumber('batch')
+            ->name('candidates.imports.confirm');
         Route::post('candidates/saved-searches', [CandidatesController::class, 'storeSavedSearch'])
             ->name('candidates.saved-searches.store');
         Route::delete('candidates/saved-searches/{savedSearch}', [CandidatesController::class, 'destroySavedSearch'])
@@ -140,6 +193,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('scorecard-templates', [ScorecardTemplatesController::class, 'index'])->name('scorecard-templates.index');
         Route::post('scorecard-templates', [ScorecardTemplatesController::class, 'store'])->name('scorecard-templates.store');
         Route::put('scorecard-templates/{scorecardTemplate}', [ScorecardTemplatesController::class, 'update'])->name('scorecard-templates.update');
+        Route::post('message-templates/preview', [MessageTemplatesController::class, 'preview'])->name('message-templates.preview');
+        Route::get('message-templates', [MessageTemplatesController::class, 'index'])->name('message-templates.index');
+        Route::post('message-templates', [MessageTemplatesController::class, 'store'])->name('message-templates.store');
+        Route::put('message-templates/{messageTemplate}', [MessageTemplatesController::class, 'update'])->name('message-templates.update');
+        Route::post('message-templates/{messageTemplate}/active', [MessageTemplatesController::class, 'toggleActive'])->name('message-templates.active');
         Route::get('tasks', [TasksController::class, 'index'])->name('tasks.index');
         Route::post('tasks', [TasksController::class, 'store'])->name('tasks.store');
         Route::put('tasks/{task}', [TasksController::class, 'update'])->name('tasks.update');
@@ -158,8 +216,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('shortlisted', [ApplicationsController::class, 'shortlisted'])->name('shortlisted.index');
         Route::get('employers', [EmployersController::class, 'index'])->name('employers.index');
         Route::put('employers/{employer}', [EmployersController::class, 'update'])->name('employers.update');
+        Route::post('employers/{employer}/relationship-recruiter', [EmployersController::class, 'assignRelationshipRecruiter'])
+            ->name('employers.relationship-recruiter.store');
         Route::patch('employers/{employer}/posting-approval', [EmployersController::class, 'postingApproval'])
             ->name('employers.posting-approval');
+        Route::patch('employers/{employer}/staffing-access/approve', [EmployersController::class, 'approveStaffingAccess'])
+            ->name('employers.staffing-access.approve');
+        Route::patch('employers/{employer}/staffing-access/reject', [EmployersController::class, 'rejectStaffingAccess'])
+            ->name('employers.staffing-access.reject');
+        Route::patch('employers/{employer}/staffing-access/revoke', [EmployersController::class, 'revokeStaffingAccess'])
+            ->name('employers.staffing-access.revoke');
         Route::patch('employers/{employer}/posting-restriction', [EmployersController::class, 'restrictPosting'])
             ->name('employers.posting-restriction');
         Route::put('employers/{employer}/tags', [EmployersController::class, 'syncTags'])
@@ -280,6 +346,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('commission/payouts', [CommissionController::class, 'storePayout'])->name('commission.payouts.store');
 
         Route::get('website-content', [WebsiteContentController::class, 'index'])->name('website-content.index');
+        Route::put('website-content/showcase/statistics', [ShowcaseWebsiteContentController::class, 'updateStatistics'])
+            ->name('website-content.showcase.statistics');
+        Route::post('website-content/showcase/companies', [ShowcaseWebsiteContentController::class, 'storeCompany'])
+            ->name('website-content.showcase.companies.store');
+        Route::put('website-content/showcase/companies/{showcaseCompany}', [ShowcaseWebsiteContentController::class, 'updateCompany'])
+            ->name('website-content.showcase.companies.update');
+        Route::post('website-content/showcase/companies/reorder', [ShowcaseWebsiteContentController::class, 'reorderCompanies'])
+            ->name('website-content.showcase.companies.reorder');
         Route::put('website-content/{page}', [WebsiteContentController::class, 'update'])->name('website-content.update');
         Route::post('website-content/{page}/reset', [WebsiteContentController::class, 'reset'])->name('website-content.reset');
         Route::patch('website-content/contact-enquiries/{contactEnquiry}/status', [WebsiteContentController::class, 'updateContactStatus'])->name('website-content.contact-enquiries.status');
@@ -303,8 +377,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->where('type', $masterTypes)
             ->name('master-data.status');
 
+        Route::get('master-data/{type}/excel/template', [MasterDataExcelController::class, 'template'])
+            ->where('type', $masterTypes)
+            ->name('master-data.excel.template');
+        Route::get('master-data/{type}/excel/export', [MasterDataExcelController::class, 'export'])
+            ->where('type', $masterTypes)
+            ->name('master-data.excel.export');
+        Route::post('master-data/{type}/excel/preview', [MasterDataExcelController::class, 'preview'])
+            ->where('type', $masterTypes)
+            ->name('master-data.excel.preview');
+        Route::post('master-data/{type}/excel/confirm', [MasterDataExcelController::class, 'confirm'])
+            ->where('type', $masterTypes)
+            ->name('master-data.excel.confirm');
+
         Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings/website', [SettingsController::class, 'updateWebsite'])->name('settings.website');
+        Route::put('settings/email', [EmailSettingsController::class, 'update'])->name('settings.email');
+        Route::post('settings/email/validate', [EmailSettingsController::class, 'validateConfiguration'])
+            ->middleware('throttle:12,1')
+            ->name('settings.email.validate');
+        Route::post('settings/email/test-connection', [EmailSettingsController::class, 'testConnection'])
+            ->middleware('throttle:12,1')
+            ->name('settings.email.test-connection');
+        Route::post('settings/email/send-test', [EmailSettingsController::class, 'sendTest'])
+            ->middleware('throttle:6,1')
+            ->name('settings.email.send-test');
+        Route::post('settings/email/preview-verification', [EmailSettingsController::class, 'previewVerification'])
+            ->middleware('throttle:12,1')
+            ->name('settings.email.preview-verification');
+        Route::get('settings/email/prerequisites', [EmailSettingsController::class, 'prerequisites'])
+            ->name('settings.email.prerequisites');
         Route::put('settings/branding', [SettingsController::class, 'updateBranding'])->name('settings.branding');
         Route::put('settings/profile', [SettingsController::class, 'updateProfile'])->name('settings.profile');
         Route::put('settings/password', [SettingsController::class, 'updatePassword'])->name('settings.password');
@@ -327,6 +429,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::put('users/{user}/roles', [UsersController::class, 'syncRoles'])->whereNumber('user')->name('users.roles');
         Route::patch('users/{user}/status', [UsersController::class, 'updateStatus'])->whereNumber('user')->name('users.status');
         Route::post('users/{user}/password-reset', [UsersController::class, 'sendPasswordReset'])->whereNumber('user')->name('users.password-reset');
+        Route::post('users/{user}/local-verify-email', [UsersController::class, 'localVerifyEmail'])
+            ->middleware('local.environment')
+            ->whereNumber('user')
+            ->name('users.local-verify-email');
 
         Route::get('staff', [StaffController::class, 'index'])->name('staff.index');
         Route::post('staff', [UsersController::class, 'store'])->name('staff.store');
@@ -337,6 +443,204 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('activity-logs', [ActivityLogsController::class, 'index'])->name('activity-logs.index');
         Route::get('login-logs', [LoginLogsController::class, 'index'])->name('login-logs.index');
+
+            Route::prefix('design-system')->name('design-system.')->group(function () {
+                Route::get('/', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'overview')
+                    ->name('index');
+                Route::get('/foundation', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'foundation')
+                    ->name('foundation');
+                Route::get('/icons', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'icons')
+                    ->name('icons');
+                Route::get('/atoms/button', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-button')
+                    ->name('atoms.button');
+                Route::get('/atoms/icon-button', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-icon-button')
+                    ->name('atoms.icon-button');
+                Route::get('/atoms/input', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-input')
+                    ->name('atoms.input');
+                Route::get('/atoms/textarea', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-textarea')
+                    ->name('atoms.textarea');
+                Route::get('/atoms/select', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-select')
+                    ->name('atoms.select');
+                Route::get('/atoms/checkbox', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-checkbox')
+                    ->name('atoms.checkbox');
+                Route::get('/atoms/radio', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-radio')
+                    ->name('atoms.radio');
+                Route::get('/atoms/switch', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-switch')
+                    ->name('atoms.switch');
+                Route::get('/atoms/skeleton', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-skeleton')
+                    ->name('atoms.skeleton');
+                Route::get('/atoms/spinner', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-spinner')
+                    ->name('atoms.spinner');
+                Route::get('/atoms/progress', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-progress')
+                    ->name('atoms.progress');
+                Route::get('/atoms/divider', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-divider')
+                    ->name('atoms.divider');
+                Route::get('/atoms/link', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-link')
+                    ->name('atoms.link');
+                Route::get('/atoms/visually-hidden', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-visually-hidden')
+                    ->name('atoms.visually-hidden');
+                Route::get('/atoms/avatar', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-avatar')
+                    ->name('atoms.avatar');
+                Route::get('/atoms/chip', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-chip')
+                    ->name('atoms.chip');
+                Route::get('/atoms/image', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-image')
+                    ->name('atoms.image');
+                Route::get('/atoms/link-button', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-link-button')
+                    ->name('atoms.link-button');
+                Route::get('/atoms/card', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-card')
+                    ->name('atoms.card');
+                Route::get('/atoms/container', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-container')
+                    ->name('atoms.container');
+                Route::get('/atoms/stack', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-stack')
+                    ->name('atoms.stack');
+                Route::get('/atoms/cluster', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-cluster')
+                    ->name('atoms.cluster');
+                Route::get('/atoms/aspect-ratio', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'atoms-aspect-ratio')
+                    ->name('atoms.aspect-ratio');
+                Route::get('/molecules/form-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-form-field')
+                    ->name('molecules.form-field');
+                Route::get('/molecules/search-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-search-field')
+                    ->name('molecules.search-field');
+                Route::get('/molecules/password-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-password-field')
+                    ->name('molecules.password-field');
+                Route::get('/molecules/file-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-file-field')
+                    ->name('molecules.file-field');
+                Route::get('/molecules/date-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-date-field')
+                    ->name('molecules.date-field');
+                Route::get('/molecules/time-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-time-field')
+                    ->name('molecules.time-field');
+                Route::get('/molecules/date-time-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-date-time-field')
+                    ->name('molecules.date-time-field');
+                Route::get('/molecules/number-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-number-field')
+                    ->name('molecules.number-field');
+                Route::get('/molecules/email-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-email-field')
+                    ->name('molecules.email-field');
+                Route::get('/molecules/url-field', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-url-field')
+                    ->name('molecules.url-field');
+                Route::get('/molecules/field-group', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-field-group')
+                    ->name('molecules.field-group');
+                Route::get('/molecules/input-group', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-input-group')
+                    ->name('molecules.input-group');
+                Route::get('/molecules/field-set', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-field-set')
+                    ->name('molecules.field-set');
+                Route::get('/molecules/combobox', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-combobox')
+                    ->name('molecules.combobox');
+                Route::get('/molecules/multi-select', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-multi-select')
+                    ->name('molecules.multi-select');
+                Route::get('/molecules/segmented-control', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-segmented-control')
+                    ->name('molecules.segmented-control');
+                Route::get('/molecules/accordion', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-accordion')
+                    ->name('molecules.accordion');
+                Route::get('/molecules/tooltip', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-tooltip')
+                    ->name('molecules.tooltip');
+                Route::get('/molecules/popover', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-popover')
+                    ->name('molecules.popover');
+                Route::get('/molecules/dropdown-menu', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-dropdown-menu')
+                    ->name('molecules.dropdown-menu');
+                Route::get('/molecules/alert', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-alert')
+                    ->name('molecules.alert');
+                Route::get('/molecules/toast', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-toast')
+                    ->name('molecules.toast');
+                Route::get('/molecules/empty-state', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-empty-state')
+                    ->name('molecules.empty-state');
+                Route::get('/molecules/data-table', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-data-table')
+                    ->name('molecules.data-table');
+                Route::get('/molecules/filter-bar', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-filter-bar')
+                    ->name('molecules.filter-bar');
+                Route::get('/molecules/breadcrumb', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-breadcrumb')
+                    ->name('molecules.breadcrumb');
+                Route::get('/molecules/pagination', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-pagination')
+                    ->name('molecules.pagination');
+                Route::get('/molecules/tabs', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-tabs')
+                    ->name('molecules.tabs');
+                Route::get('/molecules/timeline', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-timeline')
+                    ->name('molecules.timeline');
+                Route::get('/molecules/dialog', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-dialog')
+                    ->name('molecules.dialog');
+                Route::get('/molecules/drawer', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'molecules-drawer')
+                    ->name('molecules.drawer');
+                Route::get('/organisms/detail-header', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-detail-header')
+                    ->name('organisms.detail-header');
+                Route::get('/organisms/detail-section', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-detail-section')
+                    ->name('organisms.detail-section');
+                Route::get('/organisms/document-group-list', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-document-group-list')
+                    ->name('organisms.document-group-list');
+                Route::get('/organisms/match-comparison-table', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-match-comparison-table')
+                    ->name('organisms.match-comparison-table');
+                Route::get('/organisms/screening-stages-table', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-screening-stages-table')
+                    ->name('organisms.screening-stages-table');
+                Route::get('/organisms/applicant-summary-card', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-applicant-summary-card')
+                    ->name('organisms.applicant-summary-card');
+                Route::get('/organisms/applicant-resume-overview', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-applicant-resume-overview')
+                    ->name('organisms.applicant-resume-overview');
+                Route::get('/organisms/application-timeline', [DesignSystemController::class, 'show'])
+                    ->defaults('section', 'organisms-application-timeline')
+                    ->name('organisms.application-timeline');
+            });
         });
     });
 });

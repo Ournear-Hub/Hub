@@ -19,6 +19,23 @@ class CandidateApplicationViewService
     /**
      * @return LengthAwarePaginator<int, Application>
      */
+    /**
+     * @return array{total: int, in_progress: int}
+     */
+    public function indexSummary(User $user): array
+    {
+        $active = ApplicationStatus::candidateFilterStatuses('active');
+
+        return [
+            'total' => $user->applications()->count(),
+            'in_progress' => $active === []
+                ? 0
+                : $user->applications()
+                    ->whereIn('status', array_map(fn (ApplicationStatus $status) => $status->value, $active))
+                    ->count(),
+        ];
+    }
+
     public function paginate(User $user, Request $request): LengthAwarePaginator
     {
         $query = $user->applications()
@@ -122,10 +139,12 @@ class CandidateApplicationViewService
      */
     public function timeline(Application $application): array
     {
+        $application->loadMissing('user');
         $events = [[
             'key' => 'submitted',
             'label' => 'Application submitted',
             'at' => $application->created_at?->toDateTimeString(),
+            'actor_name' => $application->user?->name,
         ]];
 
         $seen = ['submitted' => true];
@@ -163,10 +182,13 @@ class CandidateApplicationViewService
             return null;
         }
 
+        $activity->loadMissing('actor:id,name');
+
         return [
             'key' => $key,
             'label' => $this->timelineLabel($key),
             'at' => $activity->created_at?->toDateTimeString(),
+            'actor_name' => $activity->actor?->name,
         ];
     }
 

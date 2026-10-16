@@ -1,5 +1,5 @@
 import { useForm } from '@inertiajs/react';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import MobileVerificationPanel from '@/Components/Account/MobileVerificationPanel';
 import ChangeEmailPanel from '@/Components/Account/Verification/ChangeEmailPanel';
 import ChangeMobilePanel from '@/Components/Account/Verification/ChangeMobilePanel';
@@ -48,7 +48,8 @@ export default function VerificationCenter({ profile, role, mobileOtpRetryAfter,
                             {hiringGate.email_verified ? 'Complete' : 'Pending'} — Account email verified
                         </li>
                         <li>
-                            {hiringGate.mobile_verified ? 'Complete' : 'Pending'} — Mobile verified (required for Hiring)
+                            {hiringGate.mobile_verified ? 'Complete' : 'Optional'} — Mobile verification (coming soon for
+                            employers)
                         </li>
                         {hiringGate.hiring_email ? (
                             <li>
@@ -58,10 +59,7 @@ export default function VerificationCenter({ profile, role, mobileOtpRetryAfter,
                         ) : null}
                         <li>{hiringGate.has_company ? 'Complete' : 'Pending'} — Company profile on file</li>
                     </ul>
-                    {!hiringGate.mobile_verified ? (
-                        <p className="mt-3 text-sm font-medium text-ink">Verify mobile below to activate Hiring.</p>
-                    ) : null}
-                    <Button href="/account/hiring" variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
+                    <Button surface="public" href="/account/hiring" variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
                         Open Hiring workspace
                     </Button>
                 </section>
@@ -95,28 +93,48 @@ export default function VerificationCenter({ profile, role, mobileOtpRetryAfter,
 
             <VerificationStatusRow
                 label="Mobile"
-                detail={profile.mobile || 'No mobile number saved'}
-                statusLabel={profile.mobile_verified ? 'Verified' : profile.mobile ? 'Action required' : 'Optional'}
+                detail={profile.mobile || profile.mobile_number || 'No mobile number saved'}
+                statusLabel={
+                    profile.mobile_verified
+                        ? 'Verified'
+                        : role === 'employer'
+                          ? 'Not available yet'
+                          : profile.mobile
+                            ? 'Action required'
+                            : 'Optional'
+                }
             >
-                {role === 'employer' && !profile.mobile_verified ? (
-                    <p className="mb-3 text-sm text-muted">
-                        Mobile verification is required to activate the Hiring workspace and post jobs as an employer.
-                    </p>
-                ) : (
-                    <p className="mb-3 text-sm text-muted">Optional for candidates; recommended for account recovery.</p>
-                )}
-                {!profile.mobile ? (
-                    <ChangeMobilePanel profile={profile} />
+                {role === 'employer' ? (
+                    <div className="space-y-3">
+                        <p className="text-sm text-muted">
+                            Mobile verification for company accounts is not available yet. Your saved number is shown
+                            above; you can update it from Account settings when needed.
+                        </p>
+                        <Button surface="public" type="button" variant="secondary" className="min-h-11" disabled>
+                            Verify mobile (coming soon)
+                        </Button>
+                    </div>
                 ) : (
                     <>
-                        <ChangeMobilePanel profile={profile} />
-                        <MobileVerificationPanel profile={profile} retryAfter={mobileOtpRetryAfter} />
+                        <p className="mb-3 text-sm text-muted">Optional for candidates; recommended for account recovery.</p>
+                        {!profile.mobile ? (
+                            <ChangeMobilePanel profile={profile} />
+                        ) : (
+                            <>
+                                <ChangeMobilePanel profile={profile} />
+                                <MobileVerificationPanel profile={profile} retryAfter={mobileOtpRetryAfter} />
+                            </>
+                        )}
                     </>
                 )}
             </VerificationStatusRow>
 
-            <VerificationStatusRow label="WhatsApp" statusLabel="Optional" detail={profile.whatsapp_number || undefined}>
-                <WhatsAppOptionalPanel profile={profile} />
+            <VerificationStatusRow
+                label="WhatsApp"
+                statusLabel={role === 'employer' ? 'Not available yet' : 'Optional'}
+                detail={profile.whatsapp_number || undefined}
+            >
+                <WhatsAppOptionalPanel profile={profile} employerMode={role === 'employer'} />
             </VerificationStatusRow>
         </div>
     );

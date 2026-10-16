@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
-import Button from '@/Components/Public/Button';
-import StatusBadge from '@/Components/UI/StatusBadge';
+import Button from '@/Components/atoms/Button';
+import { Badge } from '@/Components/atoms';
 import type { AccountProfile } from '@/types/account';
 import {
     buildProfileModules,
@@ -105,7 +105,7 @@ export default function ProfileCompletionCenter({ profile, onOpenModule, compact
                     <p className="mt-1 font-semibold text-ink">{next.title}</p>
                     <p className="mt-1 text-sm text-muted">{next.description}</p>
                     {onOpenModule ? (
-                        <Button type="button" variant="primary" className="mt-3 min-h-11" onClick={() => onOpenModule(next.id)}>
+                        <Button surface="public" type="button" variant="primary" className="mt-3 min-h-11" onClick={() => onOpenModule(next.id)}>
                             Continue
                         </Button>
                     ) : (
@@ -127,7 +127,7 @@ export default function ProfileCompletionCenter({ profile, onOpenModule, compact
                                 <div className="min-w-0 flex-1">
                                     <div className="flex flex-wrap items-center gap-2">
                                         <h4 className="font-semibold text-ink">{module.title}</h4>
-                                        <StatusBadge tone={statusTone(module.status)}>{statusLabel(module.status)}</StatusBadge>
+                                        <Badge variant={statusTone(module.status)}>{statusLabel(module.status)}</Badge>
                                     </div>
                                     <p className="mt-0.5 line-clamp-2 text-sm text-muted">{module.summary}</p>
                                 </div>

@@ -1,0 +1,1 @@
+import{j as o}from"./app-2VvbXxLL.js";import{I as i}from"./Input-BoIhcpHC.js";function p({name:a="search",defaultValue:s,placeholder:r="Search",disabled:t=!1,title:e}){return o.jsx(i,{type:"search",name:a,defaultValue:s,placeholder:r,disabled:t,title:e,"aria-label":r})}export{p as S};

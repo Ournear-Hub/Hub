@@ -7,6 +7,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
@@ -28,6 +29,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/whatsapp',
         ]);
 
+        $middleware->web(prepend: [
+            \App\Http\Middleware\ApplyRuntimeMailConfiguration::class,
+            \App\Http\Middleware\EnsureLocalFrontendDev::class,
+        ]);
+
         $middleware->web(append: [
             \App\Http\Middleware\UseAuthChannel::class,
             \App\Http\Middleware\CaptureReferralCode::class,
@@ -42,8 +48,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth.either' => \App\Http\Middleware\AuthenticateEitherGuard::class,
             'password.change' => \App\Http\Middleware\EnsurePasswordChanged::class,
             'account.member' => \App\Http\Middleware\EnsureAccountMember::class,
+            'account.verified' => \App\Http\Middleware\EnsureAccountEmailVerified::class,
             'account.candidate' => \App\Http\Middleware\EnsureCandidate::class,
             'account.employer' => \App\Http\Middleware\EnsureEmployer::class,
+            'api.account' => \App\Http\Middleware\EnsureApiAccountMember::class,
+            'api.candidate' => \App\Http\Middleware\EnsureApiCandidate::class,
+            'sanctum.optional' => \App\Http\Middleware\AuthenticateOptionalSanctum::class,
+            'mobile.profile.block' => \App\Http\Middleware\BlockMobileProfileMutations::class,
+            'local.environment' => \App\Http\Middleware\EnsureLocalEnvironment::class,
         ]);
 
         $middleware->redirectGuestsTo(function (\Illuminate\Http\Request $request) {

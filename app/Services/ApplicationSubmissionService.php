@@ -9,7 +9,9 @@ use App\Models\Application;
 use App\Models\CandidateResume;
 use App\Models\Job;
 use App\Models\User;
+use App\Support\JobApplicationEligibility;
 use App\Services\CandidatePrivateFileService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -30,6 +32,18 @@ class ApplicationSubmissionService
     {
         if (! $candidate->isCandidate()) {
             abort(403);
+        }
+
+        if (! $candidate->hasVerifiedEmail()) {
+            throw ValidationException::withMessages([
+                'email' => 'Verify your email to apply for jobs. You can continue browsing jobs and completing your profile while you verify your email.',
+            ]);
+        }
+
+        if (JobApplicationEligibility::candidateOwnsJobCompany($candidate, $job)) {
+            throw ValidationException::withMessages([
+                'job' => 'You cannot apply for a job posted by your own company.',
+            ]);
         }
 
         $candidate->loadMissing(['candidateProfile.classifiedLocation', 'candidateProfile.classifiedExperienceRange', 'candidateProfile.classifiedQualification']);
@@ -62,20 +76,17 @@ class ApplicationSubmissionService
             ]);
         }
 
+        $actor = Auth::guard('account')->user();
+        if ($actor instanceof User && JobApplicationEligibility::candidateOwnsJobCompany($actor, $job)) {
+            throw ValidationException::withMessages([
+                'job' => 'You cannot apply for a job posted by your own company.',
+            ]);
+        }
+
         $email = Str::lower($validated['email']);
         $candidateId = $this->authenticatedCandidateId();
 
-        $duplicate = Application::query()
-            ->where('job_id', $job->id)
-            ->where(function ($query) use ($email, $candidateId) {
-                $query->whereRaw('LOWER(email) = ?', [$email]);
-                if ($candidateId) {
-                    $query->orWhere('user_id', $candidateId);
-                }
-            })
-            ->exists();
-
-        if ($duplicate) {
+        if ($this->hasDuplicateApplication($job->id, $email, $candidateId)) {
             throw ValidationException::withMessages([
                 'job' => 'You have already applied for this role.',
             ]);
@@ -83,27 +94,41 @@ class ApplicationSubmissionService
 
         $snapshot = $this->storeSnapshot($resume, $this->selectedLibraryResume($validated['candidate_resume_id'] ?? null));
 
-        $application = DB::transaction(function () use ($job, $validated, $snapshot, $email) {
-            $application = Application::query()->create([
-                'job_id' => $job->id,
-                'user_id' => $this->authenticatedCandidateId(),
-                'full_name' => $validated['full_name'],
-                'mobile' => $validated['mobile'],
-                'email' => $email,
-                'current_location' => $validated['current_location'],
-                'experience' => $validated['experience'],
-                'qualification' => $validated['qualification'],
-                'resume_path' => $snapshot,
-                'additional_information' => $validated['additional_information'] ?? null,
-                'consent' => true,
-                'status' => ApplicationStatus::New,
-                'internal_notes' => [],
+        try {
+            $application = DB::transaction(function () use ($job, $validated, $snapshot, $email, $candidateId) {
+                Job::query()->whereKey($job->id)->lockForUpdate()->first();
+
+                if ($this->hasDuplicateApplication($job->id, $email, $candidateId)) {
+                    throw ValidationException::withMessages([
+                        'job' => 'You have already applied for this role.',
+                    ]);
+                }
+
+                $application = Application::query()->create([
+                    'job_id' => $job->id,
+                    'user_id' => $candidateId,
+                    'full_name' => $validated['full_name'],
+                    'mobile' => $validated['mobile'],
+                    'email' => $email,
+                    'current_location' => $validated['current_location'],
+                    'experience' => $validated['experience'],
+                    'qualification' => $validated['qualification'],
+                    'resume_path' => $snapshot,
+                    'additional_information' => $validated['additional_information'] ?? null,
+                    'consent' => true,
+                    'status' => ApplicationStatus::New,
+                    'internal_notes' => [],
+                ]);
+
+                $this->referrals->attributeApplication($application, request());
+
+                return $application;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'job' => 'You have already applied for this role.',
             ]);
-
-            $this->referrals->attributeApplication($application, request());
-
-            return $application;
-        });
+        }
         $this->alerts->applicationReceived($application);
         $this->notifications->notifyApplicationSubmitted($application);
         RecruitmentAutomationHooks::fire(\App\Enums\AutomationTrigger::ApplicationSubmitted, [
@@ -202,9 +227,16 @@ class ApplicationSubmissionService
             }
 
             $filename = Str::uuid()->toString().'.'.$extension;
-            $copied = Storage::disk('resumes')->put($filename, Storage::disk($disk)->get($path));
+            $contents = Storage::disk($disk)->get($path);
+            if (! is_string($contents) || $contents === '') {
+                throw ValidationException::withMessages([
+                    'candidate_resume_id' => 'The selected resume could not be used.',
+                ]);
+            }
 
-            if ($copied === false) {
+            Storage::disk('resumes')->put($filename, $contents);
+
+            if (! Storage::disk('resumes')->exists($filename)) {
                 throw ValidationException::withMessages([
                     'candidate_resume_id' => 'The selected resume could not be stored. Please try again.',
                 ]);
@@ -269,5 +301,18 @@ class ApplicationSubmissionService
         $user = Auth::user();
 
         return $user instanceof User && $user->isCandidate() ? $user->id : null;
+    }
+
+    private function hasDuplicateApplication(int $jobId, string $email, ?int $candidateId): bool
+    {
+        return Application::query()
+            ->where('job_id', $jobId)
+            ->where(function ($query) use ($email, $candidateId) {
+                $query->whereRaw('LOWER(email) = ?', [$email]);
+                if ($candidateId) {
+                    $query->orWhere('user_id', $candidateId);
+                }
+            })
+            ->exists();
     }
 }

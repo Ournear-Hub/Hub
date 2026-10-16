@@ -33,10 +33,10 @@ export default function SettingsIndex({ role, profile }: SettingsIndexProps) {
                 </p>
             ) : null}
 
-            <div className="mx-auto max-w-3xl space-y-4 lg:max-w-none">
+            <div className="mx-auto max-w-3xl space-y-3 lg:max-w-none">
                 <header className="rounded-xl border border-line bg-white p-4 sm:p-5">
                     <h1 className="text-xl font-semibold text-ink">Account settings</h1>
-                    <p className="mt-2 text-sm text-muted">Identity, verification, security, and communication preferences.</p>
+                    <p className="mt-2 text-sm text-muted">Identity, verification, and security.</p>
                     <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
                         {profile.business_id ? (
                             <div>
@@ -69,7 +69,7 @@ export default function SettingsIndex({ role, profile }: SettingsIndexProps) {
                     <Link href="/account/settings/security" className="rounded-xl border border-line bg-white p-5 hover:border-brand">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <h2 className="text-lg font-semibold text-ink">Verification &amp; security</h2>
-                            {!profile.email_verified || !profile.mobile_verified ? (
+                            {!profile.email_verified || (role === 'candidate' && !profile.mobile_verified && Boolean(profile.mobile)) ? (
                                 <StatusBadge status="Action required" />
                             ) : (
                                 <StatusBadge status="Verified" />
@@ -85,17 +85,6 @@ export default function SettingsIndex({ role, profile }: SettingsIndexProps) {
                         <p className="mt-2 text-xs text-muted">{profile.profile_completion}% complete</p>
                     </Link>
 
-                    {role === 'candidate' ? (
-                        <Link href="/account/settings/communication" className="rounded-xl border border-line bg-white p-5 hover:border-brand">
-                            <h2 className="text-lg font-semibold text-ink">Communication preferences</h2>
-                            <p className="mt-2 text-sm text-muted">Marketing and product notification channels backed by your stored preferences.</p>
-                        </Link>
-                    ) : null}
-
-                    <Link href="/account/notifications" className="rounded-xl border border-line bg-white p-5 hover:border-brand">
-                        <h2 className="text-lg font-semibold text-ink">Notifications</h2>
-                        <p className="mt-2 text-sm text-muted">Application updates and account activity.</p>
-                    </Link>
                 </div>
 
                 <p className="text-xs text-muted">Signed in as {role}.</p>

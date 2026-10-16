@@ -1,3 +1,5 @@
+import type { PublicJobCard } from '@/types/jobs';
+
 export type AccountLanguageOption = {
     value: string;
     label: string;
@@ -148,9 +150,11 @@ export type AccountProfileLookups = {
     employment_types: AccountLookupOption[];
     experience_ranges: AccountLookupOption[];
     qualifications: AccountLookupOption[];
+    skills?: AccountLookupOption[];
     notice_periods: AccountNoticePeriodOption[];
     language_proficiencies?: AccountNoticePeriodOption[];
     public_share_fields?: Array<{ key: string; label: string }>;
+    company_public_share_fields?: Array<{ key: string; label: string }>;
     social_fields?: Array<{ key: string; label: string }>;
 };
 
@@ -236,6 +240,7 @@ export type ResumeBuilderPreview = {
     professional: AccountProfessionalProfile | Record<string, unknown>;
     primary_resume?: AccountResume | null;
     note: string;
+    generated_at?: string | null;
 };
 
 export type AccountDashboardResume = {
@@ -296,6 +301,13 @@ export type AccountDashboardApplication = {
     href?: string | null;
 };
 
+export type AccountCandidateNextAction = {
+    title: string;
+    description: string;
+    href: string;
+    cta: string;
+};
+
 export type AccountCandidateDashboard = {
     header: {
         name: string;
@@ -303,11 +315,15 @@ export type AccountCandidateDashboard = {
         business_id?: string | null;
         ournear_id?: string | null;
         photo_url: string | null;
+        professional_headline?: string | null;
         designation: string | null;
         location: string | null;
+        industry?: string | null;
+        experience?: string | null;
         profile_completion: number;
         email_verified: boolean;
     };
+    next_action: AccountCandidateNextAction;
     resume: {
         count: number;
         primary: AccountDashboardResume | null;
@@ -326,6 +342,7 @@ export type AccountCandidateDashboard = {
         status_summary: AccountDashboardApplicationStatusSummary[];
         recent: AccountDashboardApplication[];
     };
+    recommended_jobs: PublicJobCard[];
 };
 
 export type AccountEmployerVisiblePerson = {
@@ -341,6 +358,9 @@ export type AccountEmployerVisiblePerson = {
     experience?: string | null;
     qualification?: string | null;
     status: string;
+    status_label?: string;
+    ats_stage_label?: string;
+    application_href?: string | null;
     applied_at?: string | null;
     submitted_at?: string | null;
     has_resume?: boolean;
@@ -361,9 +381,19 @@ export type AccountEmployerNextAction = {
 
 export type AccountEmployerActiveJob = {
     title: string;
+    slug?: string;
     location: string | null;
     applications_count: number;
     status_label: string;
+    updated_at?: string | null;
+    href: string;
+    edit_href?: string;
+};
+
+export type AccountEmployerPipelineStage = {
+    key: string;
+    label: string;
+    count: number;
     href: string;
 };
 
@@ -373,6 +403,7 @@ export type AccountEmployerDashboard = {
     user_business_id?: string | null;
     ournear_id?: string | null;
     username?: string | null;
+    logo_url?: string | null;
     photo_url: string | null;
     industry: string | null;
     jobs_count: number;
@@ -398,10 +429,35 @@ export type AccountEmployerDashboard = {
     next_actions: AccountEmployerNextAction[];
 };
 
+export type AccountEmployerTalentPoolStage = {
+    key: string;
+    label: string;
+    count: number;
+    href: string;
+};
+
+export type AccountEmployerTalentPoolSummary = {
+    total: number;
+    stages: AccountEmployerTalentPoolStage[];
+    href: string;
+};
+
+export type AccountEmployerStaffingSummary = {
+    submitted: number;
+    in_progress: number;
+    completed: number;
+    href: string;
+};
+
 export type AccountEmployerHiringWorkspace = AccountEmployerDashboard & {
     user_name: string;
     actions_required: AccountEmployerNextAction[];
     active_jobs: AccountEmployerActiveJob[];
+    recent_jobs?: AccountEmployerActiveJob[];
+    pipeline_hiring_stages?: AccountEmployerPipelineStage[];
+    talent_pool_summary?: AccountEmployerTalentPoolSummary;
+    staffing_summary?: AccountEmployerStaffingSummary;
+    pending_actions_count?: number;
     can_post_job: boolean;
 };
 
@@ -417,6 +473,7 @@ export type AccountProfile = {
     headline?: string | null;
     preferred_language: string;
     photo_url: string | null;
+    logo_url?: string | null;
     email_verified: boolean;
     mobile_verified: boolean;
     whatsapp_number: string | null;
@@ -434,6 +491,7 @@ export type AccountProfile = {
     contact_person?: string | null;
     mobile_number?: string | null;
     industry?: string | null;
+    industry_id?: number | null;
     about_company?: string | null;
     company_size?: string | null;
     company_website?: string | null;
@@ -446,6 +504,10 @@ export type AccountProfile = {
     ournear_verified?: boolean;
     posting_restricted?: boolean;
     professional?: AccountProfessionalProfile | null;
+    library_resume?: {
+        has_upload: boolean;
+        title: string | null;
+    };
     verifications?: {
         email: boolean;
         mobile: boolean;
@@ -455,6 +517,7 @@ export type AccountProfile = {
         mobile_required: boolean;
     };
     public_profile_url?: string | null;
+    public_profile_share_enabled?: boolean;
     modules?: {
         identity: string | null;
         candidate: string | null;

@@ -572,13 +572,20 @@ class ApplicationQuery
                 ])
                 ->whereDoesntHave('interview')
                 ->whereDoesntHave('submissions')
-                ->whereHas('screening', fn (Builder $screening) => $screening->whereIn('stage', [
-                    ScreeningStage::Started,
-                    ScreeningStage::Matched,
-                    ScreeningStage::Contacted,
-                    ScreeningStage::Called,
-                    ScreeningStage::Interviewed,
-                ])),
+                ->where(function (Builder $inner) {
+                    // Mirrors AtsStage::resolve(): Reviewing status, or an active screening stage.
+                    $inner->where('status', ApplicationStatus::Reviewing)
+                        ->orWhereHas('screening', fn (Builder $screening) => $screening->whereIn('stage', [
+                            ScreeningStage::Started,
+                            ScreeningStage::Matched,
+                            ScreeningStage::Contacted,
+                            ScreeningStage::Called,
+                            ScreeningStage::Interviewed,
+                        ]));
+                })
+                ->whereDoesntHave('screening', fn (Builder $screening) => $screening
+                    ->whereIn('stage', [ScreeningStage::Held, ScreeningStage::Rejected, ScreeningStage::Shortlisted])
+                    ->orWhere('decision', ScreeningDecision::Shortlisted)),
             AtsStage::Applied => $query
                 ->where('status', ApplicationStatus::New)
                 ->whereDoesntHave('interview')

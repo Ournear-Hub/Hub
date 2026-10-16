@@ -27,4 +27,18 @@ class EmployerProfilePolicy
     {
         return $user->hasPermission(PermissionName::EmployersManage->value);
     }
+
+    public function viewLogo(User $user, EmployerProfile $employerProfile): bool
+    {
+        if ($this->viewAny($user)) {
+            return true;
+        }
+
+        return $user->canAccessHiringWorkspace() && (int) $employerProfile->user_id === (int) $user->id;
+    }
+
+    public function updateLogo(User $user, EmployerProfile $employerProfile): bool
+    {
+        return $user->canAccessHiringWorkspace() && (int) $employerProfile->user_id === (int) $user->id;
+    }
 }

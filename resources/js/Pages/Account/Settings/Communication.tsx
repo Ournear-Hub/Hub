@@ -6,7 +6,7 @@ import type { AccountCommunicationChannel } from '@/types/account';
 import type { SharedPageProps } from '@/types/page';
 
 type CommunicationSettingsProps = {
-    role: 'candidate';
+    role: 'candidate' | 'employer';
     channels: AccountCommunicationChannel[];
 };
 
@@ -40,8 +40,8 @@ export default function CommunicationSettings({ channels }: CommunicationSetting
                 <div>
                     <h1 className="text-lg font-semibold text-ink">Communication preferences</h1>
                     <p className="mt-2 text-sm text-muted">
-                        Each toggle maps to a stored preference in your account. Application updates remain in your notification
-                        center even if you opt out of marketing channels.
+                        Each toggle maps to a stored preference in your account. Push notifications control in-app recruitment
+                        updates; product/system notifications control operational email. Marketing channels are separate.
                     </p>
                 </div>
 
@@ -50,8 +50,11 @@ export default function CommunicationSettings({ channels }: CommunicationSetting
                         <li key={channel.value} className="flex items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
                             <div>
                                 <p className="text-sm font-medium text-ink">{channel.label}</p>
+                                {channel.value === 'push' ? (
+                                    <p className="text-xs text-muted">In-app notifications in your account notification center.</p>
+                                ) : null}
                                 {channel.value === 'system' ? (
-                                    <p className="text-xs text-muted">Important product and application updates.</p>
+                                    <p className="text-xs text-muted">Operational email about applications and interviews.</p>
                                 ) : null}
                             </div>
                             <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm">

@@ -35,8 +35,7 @@ class CandidateLifecycleNotification extends Notification
         return (new MailMessage)
             ->subject($this->title)
             ->line($this->body)
-            ->action('Complete Profile', url($this->url))
-            ->line('Completing these fields helps screening compare your record against job requirements. It does not guarantee shortlisting.');
+            ->action('Complete Your Profile', url($this->url));
     }
 
     /**

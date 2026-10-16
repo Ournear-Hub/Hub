@@ -1,0 +1,90 @@
+# Companion manual cases (schema v1). Journeys in features.yaml remain primary E2E scripts.
+# These cases cover human-only gaps (visual/usability, reload loops) not fully asserted in Playwright.
+
+version: 1
+
+cases:
+  - id: MAN-CAN-01-DASHBOARD-GUIDANCE
+    feature_ids: [CAN-01, CAN-02]
+    role: candidate
+    risk: P1
+    purpose: Dashboard completion %, checklist, and next-action stay aligned after profile work
+    prerequisites:
+      - Local Laravel at OURNEAR_BASE_URL
+      - qa:hiring-fixtures candidate login
+      - OURNEAR_ALLOW_RUN=local
+    steps:
+      - Sign in as QA candidate and open /account
+      - Record profile completion % and next-action title/href
+      - Open the linked profile section and complete one recommended scored field (e.g. bio or location)
+      - Return to /account (full reload)
+      - Confirm completion % increased or reached 100%
+      - Confirm next-action no longer recommends the completed item
+      - Confirm ProfileCompletionCenter resume row matches library upload state when a resume exists
+    expected_results:
+      - Header % matches profile completion_items contract
+      - Next action and checklist do not contradict each other
+      - No stale guidance after reload
+    persistence_checks:
+      - Fresh GET /account reflects saved profile fields
+    authorization_checks:
+      - Candidate cannot view another user's dashboard data
+    related_automated:
+      - phpunit:AccountCandidateDashboardTest
+      - pytest:tests/smoke/test_account_login.py::test_candidate_login_reaches_account
+    evidence_requirements:
+      - Screenshot of dashboard before and after the profile change
+    cleanup:
+      - Prefer fixture account; do not create duplicate production-like accounts
+
+  - id: MAN-CAN-02-PROFILE-RELOAD
+    feature_ids: [CAN-02, CAN-03]
+    role: candidate
+    risk: P0
+    purpose: Profile professional and personal saves persist across reload
+    prerequisites:
+      - QA candidate session
+      - /account/profile accessible
+    steps:
+      - Open /account/profile
+      - Change a visible personal field (bio or location) and save
+      - Reload the page; confirm the value persists
+      - Update a professional field (designation or skill) and save
+      - Reload; confirm completion module status updates
+    expected_results:
+      - Saved values visible after reload
+      - No silent revert to stale Inertia state
+    persistence_checks:
+      - DB-backed fields match UI after hard reload
+    authorization_checks: []
+    related_automated:
+      - phpunit:AccountCandidateProfessionalTest
+    evidence_requirements:
+      - Screenshot after each reload
+    cleanup: []
+
+  - id: MAN-PUB-02-JOBS-SEARCH
+    feature_ids: [PUB-02]
+    role: guest
+    risk: P0
+    purpose: Jobs list search and filters return coherent results and counts
+    prerequisites:
+      - Published jobs exist in local DB (fixtures or seed)
+    steps:
+      - Open /jobs
+      - Note total/open job count if shown
+      - Apply keyword search for a known fixture job title fragment
+      - Confirm matching job appears; clear search
+      - Apply location or filter control if present; confirm list updates without error
+      - Open a result job detail; back navigation returns to list state or sane default
+    expected_results:
+      - Filters change visible results; empty state is honest when no matches
+      - No console errors on filter submit
+    persistence_checks: []
+    authorization_checks: []
+    related_automated:
+      - phpunit:QaDefectRegressionTest
+      - phpunit:JobApplicationTest
+    evidence_requirements:
+      - Screenshot of filtered list
+    cleanup: []

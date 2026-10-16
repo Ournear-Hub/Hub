@@ -23,6 +23,9 @@ enum CommunicationChannel: string
 
     public function defaultOptIn(): bool
     {
-        return $this === self::System;
+        return match ($this) {
+            self::System, self::Push => true,
+            default => false,
+        };
     }
 }

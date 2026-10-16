@@ -8,26 +8,69 @@ use App\Enums\DocumentVerificationStatus;
 use App\Models\Application;
 use App\Models\CandidateDocument;
 use App\Models\CandidateResume;
+use App\Enums\EmployerEnquiryStatus;
+use App\Models\EmployerEnquiry;
 use App\Models\EmployerProfile;
 use App\Models\EmployerSubmission;
 use App\Models\Job;
 use App\Models\SavedJob;
 use App\Models\User;
+use App\Enums\FileLifecycleStatus;
+use App\Support\AtsStage;
+use App\Support\CandidateProfileGuidance;
+use App\Support\EmployerApplicationPipeline;
 use App\Support\EmployerVisibleCandidate;
+use App\Support\JobListingQuery;
 
 class AccountDashboardService
 {
-    public function __construct(private EmployerPostingEligibilityService $employerEligibility) {}
+    public function __construct(
+        private EmployerPostingEligibilityService $employerEligibility,
+        private JobListingQuery $jobListings,
+    ) {}
 
     /**
      * @return array{role: string, profile: array<string, mixed>, dashboard: ?array<string, mixed>}
      */
+    /**
+     * Lightweight personal sidebar identity (all candidate account pages).
+     *
+     * @return array<string, mixed>|null
+     */
+    public function candidateSidebarProfile(User $user): ?array
+    {
+        if (! $user->isCandidate()) {
+            return null;
+        }
+
+        $user->loadMissing('candidateProfile');
+        $candidateProfile = $user->candidateProfile;
+
+        $organization = trim((string) ($candidateProfile?->current_company ?? ''));
+        $designation = trim((string) ($candidateProfile?->current_designation ?? ''));
+        $headline = trim((string) ($user->professional_headline ?? ''));
+        $location = trim((string) ($user->location ?? ''));
+        $username = trim((string) ($user->username ?? ''));
+
+        return [
+            'name' => $user->name,
+            'username' => $username !== '' ? $username : null,
+            'photo_url' => $user->photoUrl(),
+            'designation' => $designation !== '' ? $designation : null,
+            'professional_headline' => $headline !== '' ? $headline : null,
+            'location' => $location !== '' ? $location : null,
+            'organization' => $organization !== '' ? $organization : null,
+        ];
+    }
+
     public function home(User $user): array
     {
         $user->loadMissing(['candidateProfile', 'employerProfile']);
 
         $profile = $user->toAccountProfileArray();
-        if ($user->isEmployer()) {
+        if ($user->isCandidate()) {
+            $profile = $this->enrichCandidateHomeProfile($user, $profile);
+        } elseif ($user->isEmployer()) {
             $profile = array_merge($profile, $user->employerProfile?->toAccountArray() ?? []);
         }
 
@@ -36,7 +79,7 @@ class AccountDashboardService
             'profile' => $profile,
             'dashboard' => $user->isCandidate()
                 ? $this->candidateDashboard($user)
-                : ($user->isEmployer() ? $this->employerDashboard($user) : null),
+                : null,
         ];
     }
 
@@ -52,6 +95,9 @@ class AccountDashboardService
         $profile = $user->employerProfile;
 
         $activeJobs = [];
+        $recentJobs = [];
+        $pipelineHiringStages = [];
+
         if ($profile instanceof EmployerProfile) {
             $activeJobs = $profile->jobs()
                 ->where('active', true)
@@ -59,15 +105,68 @@ class AccountDashboardService
                 ->orderByDesc('updated_at')
                 ->limit(5)
                 ->get()
-                ->map(fn (Job $job) => [
-                    'title' => $job->title,
-                    'location' => $job->displayLocation(),
-                    'applications_count' => (int) $job->applications_count,
-                    'status_label' => $job->statusLabel(),
-                    'href' => route('account.employer.jobs.applicants', $job, false),
-                ])
+                ->map(fn (Job $job) => self::employerWorkspaceJobRow($job))
                 ->values()
                 ->all();
+
+            $recentJobs = $profile->jobs()
+                ->withCount('applications')
+                ->orderByDesc('updated_at')
+                ->limit(5)
+                ->get()
+                ->map(fn (Job $job) => self::employerWorkspaceJobRow($job))
+                ->values()
+                ->all();
+
+            $pipelineCounts = collect(EmployerApplicationPipeline::summaryForEmployerApplicationsAts($profile))
+                ->keyBy('key');
+
+            $stageCount = static fn (string $key): int => (int) ($pipelineCounts->get($key)['count'] ?? 0);
+
+            $pipelineHiringStages = [
+                [
+                    'key' => AtsStage::Applied,
+                    'label' => 'Applications',
+                    'count' => $stageCount(AtsStage::Applied),
+                    'href' => '/account/hiring/applications',
+                ],
+                [
+                    'key' => AtsStage::Screening,
+                    'label' => 'Screening',
+                    'count' => $stageCount(AtsStage::Screening),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Screening,
+                ],
+                [
+                    'key' => AtsStage::Shortlisted,
+                    'label' => 'Shortlisted',
+                    'count' => $stageCount(AtsStage::Shortlisted),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Shortlisted,
+                ],
+                [
+                    'key' => AtsStage::Interview,
+                    'label' => 'Interviewed',
+                    'count' => $stageCount(AtsStage::Interview),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Interview,
+                ],
+                [
+                    'key' => AtsStage::Selected,
+                    'label' => 'Selected',
+                    'count' => $stageCount(AtsStage::Selected),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Selected,
+                ],
+                [
+                    'key' => AtsStage::Offer,
+                    'label' => 'Offer',
+                    'count' => $stageCount(AtsStage::Offer),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Offer,
+                ],
+                [
+                    'key' => AtsStage::Joined,
+                    'label' => 'Joined',
+                    'count' => $stageCount(AtsStage::Joined),
+                    'href' => '/account/hiring/applications?stage='.AtsStage::Joined,
+                ],
+            ];
         }
 
         $dashboard['user_name'] = $user->name;
@@ -76,10 +175,94 @@ class AccountDashboardService
             fn (array $action) => ($action['kind'] ?? '') === 'pending',
         ));
         $dashboard['active_jobs'] = $activeJobs;
+        $dashboard['recent_jobs'] = $recentJobs;
+        $dashboard['pipeline_hiring_stages'] = $pipelineHiringStages;
+        $dashboard['pending_actions_count'] = count($dashboard['actions_required']);
         $dashboard['can_post_job'] = ($dashboard['eligibility']['eligible'] ?? false)
             && ! ($dashboard['posting_restricted'] ?? false);
 
+        if ($profile instanceof EmployerProfile) {
+            $talentSummary = collect(EmployerApplicationPipeline::summaryForEmployer($profile))->keyBy('key');
+            $dashboard['talent_pool_summary'] = [
+                'total' => (int) ($talentSummary->get('all')['count'] ?? 0),
+                'stages' => collect(EmployerApplicationPipeline::talentPoolStages())
+                    ->filter(fn (array $stage) => $stage['key'] !== 'all')
+                    ->map(fn (array $stage) => [
+                        'key' => $stage['key'],
+                        'label' => $stage['label'],
+                        'count' => (int) ($talentSummary->get($stage['key'])['count'] ?? 0),
+                        'href' => $stage['key'] === 'all'
+                            ? '/account/hiring/candidates'
+                            : '/account/hiring/candidates?stage='.$stage['key'],
+                    ])
+                    ->values()
+                    ->all(),
+                'href' => '/account/hiring/candidates',
+            ];
+
+            $enquiryRows = EmployerEnquiry::query()
+                ->where('user_id', $user->id)
+                ->selectRaw('status, COUNT(*) as aggregate')
+                ->groupBy('status')
+                ->get();
+
+            $submitted = 0;
+            $inProgress = 0;
+            $completed = 0;
+
+            foreach ($enquiryRows as $row) {
+                $status = $row->status instanceof EmployerEnquiryStatus
+                    ? $row->status
+                    : EmployerEnquiryStatus::tryFrom((string) $row->status);
+                if (! $status instanceof EmployerEnquiryStatus) {
+                    continue;
+                }
+
+                $count = (int) $row->aggregate;
+                $submitted += $count;
+                if (in_array($status, [EmployerEnquiryStatus::Contacted, EmployerEnquiryStatus::InProgress], true)) {
+                    $inProgress += $count;
+                }
+                if ($status === EmployerEnquiryStatus::Completed) {
+                    $completed += $count;
+                }
+            }
+
+            $dashboard['staffing_summary'] = [
+                'submitted' => $submitted,
+                'in_progress' => $inProgress,
+                'completed' => $completed,
+                'href' => '/account/enquiries',
+            ];
+        }
+
         return $dashboard;
+    }
+
+    /**
+     * @return array{
+     *     title: string,
+     *     location: string|null,
+     *     applications_count: int,
+     *     status_label: string,
+     *     updated_at: string|null,
+     *     slug: string,
+     *     href: string,
+     *     edit_href: string
+     * }
+     */
+    private static function employerWorkspaceJobRow(Job $job): array
+    {
+        return [
+            'title' => $job->title,
+            'slug' => $job->slug,
+            'location' => $job->displayLocation(),
+            'applications_count' => (int) $job->applications_count,
+            'status_label' => $job->statusLabel(),
+            'updated_at' => $job->updated_at?->toDateTimeString(),
+            'href' => '/account/jobs/'.$job->slug.'/applicants',
+            'edit_href' => route('account.employer.jobs.edit', $job, false),
+        ];
     }
 
     /**
@@ -96,13 +279,16 @@ class AccountDashboardService
         $enquiriesCount = $user->employerEnquiries()->count();
         $eligibility = $this->employerEligibility->for($user);
 
+        $companyName = $profile?->accountWorkspaceCompanyName() ?? '';
+
         return [
-            'company_name' => $profile?->displayCompany() ?? 'Company profile',
+            'company_name' => $companyName !== '' ? $companyName : 'Company workspace',
             'business_id' => $profile?->business_id,
             'user_business_id' => $user->business_id,
             'ournear_id' => app(\App\Support\OurNearHireIdentity::class)->display($user, 'REC'),
             'username' => $user->username,
-            'photo_url' => $user->photoUrl(),
+            'logo_url' => $profile?->logoUrl(),
+            'photo_url' => $profile?->logoUrl(),
             'industry' => $profile?->displayIndustry() ?: null,
             'jobs_count' => $jobsCount,
             'active_jobs_count' => $activeJobsCount,
@@ -183,7 +369,7 @@ class AccountDashboardService
         if ($postingRestricted) {
             $actions[] = [
                 'label' => 'Job posting is restricted. Complete your company profile or contact OurNear if this needs review.',
-                'href' => '/account/profile',
+                'href' => '/account/company',
                 'kind' => 'pending',
             ];
         } elseif (! ($eligibility['eligible'] ?? false)) {
@@ -191,12 +377,12 @@ class AccountDashboardService
                 'label' => $eligibility['next_action']
                     ?? $eligibility['reason']
                     ?? 'Complete posting eligibility before you can publish jobs.',
-                'href' => '/account/profile',
+                'href' => '/account/company',
                 'kind' => 'pending',
             ];
         } elseif ($jobsCount === 0) {
             $actions[] = [
-                'label' => 'Post your first job to start receiving applicants.',
+                'label' => 'Create your first job to start receiving applicants.',
                 'href' => '/account/jobs/create',
                 'kind' => 'pending',
             ];
@@ -207,29 +393,13 @@ class AccountDashboardService
                 'label' => $applicantsCount === 1
                     ? 'Review the latest applicant on your jobs.'
                     : 'Review '.$applicantsCount.' applicants on your jobs.',
-                'href' => '/account/jobs',
+                'href' => '/account/hiring/applications',
                 'kind' => 'pending',
             ];
         } elseif ($jobsCount > 0) {
             $actions[] = [
                 'label' => 'No applicants yet. Share your live jobs so candidates can apply.',
                 'href' => '/account/jobs',
-                'kind' => 'info',
-            ];
-        }
-
-        if ($submissionsCount > 0) {
-            $actions[] = [
-                'label' => $submissionsCount === 1
-                    ? 'Review the candidate OurNear submitted to your company.'
-                    : 'Review '.$submissionsCount.' candidates submitted to your company.',
-                'href' => '/account/submissions',
-                'kind' => 'pending',
-            ];
-        } else {
-            $actions[] = [
-                'label' => 'Submitted candidates will appear here when OurNear shares them with you.',
-                'href' => '/account/submissions',
                 'kind' => 'info',
             ];
         }
@@ -260,6 +430,7 @@ class AccountDashboardService
         $verifiedCount = 0;
 
         if ($profile) {
+            $profile->loadMissing(['industry', 'classifiedExperienceRange']);
             $resumeCount = $profile->resumes()->count();
             $primaryResume = $profile->resumes()
                 ->where('is_primary', true)
@@ -299,6 +470,8 @@ class AccountDashboardService
             ->with(['job.employer'])
             ->latest();
 
+        $hasPrimaryResume = $primary !== null;
+
         return [
             'header' => [
                 'name' => $user->name,
@@ -306,11 +479,15 @@ class AccountDashboardService
                 'business_id' => $user->business_id,
                 'ournear_id' => app(\App\Support\OurNearHireIdentity::class)->display($user, 'CAN'),
                 'photo_url' => $user->photoUrl(),
+                'professional_headline' => $user->professional_headline,
                 'designation' => $profile?->current_designation,
                 'location' => $user->location,
-                'profile_completion' => (int) $user->profile_completion,
+                'industry' => $profile?->industry?->name,
+                'experience' => $profile?->classifiedExperienceRange?->name ?: $profile?->experience,
+                'profile_completion' => $user->calculateProfileCompletion(),
                 'email_verified' => $user->emailVerified(),
             ],
+            'next_action' => CandidateProfileGuidance::resolveNextAction($user, $hasPrimaryResume),
             'resume' => [
                 'count' => $resumeCount,
                 'primary' => $primary,
@@ -339,7 +516,22 @@ class AccountDashboardService
                     ->values()
                     ->all(),
             ],
+            'recommended_jobs' => $this->candidateRecommendedJobs($user),
         ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function candidateRecommendedJobs(User $user): array
+    {
+        $jobs = $this->jobListings->recommendedForCandidate($user, 6);
+        $states = app(PublicJobStateService::class);
+
+        return collect($jobs)
+            ->map(fn (Job $job) => $states->decorate($job, $user))
+            ->values()
+            ->all();
     }
 
     /**
@@ -439,5 +631,42 @@ class AccountDashboardService
         }
 
         return DocumentType::tryFrom((string) $type)?->label() ?? 'Other';
+    }
+
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function enrichCandidateHomeProfile(User $user, array $profile): array
+    {
+        $user->loadMissing([
+            'candidateProfile.skills',
+            'candidateProfile.employmentHistories',
+            'candidateProfile.educations',
+            'candidateProfile.projects',
+            'candidateProfile.certifications',
+            'candidateProfile.languages',
+            'candidateProfile.preferredLocations',
+            'candidateProfile.preferredEmploymentTypes',
+            'candidateProfile.industry',
+            'candidateProfile.jobCategory',
+        ]);
+
+        $candidateProfile = $user->candidateProfile;
+        $profile['experience'] = $candidateProfile?->experience;
+        $profile['qualification'] = $candidateProfile?->qualification;
+        $profile['professional'] = $candidateProfile?->toProfessionalArray();
+
+        $libraryResume = $candidateProfile?->resumes()
+            ->where('status', FileLifecycleStatus::Active)
+            ->orderByDesc('is_primary')
+            ->orderByDesc('id')
+            ->first();
+        $profile['library_resume'] = [
+            'has_upload' => $libraryResume instanceof CandidateResume,
+            'title' => $libraryResume instanceof CandidateResume ? $libraryResume->title : null,
+        ];
+
+        return $profile;
     }
 }

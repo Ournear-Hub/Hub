@@ -1,8 +1,13 @@
 import { Link } from '@inertiajs/react';
 import AccountLayout from '@/Layouts/AccountLayout';
 import StatusBadge from '@/Components/Account/StatusBadge';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
+import ApplicantResumeOverview from '@/Components/organisms/ApplicantResumeOverview';
+import ApplicationTimeline from '@/Components/organisms/ApplicationTimeline';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import DetailSection from '@/Components/organisms/DetailSection';
 import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
 import type { RecruiterCandidateSummaryData } from '@/Components/Account/Recruiter/RecruiterCandidateSummary';
 
@@ -90,6 +95,11 @@ export default function EmployerSubmissionShow({ company, submission, list_filte
     const profileHref = submission.public_profile_url
         ? `${submission.public_profile_url}?${profileQuery(submission, backHref, list_filters)}`
         : null;
+    const candidateSummaryLine = [submission.location, submission.experience, submission.qualification]
+        .filter(Boolean)
+        .join(' · ');
+    const candidateDescription = [submission.designation, candidateSummaryLine].filter(Boolean).join(' · ') || undefined;
+    const requirementTitle = submission.job?.title ?? 'Recruitment requirement';
 
     return (
         <AccountLayout
@@ -105,30 +115,39 @@ export default function EmployerSubmissionShow({ company, submission, list_filte
             ]}
         >
             <div className="mx-auto max-w-3xl space-y-4 lg:max-w-none">
-                <Card as="section" density="compact">
-                    <Link href={backHref} className="text-sm font-semibold text-brand hover:underline">
-                        ← Back to submissions
-                    </Link>
-                    <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">{company.name}</p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted">Candidate submission</p>
-                    <h1 className="mt-1 text-xl font-semibold text-ink">{submission.job?.title ?? 'Recruitment requirement'}</h1>
+                <Card as="section" padding="compact">
+                    <BackNavLink href={backHref} label="Back to submissions" className="mb-3" />
+                    <DetailHeader
+                        className="mt-3"
+                        eyebrow={company.name}
+                        title={requirementTitle}
+                        description="Candidate submission"
+                    />
                 </Card>
 
-                <Card as="section" density="standard">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                            <h2 className="text-lg font-semibold text-ink">{submission.name}</h2>
-                            {submission.designation ? (
-                                <p className="mt-1 text-sm font-medium text-ink">{submission.designation}</p>
-                            ) : null}
-                            <p className="mt-1 text-sm text-muted">
-                                {[submission.location, submission.experience, submission.qualification]
-                                    .filter(Boolean)
-                                    .join(' · ')}
-                            </p>
-                        </div>
-                        <StatusBadge status={statusLabel} />
-                    </div>
+                <Card as="section" padding="standard">
+                    <DetailHeader
+                        headingLevel={2}
+                        title={submission.name}
+                        description={candidateDescription}
+                        meta={<StatusBadge status={statusLabel} />}
+                        actions={
+                            <>
+                                {profileHref ? (
+                                    <Button surface="public" href={profileHref} variant="secondary" className="min-h-11 w-full sm:w-auto">
+                                        View candidate profile
+                                    </Button>
+                                ) : (
+                                    <p className="text-sm text-muted">Public profile not shared by this candidate.</p>
+                                )}
+                                {submission.requirement_href ? (
+                                    <Button surface="public" href={submission.requirement_href} variant="link" className="min-h-11">
+                                        View requirement
+                                    </Button>
+                                ) : null}
+                            </>
+                        }
+                    />
                     <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
                         <div>
                             <dt className="text-muted">Submitted</dt>
@@ -145,70 +164,54 @@ export default function EmployerSubmissionShow({ company, submission, list_filte
                             </div>
                         ) : null}
                     </dl>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        {profileHref ? (
-                            <Button href={profileHref} variant="secondary" className="min-h-11 w-full sm:w-auto">
-                                View candidate profile
-                            </Button>
-                        ) : (
-                            <p className="text-sm text-muted">Public profile not shared by this candidate.</p>
-                        )}
-                        {submission.requirement_href ? (
-                            <Button href={submission.requirement_href} variant="link" className="min-h-11">
-                                View requirement
-                            </Button>
-                        ) : null}
-                    </div>
                 </Card>
 
-                <Card as="section" density="compact">
-                    <h2 className="text-base font-semibold text-ink">Resume</h2>
-                    {submission.has_resume && submission.resume_url ? (
-                        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                            <a
-                                href={`${submission.resume_url}?disposition=inline`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline"
-                            >
-                                View
-                            </a>
-                            <a
-                                href={submission.resume_url}
-                                className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline"
-                            >
-                                Download
-                            </a>
-                        </div>
-                    ) : (
-                        <p className="mt-2 text-sm text-muted">Resume not available for this submission snapshot.</p>
-                    )}
-                </Card>
+                <ApplicantResumeOverview
+                    emptyMessage="Resume not available for this submission snapshot."
+                    footnote={
+                        <p>Submission resume snapshots are historical files from when OurNear shared this candidate.</p>
+                    }
+                    actions={
+                        submission.has_resume && submission.resume_url ? (
+                            <>
+                                <a
+                                    href={`${submission.resume_url}?disposition=inline`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline"
+                                >
+                                    View
+                                </a>
+                                <a
+                                    href={submission.resume_url}
+                                    className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline"
+                                >
+                                    Download
+                                </a>
+                            </>
+                        ) : undefined
+                    }
+                />
 
-                {submission.timeline.length > 0 ? (
-                    <Card as="section" density="compact">
-                        <h2 className="text-base font-semibold text-ink">Submission timeline</h2>
-                        <ol className="mt-3 space-y-3 border-l-2 border-line pl-4">
-                            {submission.timeline.map((event) => (
-                                <li key={event.key} className="text-sm">
-                                    <p className="font-medium text-ink">{event.label}</p>
-                                    {event.at ? <p className="text-muted">{formatAppliedAt(event.at)}</p> : null}
-                                </li>
-                            ))}
-                        </ol>
-                    </Card>
-                ) : null}
+                <ApplicationTimeline
+                    events={submission.timeline.map((event) => ({
+                        ...event,
+                        at: event.at ? formatAppliedAt(event.at) : null,
+                    }))}
+                    title="Submission timeline"
+                    hideWhenEmpty
+                    aria-label="Submission timeline"
+                />
 
-                <Card as="section" density="compact" className="bg-surface/40">
-                    <h2 className="text-base font-semibold text-ink">Next steps</h2>
-                    <p className="mt-2 text-sm text-muted">
-                        OurNear recruitment operations manage review, selection, and placement. Contact us if you need
-                        support on this requirement.
-                    </p>
-                    <Button href={support_href} variant="secondary" className="mt-4 min-h-11">
+                <DetailSection
+                    title="Next steps"
+                    description="OurNear recruitment operations manage review, selection, and placement. Contact us if you need support on this requirement."
+                    className="rounded-lg bg-surface/40 p-3 shadow-sm"
+                >
+                    <Button surface="public" href={support_href} variant="secondary" className="min-h-11">
                         Request recruitment support
                     </Button>
-                </Card>
+                </DetailSection>
             </div>
         </AccountLayout>
     );

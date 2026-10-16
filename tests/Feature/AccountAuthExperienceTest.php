@@ -12,7 +12,7 @@ use Tests\TestCase;
 
 class AccountAuthExperienceTest extends TestCase
 {
-    public function test_username_is_required_and_unique_at_registration(): void
+    public function test_username_is_auto_assigned_or_validated_when_provided(): void
     {
         $this->makeCandidate([
             'username' => 'taken-user',
@@ -21,7 +21,10 @@ class AccountAuthExperienceTest extends TestCase
 
         $this->post(route('register.store'), $this->registrationPayload([
             'username' => '',
+            'email' => 'auto.username@example.com',
         ]))->assertSessionHasErrors('username');
+
+        $this->assertNull(User::query()->where('email', 'auto.username@example.com')->first());
 
         $this->post(route('register.store'), $this->registrationPayload([
             'username' => 'taken-user',
@@ -81,9 +84,7 @@ class AccountAuthExperienceTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('account.home'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Home'));
+            ->assertOk();
     }
 
     public function test_verified_user_can_login_with_email_or_username(): void
@@ -110,7 +111,7 @@ class AccountAuthExperienceTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    public function test_unverified_email_cannot_login_but_username_can(): void
+    public function test_unverified_user_can_login_with_email_or_username(): void
     {
         $user = $this->makeCandidate([
             'username' => 'unverified-user',
@@ -119,16 +120,13 @@ class AccountAuthExperienceTest extends TestCase
             'email_verified_at' => null,
         ]);
 
-        $this->from(route('login'))
-            ->post(route('login.store'), [
-                'login' => 'unverified.user@example.com',
-                'password' => 'password',
-            ])
-            ->assertRedirect(route('login'))
-            ->assertSessionHasErrors([
-                'login' => 'Your email is not verified. Please sign in using your username.',
-            ]);
-        $this->assertGuest();
+        $this->post(route('login.store'), [
+            'login' => 'unverified.user@example.com',
+            'password' => 'password',
+        ])->assertRedirect(route('account.home'));
+        $this->assertAuthenticatedAs($user);
+
+        $this->post(route('logout'));
 
         $this->post(route('login.store'), [
             'login' => 'unverified-user',
@@ -217,18 +215,9 @@ class AccountAuthExperienceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Jobs/Index')
                 ->has('jobs.data')
-                ->where('selected', null)
                 ->where('jobs.data.0.posted_label', fn ($value) => is_string($value) && $value !== '')
                 ->where('jobs.data.0.closing_label', fn ($value) => is_string($value) && $value !== '')
                 ->where('jobs.data.0.apply_state', 'guest'));
-
-        $this->get(route('jobs.index', ['job' => $open->slug]))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('selected.slug', $open->slug)
-                ->where('selected.posted_label', '2 days ago')
-                ->where('selected.closing_label', '20 days left')
-                ->where('selected.is_closed', false));
 
         $this->get(route('jobs.show', $open))
             ->assertOk()

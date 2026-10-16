@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+artifacts/
+config/local.env
+playwright-report/
+test-results/
+fixtures/generated/

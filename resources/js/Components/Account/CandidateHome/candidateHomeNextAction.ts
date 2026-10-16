@@ -17,6 +17,10 @@ export function resolveCandidateNextAction(
     profile: AccountProfile,
     dashboard: AccountCandidateDashboard,
 ): CandidateNextAction {
+    if (dashboard.next_action) {
+        return dashboard.next_action;
+    }
+
     const completion = profile.profile_completion ?? 0;
     const hasMyResume = Boolean(dashboard.resume.primary);
 

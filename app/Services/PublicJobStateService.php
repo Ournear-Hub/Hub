@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\CandidateResume;
 use App\Models\Job;
 use App\Models\User;
+use App\Support\JobApplicationEligibility;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -115,7 +116,11 @@ class PublicJobStateService
         } elseif (! $user instanceof User) {
             $applyState = 'guest';
         } elseif ($user->isCandidate()) {
-            $applyState = $hasApplied ? 'applied' : ($hasResume ? 'apply' : 'upload_resume');
+            if (JobApplicationEligibility::candidateOwnsJobCompany($user, $job)) {
+                $applyState = 'own_company';
+            } else {
+                $applyState = $hasApplied ? 'applied' : ($hasResume ? 'apply' : 'upload_resume');
+            }
         }
 
         return [

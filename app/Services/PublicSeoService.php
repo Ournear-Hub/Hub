@@ -159,7 +159,7 @@ class PublicSeoService
             'register' => 'Register',
             'password.request' => 'Forgot password',
             'password.reset' => 'Reset password',
-            'account.home' => 'Account',
+            'account.home' => 'Personal Dashboard',
             'account.profile.edit' => 'Profile',
             'account.applications.index' => 'Applications',
             'account.enquiries.index' => 'Enquiries',

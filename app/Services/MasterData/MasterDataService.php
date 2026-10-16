@@ -14,6 +14,7 @@ use App\Models\JobTitle;
 use App\Models\Location;
 use App\Models\MasterDataChange;
 use App\Models\Qualification;
+use App\Models\Skill;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -486,6 +487,16 @@ class MasterDataService
                     'name' => $qualification->name,
                     'is_active' => $qualification->is_active,
                     'selectable' => $qualification->isSelectable(),
+                ])
+                ->all(),
+            'skills' => Skill::query()
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (Skill $skill) => [
+                    'id' => $skill->id,
+                    'name' => $skill->name,
+                    'is_active' => true,
+                    'selectable' => true,
                 ])
                 ->all(),
         ];

@@ -56,4 +56,27 @@ class PublicEcosystemStage29Test extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('job.company_url', $expectedUrl));
     }
+
+    public function test_public_job_omits_company_url_when_employer_account_is_inactive(): void
+    {
+        $employer = $this->makeEmployer([
+            'email_verified_at' => now(),
+            'mobile_verified_at' => now(),
+        ]);
+        $profile = $employer->employerProfile;
+        $this->assertNotNull($profile);
+        $profile->update(['company_name' => 'Inactive Owner Co']);
+        $employer->forceFill(['is_active' => false])->save();
+
+        $job = Job::factory()->create([
+            'employer_id' => $profile->id,
+            'title' => 'Role With Inactive Employer',
+        ]);
+
+        $this->get(route('jobs.show', $job))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('job.company_name', 'Inactive Owner Co')
+                ->where('job.company_url', null));
+    }
 }

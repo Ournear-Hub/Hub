@@ -7,7 +7,7 @@ import RecruiterCandidateSummary, {
 import RecruitmentRequirementCard, {
     type RecruitmentRequirement,
 } from '@/Components/Account/Recruiter/RecruitmentRequirementCard';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
 
@@ -102,7 +102,7 @@ export default function EmployerSubmissionRequirement({
                 {noMatches ? (
                     <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
                         <p className="text-sm text-muted">No candidate submissions match these filters.</p>
-                        <Button href={requirementHref(requirement.slug, { q: '', status: '' })} variant="secondary" className="mt-4 min-h-11">
+                        <Button surface="public" href={requirementHref(requirement.slug, { q: '', status: '' })} variant="secondary" className="mt-4 min-h-11">
                             Clear filters
                         </Button>
                     </div>

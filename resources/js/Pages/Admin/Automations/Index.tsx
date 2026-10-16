@@ -4,14 +4,14 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import {
     Button,
-    DataTable,
     Drawer,
     Input,
     Select,
     StatusBadge,
     Textarea,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { Paginator } from '@/types/jobs';
 
 type AutomationRow = {

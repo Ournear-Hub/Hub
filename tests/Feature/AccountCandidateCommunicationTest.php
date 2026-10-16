@@ -184,7 +184,7 @@ class AccountCandidateCommunicationTest extends TestCase
     public function test_employer_and_admin_cannot_use_candidate_notifications(): void
     {
         $this->actingAs($this->makeEmployer())->get(route('account.notifications.index'))->assertOk();
-        $this->actingAs($this->makeEmployer())->get(route('account.settings.communication'))->assertForbidden();
+        $this->actingAs($this->makeEmployer())->get(route('account.settings.account'))->assertRedirect(route('account.company'));
         $this->actingAs($this->makeAdmin())->get(route('account.notifications.index'))->assertRedirect(route('login'));
         $this->actingAs($this->makeAdmin())->get(route('admin.notifications.index'))->assertOk();
         $this->actingAs($this->makeAdmin())->get(route('admin.messages.index'))->assertOk();
@@ -197,10 +197,14 @@ class AccountCandidateCommunicationTest extends TestCase
 
         $this->actingAs($candidate)
             ->get(route('account.settings.communication'))
+            ->assertRedirect(route('account.settings.account').'#communication');
+
+        $this->actingAs($candidate)
+            ->get(route('account.settings.account'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Settings/Communication')
-                ->has('channels', count(CommunicationChannel::cases())));
+                ->component('Account/Settings/Account')
+                ->has('communication_channels', count(CommunicationChannel::cases())));
 
         $this->actingAs($candidate)
             ->put(route('account.settings.communication.update'), [

@@ -18,9 +18,15 @@ class UpdateBrandingRequest extends FormRequest
     {
         $merged = [];
 
-        foreach (['remove_logo', 'remove_icon', 'remove_favicon'] as $key) {
+        foreach (['remove_logo', 'remove_wordmark', 'remove_icon', 'remove_favicon', 'remove_auth_splash'] as $key) {
             if ($this->has($key)) {
                 $merged[$key] = filter_var($this->input($key), FILTER_VALIDATE_BOOLEAN);
+            }
+        }
+
+        foreach (['logo_media_id', 'wordmark_media_id'] as $mediaKey) {
+            if ($this->has($mediaKey) && $this->input($mediaKey) === '') {
+                $merged[$mediaKey] = null;
             }
         }
 
@@ -49,11 +55,22 @@ class UpdateBrandingRequest extends FormRequest
         return [
             'website_name' => ['nullable', 'string', 'max:100'],
             'logo' => $image,
+            'wordmark' => $image,
             'icon' => $image,
             'favicon' => $image,
             'remove_logo' => ['sometimes', 'boolean'],
+            'remove_wordmark' => ['sometimes', 'boolean'],
             'remove_icon' => ['sometimes', 'boolean'],
             'remove_favicon' => ['sometimes', 'boolean'],
+            'auth_splash' => [
+                'nullable',
+                'file',
+                'mimetypes:video/mp4,video/quicktime,application/octet-stream',
+                'max:'.BrandingAssetService::AUTH_SPLASH_MAX_KILOBYTES,
+            ],
+            'remove_auth_splash' => ['sometimes', 'boolean'],
+            'logo_media_id' => ['nullable', 'integer', 'exists:media_assets,id'],
+            'wordmark_media_id' => ['nullable', 'integer', 'exists:media_assets,id'],
         ];
     }
 
@@ -66,6 +83,9 @@ class UpdateBrandingRequest extends FormRequest
             'logo.image' => 'The horizontal logo must be a JPG, PNG, or WEBP image.',
             'logo.mimetypes' => 'The horizontal logo must be a JPG, PNG, or WEBP image.',
             'logo.max' => 'The horizontal logo must not be larger than 5 MB.',
+            'wordmark.image' => 'The companion wordmark must be a JPG, PNG, or WEBP image.',
+            'wordmark.mimetypes' => 'The companion wordmark must be a JPG, PNG, or WEBP image.',
+            'wordmark.max' => 'The companion wordmark must not be larger than 5 MB.',
             'icon.image' => 'The logo icon must be a JPG, PNG, or WEBP image.',
             'icon.mimetypes' => 'The logo icon must be a JPG, PNG, or WEBP image.',
             'icon.max' => 'The logo icon must not be larger than 5 MB.',

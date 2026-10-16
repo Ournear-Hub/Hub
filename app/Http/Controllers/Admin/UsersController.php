@@ -17,6 +17,7 @@ use App\Http\Requests\Admin\UpdateUserSourceRequest;
 use App\Http\Requests\Admin\UpdateUserStatusRequest;
 use App\Models\Tag;
 use App\Models\User;
+use App\Services\LocalDevAccountEmailVerificationService;
 use App\Services\TagService;
 use App\Services\UserCrmService;
 use App\Services\UserManagementService;
@@ -178,5 +179,27 @@ class UsersController extends Controller
         $tags->setActive($request->user(), $tag, $active);
 
         return back()->with('success', $active ? 'Tag activated.' : 'Tag deactivated.');
+    }
+
+    public function localVerifyEmail(
+        Request $request,
+        User $user,
+        LocalDevAccountEmailVerificationService $verification,
+    ): RedirectResponse {
+        $this->authorize('update', $user);
+
+        try {
+            $verification->assertAllowedEnvironment();
+        } catch (\RuntimeException $exception) {
+            abort(403, $exception->getMessage());
+        }
+
+        if ($user->emailVerified()) {
+            return back()->with('success', 'Account email is already verified.');
+        }
+
+        $verification->verify($user, $request->user());
+
+        return back()->with('success', 'Account email marked verified (local development only).');
     }
 }

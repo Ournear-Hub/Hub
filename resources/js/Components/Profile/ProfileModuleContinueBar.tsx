@@ -1,4 +1,5 @@
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
+import { BackNavButton } from '@/Components/molecules/BackNavLink';
 import Alert from '@/Components/UI/Alert';
 import type { ProfileModuleCard } from '@/Components/Profile/profileCompletionModules';
 
@@ -15,13 +16,11 @@ export default function ProfileModuleContinueBar({ message, nextModule, onContin
             {message}
             <div className="mt-3 flex flex-wrap gap-2">
                 {nextModule ? (
-                    <Button type="button" variant="primary" className="min-h-11" onClick={onContinueNext}>
+                    <Button surface="public" type="button" variant="primary" className="min-h-11" onClick={onContinueNext}>
                         Continue to {nextModule.title}
                     </Button>
                 ) : null}
-                <Button type="button" variant="outline" className="min-h-11" onClick={onBackToHub}>
-                    Back to profile
-                </Button>
+                <BackNavButton label="Back to profile" onClick={onBackToHub} />
             </div>
         </Alert>
     );

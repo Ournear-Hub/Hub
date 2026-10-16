@@ -1,9 +1,8 @@
 import { usePage } from '@inertiajs/react';
-import EmployerHiringCommandCenter from '@/Components/Account/Hiring/EmployerHiringCommandCenter';
-import HiringActivationStrip from '@/Components/Account/Hiring/HiringActivationStrip';
+import CompanyWorkspaceOverview from '@/Components/Account/CompanyWorkspaceOverview';
 import HiringEntryOnboarding from '@/Components/Account/Hiring/HiringEntryOnboarding';
 import AccountLayout from '@/Layouts/AccountLayout';
-import type { AccountEmployerHiringWorkspace } from '@/types/account';
+import type { AccountEmployerHiringWorkspace, AccountLookupOption } from '@/types/account';
 import type { SharedPageProps } from '@/types/page';
 
 type Gate = {
@@ -17,6 +16,14 @@ type Gate = {
     hiring_email_verified?: boolean;
     uses_account_email?: boolean;
     hiring_active: boolean;
+    workspace_ready?: boolean;
+    unlimited_publishing?: boolean;
+    trial_available?: boolean;
+    trial_active?: boolean;
+    trial_expired?: boolean;
+    trial_expires_at?: string | null;
+    company_phone?: string | null;
+    industry_id?: number | null;
     message: string;
 };
 
@@ -30,45 +37,39 @@ type HiringDashboardProps = {
     gate: Gate;
     eligibility: Eligibility;
     workspace: AccountEmployerHiringWorkspace | null;
+    industries: AccountLookupOption[];
 };
 
-export default function Dashboard({ gate, eligibility, workspace }: HiringDashboardProps) {
+const companyWorkspaceSubtitle =
+    'Manage recruitment, job postings, applicants, and hiring pipeline activity for your company.';
+
+export default function Dashboard({ gate, eligibility, workspace, industries }: HiringDashboardProps) {
     const flash = usePage<SharedPageProps>().props.flash;
     const canAdminHiring = usePage<SharedPageProps>().props.auth.user?.can_view_hiring === true;
-    const showCommandCenter = workspace !== null;
+    const showRecruiterDashboard = workspace !== null;
 
     return (
         <AccountLayout
-            title={showCommandCenter ? 'Hiring Command Center' : 'Hiring'}
+            title={showRecruiterDashboard ? 'Company Workspace' : 'Hiring'}
             description={
-                showCommandCenter
-                    ? 'Manage jobs, candidates, and hiring activity.'
-                    : 'Set up and enter the OurNear hiring workspace.'
+                showRecruiterDashboard ? companyWorkspaceSubtitle : 'Set up and enter the OurNear hiring workspace.'
             }
-            breadcrumbs={[
-                { label: 'Account', href: '/account' },
-                { label: showCommandCenter ? 'Hiring Command Center' : 'Hiring' },
-            ]}
+            breadcrumbs={
+                showRecruiterDashboard
+                    ? [{ label: 'Company Workspace' }]
+                    : [
+                          { label: 'Account', href: '/account' },
+                          { label: 'Hiring' },
+                      ]
+            }
         >
-            {showCommandCenter ? (
-                <div className="flex flex-col gap-4">
-                    <HiringActivationStrip gate={gate} />
-                    <EmployerHiringCommandCenter workspace={workspace} canAdminHiring={canAdminHiring} />
-                    {!gate.hiring_active ? (
-                        <div id="setup">
-                            <HiringEntryOnboarding
-                                gate={gate}
-                                eligibility={eligibility}
-                                successMessage={flash.success}
-                                canAdminHiring={canAdminHiring}
-                            />
-                        </div>
-                    ) : null}
-                </div>
+            {showRecruiterDashboard ? (
+                <CompanyWorkspaceOverview workspace={workspace as AccountEmployerHiringWorkspace} gate={gate} />
             ) : (
                 <HiringEntryOnboarding
                     gate={gate}
                     eligibility={eligibility}
+                    industries={industries}
                     successMessage={flash.success}
                     canAdminHiring={canAdminHiring}
                 />

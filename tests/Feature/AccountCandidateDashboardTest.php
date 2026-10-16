@@ -9,9 +9,12 @@ use App\Enums\UserRole;
 use App\Models\Application;
 use App\Models\CandidateDocument;
 use App\Models\CandidateResume;
+use App\Models\ExperienceRange;
+use App\Models\Industry;
 use App\Models\Job;
 use App\Models\SavedJob;
 use App\Models\User;
+use App\Support\CandidateProfileGuidance;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -49,7 +52,12 @@ class AccountCandidateDashboardTest extends TestCase
                 ->where('dashboard.header.username', 'priya-dash')
                 ->where('dashboard.header.designation', 'Site Engineer')
                 ->where('dashboard.header.location', 'Hyderabad')
-                ->where('dashboard.header.profile_completion', $candidate->fresh()->profile_completion)
+                ->where('dashboard.header.profile_completion', $candidate->fresh()->calculateProfileCompletion())
+                ->has('candidateSidebarProfile')
+                ->where('candidateSidebarProfile.name', 'Priya Dashboard')
+                ->where('candidateSidebarProfile.username', 'priya-dash')
+                ->where('candidateSidebarProfile.designation', 'Site Engineer')
+                ->where('candidateSidebarProfile.location', 'Hyderabad')
                 ->where('dashboard.resume.count', 0)
                 ->where('dashboard.resume.primary', null)
                 ->where('dashboard.documents.count', 0)
@@ -84,7 +92,7 @@ class AccountCandidateDashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Admin/Dashboard'));
     }
 
-    public function test_employer_receives_only_employer_dashboard(): void
+    public function test_employer_personal_home_does_not_include_company_dashboard_payload(): void
     {
         $employer = $this->makeEmployer(['username' => 'employer-dash']);
 
@@ -96,10 +104,12 @@ class AccountCandidateDashboardTest extends TestCase
                 ->where('role', 'employer')
                 ->where('profile.username', 'employer-dash')
                 ->has('profile.completion_items')
-                ->where('dashboard.company_name', 'Unnamed employer')
-                ->where('dashboard.jobs_count', 0)
-                ->missing('dashboard.resume')
-                ->missing('dashboard.saved_jobs'));
+                ->where('dashboard', null));
+
+        $this->actingAs($employer)
+            ->get(route('account.hiring'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page->component('Account/Hiring/Dashboard'));
 
         $this->actingAs($employer)->get(route('account.resumes.index'))->assertForbidden();
         $this->actingAs($employer)->get(route('account.saved-jobs.index'))->assertForbidden();
@@ -123,7 +133,8 @@ class AccountCandidateDashboardTest extends TestCase
                 ->where('dashboard.saved_jobs.recent', [])
                 ->where('dashboard.applications.count', 0)
                 ->where('dashboard.applications.recent', [])
-                ->has('dashboard.applications.status_summary', 4));
+                ->has('dashboard.applications.status_summary', 4)
+                ->has('dashboard.recommended_jobs'));
     }
 
     public function test_user_without_candidate_profile_can_open_dashboard(): void
@@ -249,7 +260,7 @@ class AccountCandidateDashboardTest extends TestCase
                 ->where('dashboard.header.name', 'Asha Owner')
                 ->where('dashboard.header.designation', 'Civil Engineer')
                 ->where('dashboard.header.location', 'Manchester')
-                ->where('dashboard.header.profile_completion', $candidate->fresh()->profile_completion)
+                ->where('dashboard.header.profile_completion', $candidate->fresh()->calculateProfileCompletion())
                 ->where('dashboard.resume.count', 2)
                 ->where('dashboard.resume.primary.title', 'Primary Civil CV')
                 ->where('dashboard.resume.primary.is_primary', true)
@@ -337,15 +348,23 @@ class AccountCandidateDashboardTest extends TestCase
 
     public function test_candidate_dashboard_renders_identity_and_clean_designation_empty_state(): void
     {
-        $source = file_get_contents(resource_path('js/Pages/Account/Home.tsx'));
+        $home = file_get_contents(resource_path('js/Pages/Account/Home.tsx'));
+        $sections = file_get_contents(resource_path('js/Components/Account/CandidateHome/CandidateDashboardSections.tsx'));
 
-        $this->assertIsString($source);
-        $this->assertStringContainsString('header.name', $source);
-        $this->assertStringContainsString('header.designation', $source);
-        $this->assertStringContainsString('Complete your professional profile', $source);
-        $this->assertStringContainsString('resolveCandidateNextAction', $source);
-        $this->assertStringContainsString('ProfileCompletionCenter', $source);
-        $this->assertStringContainsString('ProfileShell', $source);
+        $this->assertIsString($home);
+        $this->assertIsString($sections);
+        $this->assertStringContainsString("'Personal Dashboard'", $home);
+        $this->assertStringNotContainsString('Candidate dashboard', $home);
+        $this->assertStringContainsString('CandidateProfileSummary', $home);
+        $this->assertStringContainsString('CandidateSidebarProfileCard', file_get_contents(resource_path('js/Layouts/AccountLayout.tsx')) ?: '');
+        $this->assertStringContainsString('CandidateRecommendedJobs', $home);
+        $this->assertStringContainsString('header.name', $sections);
+        $this->assertStringContainsString('header.username', $sections);
+        $this->assertStringContainsString('header.designation', $sections);
+        $this->assertStringContainsString('View Profile', $sections);
+        $this->assertStringContainsString('Recent applications', $sections);
+        $this->assertStringContainsString('Recommended jobs', $sections);
+        $this->assertStringNotContainsString('scope="candidate"', $home);
     }
 
     public function test_candidate_account_pages_remain_available_from_dashboard(): void
@@ -387,17 +406,145 @@ class AccountCandidateDashboardTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page->component('Jobs/Index'));
     }
 
+    public function test_dashboard_profile_completion_matches_profile_payload(): void
+    {
+        $candidate = $this->makeCandidate(['username' => 'completion-sync']);
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.profile_completion', $candidate->fresh()->calculateProfileCompletion())
+                ->where('dashboard.header.profile_completion', $candidate->fresh()->calculateProfileCompletion()));
+    }
+
+    public function test_dashboard_next_action_targets_first_incomplete_scored_item(): void
+    {
+        $candidate = $this->makeCandidate();
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.next_action.title', 'Complete Your Personal & Professional Information')
+                ->where('dashboard.next_action.href', '/account/profile#personal')
+                ->where('dashboard.next_action.cta', 'Complete Your Profile'));
+    }
+
+    public function test_dashboard_next_action_updates_after_completing_recommended_field(): void
+    {
+        $candidate = $this->makeCandidate([
+            'username' => 'next-step-user',
+            'location' => 'Leeds',
+            'mobile' => '+441234567890',
+            'photo_path' => 'photos/dashboard-test.jpg',
+            'bio' => null,
+        ]);
+        $before = collect($candidate->fresh()->profileCompletionItems())
+            ->first(fn (array $item) => ! $item['complete']);
+        $this->assertSame('bio', $before['key']);
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.next_action.href', '/account/profile#personal'));
+
+        $this->actingAs($candidate)->put(route('account.profile.update'), [
+            'name' => $candidate->name,
+            'username' => $candidate->username,
+            'preferred_language' => 'en',
+            'location' => $candidate->location,
+            'bio' => 'Bio added from dashboard guidance test.',
+        ])->assertSessionHasNoErrors();
+
+        $after = collect($candidate->fresh()->profileCompletionItems())
+            ->first(fn (array $item) => ! $item['complete']);
+        $this->assertNotNull($after);
+        $this->assertNotSame('username', $after['key']);
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.next_action.title', 'Complete Your Personal & Professional Information')
+                ->where('dashboard.next_action.href', '/account/profile#personal'));
+    }
+
+    public function test_dashboard_includes_library_resume_for_completion_checklist(): void
+    {
+        $candidate = $this->makeCandidate();
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+
+        CandidateResume::factory()->create([
+            'candidate_profile_id' => $profile->id,
+            'title' => 'Checklist CV',
+            'is_primary' => true,
+            'primary_owner_id' => $profile->id,
+        ]);
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.library_resume.has_upload', true)
+                ->where('profile.library_resume.title', 'Checklist CV')
+                ->has('profile.professional.skills'));
+    }
+
+    public function test_complete_scored_profile_without_resume_recommends_upload(): void
+    {
+        $candidate = $this->makeCandidate([
+            'username' => 'fully-scored',
+            'location' => 'London',
+            'mobile' => '+441234567890',
+            'bio' => 'Ready candidate bio for dashboard guidance.',
+            'photo_path' => 'photos/test.jpg',
+        ]);
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+        $industry = Industry::query()->first();
+        $range = ExperienceRange::query()->first();
+        $profile->forceFill([
+            'current_designation' => 'Engineer',
+            'experience_range_id' => $range?->id,
+            'industry_id' => $industry?->id,
+        ])->save();
+
+        if ($profile->skills()->count() === 0) {
+            $this->actingAs($candidate)->post(route('account.profile.skills.store'), [
+                'name' => 'Planning',
+            ])->assertRedirect();
+        }
+        if ($profile->employmentHistories()->count() === 0) {
+            $this->actingAs($candidate)->post(route('account.profile.employment-history.store'), [
+                'company' => 'Build Co',
+                'designation' => 'Engineer',
+                'started_on' => '2020-01-01',
+                'is_current' => true,
+            ])->assertRedirect();
+        }
+
+        $candidate = $candidate->fresh();
+        $this->assertSame(100, $candidate->calculateProfileCompletion());
+
+        $this->actingAs($candidate)
+            ->get(route('account.home'))
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('dashboard.next_action.title', 'Upload your resume')
+                ->where('dashboard.next_action.href', '/account/resumes'));
+    }
+
     public function test_register_still_creates_candidate_profile_and_lands_on_account(): void
     {
-        $this->post(route('register.store'), [
-            'name' => 'V12E New Candidate',
-            'username' => 'v12e-new',
-            'email' => 'v12e.new@example.com',
-            'password' => 'Password1!',
-            'password_confirmation' => 'Password1!',
-            'role' => UserRole::Candidate->value,
-            'accept_terms' => true,
-        ])
+        $this->withoutMiddleware('throttle:account-register');
+
+        $this->from(route('register'))
+            ->post(route('register.store'), $this->registrationPayload([
+                'name' => 'V12E New Candidate',
+                'username' => 'v12e-new',
+                'email' => 'v12e.new@example.com',
+                'mobile' => '+971501234568',
+            ]))
             ->assertRedirect(route('login'))
             ->assertSessionHas('registered_email', 'v12e.new@example.com');
 

@@ -8,6 +8,8 @@ enum ConversationContextType: string
     case Job = 'job';
     case Application = 'application';
     case Submission = 'submission';
+    case TalentPoolSubmission = 'talent_pool_submission';
+    case StaffingSubmission = 'staffing_submission';
     case Placement = 'placement';
     case Employee = 'employee';
     case Replacement = 'replacement';
@@ -20,6 +22,8 @@ enum ConversationContextType: string
             self::Job => '/admin/jobs?job='.$id,
             self::Application => '/admin/applications?application='.$id,
             self::Submission => '/admin/submissions?submission='.$id,
+            self::TalentPoolSubmission => '/admin/talent-pool-company-submissions/'.$id,
+            self::StaffingSubmission => '/admin/staffing-candidate-submissions/'.$id,
             self::Placement => '/admin/placements?placement='.$id,
             self::Employee => '/admin/employees?employee='.$id,
             self::Replacement => '/admin/replacements?replacement='.$id,

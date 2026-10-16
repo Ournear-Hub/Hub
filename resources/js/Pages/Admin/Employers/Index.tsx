@@ -6,16 +6,18 @@ import Pagination from '@/Components/Pagination';
 import {
     ActivityFeed,
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
+    Label,
     SearchBar,
     Select,
     StatusBadge,
     Tabs,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 
@@ -48,6 +50,13 @@ type EmployerRow = {
     account_status_label?: string | null;
     job_posting_approved?: boolean;
     job_posting_approved_at?: string | null;
+    hiring_access_label?: string | null;
+    talent_pool_access_label?: string | null;
+    staffing_access_status?: string;
+    staffing_access_label?: string | null;
+    staffing_access_requested_at?: string | null;
+    staffing_access_decided_at?: string | null;
+    staffing_access_rejection_reason?: string | null;
     posting_restricted?: boolean;
     posting_restricted_at?: string | null;
     tags?: EmployerTag[];
@@ -190,6 +199,7 @@ type Props = {
         tag_id: string;
         date_from: string;
         date_to: string;
+        staffing_access: string;
         employer: string;
     };
     industries: Array<{ id: number; name: string }>;
@@ -199,6 +209,22 @@ type Props = {
         tags?: EmployerTag[];
     };
     can_manage?: boolean;
+    relationship_recruiter?: {
+        active: {
+            recruiter_name: string | null;
+            status_label: string | null;
+            created_at: string | null;
+        } | null;
+        history: {
+            id: number;
+            recruiter_name: string | null;
+            status_label: string | null;
+            created_at: string | null;
+            ended_at: string | null;
+        }[];
+    } | null;
+    internal_recruiters?: { id: number; name: string }[];
+    can_assign_relationship_recruiter?: boolean;
 };
 
 function relatedLink(kind: 'job' | 'application' | 'submission' | 'placement' | 'employee' | 'replacement', row: RelatedRow): string {
@@ -236,8 +262,15 @@ export default function EmployersIndex({
     accountStatuses,
     lookups = {},
     can_manage = false,
+    relationship_recruiter = null,
+    internal_recruiters = [],
+    can_assign_relationship_recruiter = false,
 }: Props) {
     const [tab, setTab] = useState('company');
+    const relationshipRecruiterForm = useForm({
+        assigned_recruiter_user_id: '',
+        notes: '',
+    });
 
     const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
         const next = replaceAll ? overrides : { ...filters, ...overrides };
@@ -270,8 +303,13 @@ export default function EmployersIndex({
         { key: 'mobile', header: 'Mobile', render: (row) => recorded(row.mobile_number) },
         {
             key: 'verified',
-            header: 'Verification',
-            render: (row) => <StatusBadge status={row.verification_status ?? 'Unverified'} />,
+            header: 'Email verified',
+            render: (row) => <StatusBadge status={row.verification_status ?? 'Email unverified'} />,
+        },
+        {
+            key: 'staffing',
+            header: 'Staffing access',
+            render: (row) => <StatusBadge status={row.staffing_access_label ?? 'Not requested'} />,
         },
         { key: 'active_jobs', header: 'Active jobs', render: (row) => row.active_jobs_count ?? 0 },
         { key: 'applications', header: 'Applications/submissions', render: (row) => `${row.applications_count ?? 0}/${row.submissions_count}` },
@@ -303,10 +341,11 @@ export default function EmployersIndex({
                 aria-hidden={selected ? true : undefined}
             >
                 <div className="mb-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Employers</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Employer 360 for recruitment operations. Missing company fields stay as not recorded; they are not invented.
-                    </p>
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Employer company records"
+                        description="Employer 360 for recruitment operations. Missing company fields stay as not recorded; they are not invented."
+                    />
                 </div>
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Employer ID, company, contact, email, mobile" />
@@ -351,6 +390,14 @@ export default function EmployersIndex({
                         <option value="">Any posting status</option>
                         <option value="1">Posting restricted</option>
                         <option value="0">Posting not restricted</option>
+                    </Select>
+                    <Select name="staffing_access" defaultValue={filters.staffing_access} aria-label="Staffing access">
+                        <option value="">Any staffing access</option>
+                        <option value="not_requested">Not requested</option>
+                        <option value="pending_approval">Pending approval</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                        <option value="revoked">Revoked</option>
                     </Select>
                     <Select name="tag_id" defaultValue={filters.tag_id} aria-label="Tag">
                         <option value="">Any tag</option>
@@ -500,7 +547,87 @@ export default function EmployersIndex({
                                             {selected.posting_restricted_at ? <p className="mt-1 text-xs text-muted">{selected.posting_restricted_at}</p> : null}
                                         </dd>
                                     </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <dt className="text-muted">Hiring access</dt>
+                                        <dd className="col-span-2 text-ink">{recorded(selected.hiring_access_label)}</dd>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <dt className="text-muted">Talent Pool access</dt>
+                                        <dd className="col-span-2 text-ink">{recorded(selected.talent_pool_access_label)}</dd>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <dt className="text-muted">OurNear relationship recruiter</dt>
+                                        <dd className="col-span-2 text-ink">
+                                            {relationship_recruiter?.active?.recruiter_name
+                                                ? `${relationship_recruiter.active.recruiter_name} (${relationship_recruiter.active.status_label})`
+                                                : 'Unassigned'}
+                                        </dd>
+                                    </div>
+                                    {can_assign_relationship_recruiter && selected ? (
+                                        <form
+                                            className="col-span-3 flex flex-wrap items-end gap-2 border-t border-line pt-3"
+                                            onSubmit={(event) => {
+                                                event.preventDefault();
+                                                relationshipRecruiterForm.post(
+                                                    `/admin/employers/${selected.id}/relationship-recruiter`,
+                                                    { preserveScroll: true },
+                                                );
+                                            }}
+                                        >
+                                            <div>
+                                                <Label>Assign / reassign OurNear recruiter</Label>
+                                                <Select
+                                                    value={relationshipRecruiterForm.data.assigned_recruiter_user_id}
+                                                    onChange={(event) =>
+                                                        relationshipRecruiterForm.setData(
+                                                            'assigned_recruiter_user_id',
+                                                            event.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">Select recruiter</option>
+                                                    {internal_recruiters.map((recruiter) => (
+                                                        <option key={recruiter.id} value={recruiter.id}>
+                                                            {recruiter.name}
+                                                        </option>
+                                                    ))}
+                                                </Select>
+                                            </div>
+                                            <Button type="submit" disabled={relationshipRecruiterForm.processing}>
+                                                Save
+                                            </Button>
+                                        </form>
+                                    ) : null}
+                                    {relationship_recruiter?.history?.length ? (
+                                        <ul className="col-span-3 list-disc pl-5 text-xs text-muted">
+                                            {relationship_recruiter.history.map((row) => (
+                                                <li key={row.id}>
+                                                    {row.recruiter_name ?? '—'} · {row.status_label}
+                                                    {row.created_at ? ` · ${row.created_at}` : ''}
+                                                    {row.ended_at ? ` → ended ${row.ended_at}` : ''}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : null}
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <dt className="text-muted">Staffing module access</dt>
+                                        <dd className="col-span-2">
+                                            <StatusBadge status={selected.staffing_access_label ?? 'Not requested'} />
+                                            {selected.staffing_access_requested_at ? (
+                                                <p className="mt-1 text-xs text-muted">Requested: {selected.staffing_access_requested_at}</p>
+                                            ) : null}
+                                            {selected.staffing_access_decided_at ? (
+                                                <p className="mt-1 text-xs text-muted">Last decision: {selected.staffing_access_decided_at}</p>
+                                            ) : null}
+                                            {selected.staffing_access_rejection_reason ? (
+                                                <p className="mt-1 text-xs text-muted">Reason: {selected.staffing_access_rejection_reason}</p>
+                                            ) : null}
+                                        </dd>
+                                    </div>
                                 </dl>
+                                {can_manage ? (
+                                    <EmployerStaffingAccessActions employerId={selected.id} status={selected.staffing_access_status ?? 'not_requested'} />
+                                ) : null}
                                 {can_manage ? (
                                     <div className="flex flex-wrap gap-2">
                                         <Button
@@ -1161,6 +1288,82 @@ function EmployerDocumentActions({
             >
                 Delete
             </Button>
+        </div>
+    );
+}
+
+function EmployerStaffingAccessActions({ employerId, status }: { employerId: number; status: string }) {
+    const rejectForm = useForm({ reason: '' });
+    const [showReject, setShowReject] = useState(false);
+
+    const canApprove = status === 'pending_approval';
+    const canReject = status === 'pending_approval';
+    const canRevoke = status === 'approved';
+
+    if (!canApprove && !canReject && !canRevoke) {
+        return (
+            <p className="text-sm text-muted">
+                Staffing access actions appear when a company has requested access or holds approved access.
+            </p>
+        );
+    }
+
+    return (
+        <div className="rounded-md border border-line bg-surface-muted/40 p-3 space-y-3">
+            <p className="text-sm font-medium text-ink">Staffing module decisions</p>
+            <div className="flex flex-wrap gap-2">
+                {canApprove ? (
+                    <Button
+                        variant="secondary"
+                        onClick={() => router.patch(`/admin/employers/${employerId}/staffing-access/approve`, {})}
+                    >
+                        Approve Staffing access
+                    </Button>
+                ) : null}
+                {canReject ? (
+                    <Button type="button" variant="secondary" onClick={() => setShowReject((open) => !open)}>
+                        Reject request
+                    </Button>
+                ) : null}
+                {canRevoke ? (
+                    <Button
+                        variant="secondary"
+                        onClick={() => {
+                            if (window.confirm('Revoke Staffing access for this company?')) {
+                                router.patch(`/admin/employers/${employerId}/staffing-access/revoke`, {});
+                            }
+                        }}
+                    >
+                        Revoke Staffing access
+                    </Button>
+                ) : null}
+            </div>
+            {showReject ? (
+                <form
+                    className="space-y-2"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        rejectForm.patch(`/admin/employers/${employerId}/staffing-access/reject`, {
+                            preserveScroll: true,
+                            onSuccess: () => setShowReject(false),
+                        });
+                    }}
+                >
+                    <textarea
+                        className="w-full rounded-md border border-line px-3 py-2 text-sm"
+                        value={rejectForm.data.reason}
+                        onChange={(event) => rejectForm.setData('reason', event.target.value)}
+                        placeholder="Rejection reason (required)"
+                        aria-label="Staffing access rejection reason"
+                        rows={3}
+                        required
+                    />
+                    {rejectForm.errors.reason ? <p className="text-xs text-danger">{rejectForm.errors.reason}</p> : null}
+                    <Button type="submit" disabled={rejectForm.processing}>
+                        Confirm rejection
+                    </Button>
+                </form>
+            ) : null}
         </div>
     );
 }

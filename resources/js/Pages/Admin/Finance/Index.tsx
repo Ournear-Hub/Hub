@@ -7,9 +7,7 @@ import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     ConfirmDialog,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Modal,
     SearchBar,
@@ -19,7 +17,9 @@ import {
     Textarea,
     Timeline,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { FinanceDashboard, FinanceSummary, InvoiceDetail, InvoiceListItem, PaymentItem } from '@/types/finance';

@@ -12,12 +12,41 @@ function scorePassword(password: string): number {
     return score;
 }
 
-const labels = ['Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Strong'];
+function strengthLabel(score: number, hasInput: boolean): string {
+    if (!hasInput) {
+        return '';
+    }
+    if (score <= 1) {
+        return 'Weak';
+    }
+    if (score === 2) {
+        return 'Medium';
+    }
+    if (score === 3) {
+        return 'Strong';
+    }
+
+    return 'Very strong';
+}
+
+function barColor(score: number): string {
+    if (score >= 4) {
+        return 'bg-success';
+    }
+    if (score >= 3) {
+        return 'bg-brand';
+    }
+    if (score >= 2) {
+        return 'bg-warning';
+    }
+
+    return 'bg-danger';
+}
 
 export default function PasswordStrength({ password }: PasswordStrengthProps) {
     const score = scorePassword(password);
     const width = password.length === 0 ? 0 : (score / 5) * 100;
-    const label = password.length === 0 ? '' : labels[score] ?? 'Weak';
+    const label = strengthLabel(score, password.length > 0);
     const checks = [
         { label: 'Minimum length', ok: password.length >= 8 },
         { label: 'Uppercase letter', ok: /[A-Z]/.test(password) },
@@ -27,18 +56,27 @@ export default function PasswordStrength({ password }: PasswordStrengthProps) {
     ];
 
     return (
-        <div className="space-y-2">
-            <div className="h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true">
-                <div
-                    className={`h-full rounded-full ${score >= 4 ? 'bg-success' : score >= 3 ? 'bg-brand' : 'bg-danger'}`}
-                    style={{ width: `${width}%` }}
-                />
+        <div className="space-y-1.5" aria-live="polite">
+            <div className="flex items-center gap-3">
+                <div className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-[#E8EEEE]" aria-hidden="true">
+                    <div
+                        className={`h-full rounded-full transition-[width] duration-200 ${barColor(score)}`}
+                        style={{ width: `${width}%` }}
+                    />
+                </div>
+                {label ? (
+                    <span className="shrink-0 text-xs font-semibold text-ink" aria-hidden="true">
+                        {label}
+                    </span>
+                ) : null}
             </div>
-            {label ? <p className="text-xs font-medium text-ink">{label}</p> : null}
-            <ul className="space-y-1 text-xs text-muted">
+            <ul className="flex flex-wrap gap-x-3 gap-y-1 text-[0.6875rem] leading-snug text-muted">
                 {checks.map((check) => (
-                    <li key={check.label}>
-                        {check.ok ? '✓' : '○'} {check.label}
+                    <li key={check.label} className="inline-flex items-center gap-1">
+                        <span className={check.ok ? 'text-success' : 'text-disabled'} aria-hidden="true">
+                            {check.ok ? '✓' : '○'}
+                        </span>
+                        <span>{check.label}</span>
                     </li>
                 ))}
             </ul>

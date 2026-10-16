@@ -89,7 +89,7 @@ class JobsAtsFoundationStage5Test extends TestCase
         $this->actingAs($employer)
             ->post(route('account.employer.jobs.store'), $this->jobPayload([
                 'title' => 'Employer Foundation Role',
-                'urgent' => true,
+                'listing_priority' => 'urgent',
                 'joining_date' => now()->addMonth()->toDateString(),
                 'site' => 'North Yard',
                 'accommodation' => 'Shared hostel',
@@ -189,13 +189,16 @@ class JobsAtsFoundationStage5Test extends TestCase
                 ->where('job.accommodation', 'Site hostel')
                 ->where('job.joining_date', $job->joining_date?->toDateString()));
 
-        $source = file_get_contents(resource_path('js/Components/Public/JobActions.tsx'));
-        $this->assertIsString($source);
-        $this->assertStringContainsString('Copy link', $source);
-        $this->assertStringNotContainsString('WhatsApp', $source);
+        $jobActions = file_get_contents(resource_path('js/Components/Public/JobActions.tsx'));
+        $shareMenu = file_get_contents(resource_path('js/Components/Public/PublicShareMenu.tsx'));
+        $this->assertIsString($jobActions);
+        $this->assertIsString($shareMenu);
+        $this->assertStringContainsString('PublicShareMenu', $jobActions);
+        $this->assertStringContainsString('Copy link', $shareMenu);
+        $this->assertStringNotContainsString('WhatsApp', $jobActions);
         $this->assertTrue(Schema::hasTable('share_events'));
         $this->assertTrue(Schema::hasTable('referral_links'));
-        $this->assertStringContainsString('/jobs/${job.slug}/share', $source);
+        $this->assertStringContainsString('/jobs/${jobSlug}/share', $shareMenu);
         $this->assertFalse(Schema::hasTable('visibility_policies'));
         $this->assertFalse(Schema::hasColumn('applications', 'ats_stage'));
         $this->assertTrue(Schema::hasColumn('job_listings', 'urgent'));
@@ -428,7 +431,7 @@ class JobsAtsFoundationStage5Test extends TestCase
             'posted_date' => now()->toDateString(),
             'closing_date' => now()->addDays(14)->toDateString(),
             'featured' => false,
-            'urgent' => false,
+            'listing_priority' => 'standard',
             'active' => true,
             'publishing_status' => 'published',
             'description' => 'Stage five job description.',

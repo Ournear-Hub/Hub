@@ -85,6 +85,8 @@ class FreelancerFeatureTest extends TestCase
 
     public function test_invalid_resume_is_rejected_and_valid_resume_is_stored_privately(): void
     {
+        $publicFilesBefore = Storage::disk('public')->allFiles();
+
         $this->from(route('freelancers'))
             ->post(route('freelancers.store'), $this->validPayload([
                 'resume' => UploadedFile::fake()->create('notes.txt', 20),
@@ -107,7 +109,7 @@ class FreelancerFeatureTest extends TestCase
         $this->assertSame('freelancer_files', $freelancer->getAttributes()['resume_disk']);
         $this->assertStringNotContainsString('public', (string) $freelancer->getAttributes()['resume_path']);
         Storage::disk('freelancer_files')->assertExists($freelancer->getAttributes()['resume_path']);
-        Storage::disk('public')->assertDirectoryEmpty('/');
+        $this->assertSame($publicFilesBefore, Storage::disk('public')->allFiles());
     }
 
     public function test_duplicate_post_reuses_the_same_business_id(): void

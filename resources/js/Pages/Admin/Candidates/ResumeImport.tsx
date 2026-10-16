@@ -1,5 +1,6 @@
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import DetailHeader from '@/Components/organisms/DetailHeader';
 import AdminLayout from '@/Layouts/AdminLayout';
 
 type ImportItem = {
@@ -7,6 +8,8 @@ type ImportItem = {
     status: string;
     email_status: string;
     message: string | null;
+    extracted_name: string | null;
+    extracted_email: string | null;
     ournear_id: string | null;
     profile_url: string | null;
 };
@@ -14,12 +17,14 @@ type ImportItem = {
 type ImportBatch = {
     id: number;
     created_at: string | null;
+    status: string;
     total_files: number;
     successful: number;
     matched: number;
     needs_review: number;
     failed: number;
     emails_queued: number;
+    ready: number;
     items: ImportItem[];
 };
 
@@ -37,12 +42,11 @@ export default function ResumeImport({ can_import, batches }: { can_import: bool
             breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Candidates', href: '/admin/candidates' }, { label: 'Bulk resume import' }]}
         >
             <div className="space-y-6">
-                <div>
-                    <h1 className="text-2xl font-semibold text-ink">Bulk resume import</h1>
-                    <p className="mt-1 max-w-3xl text-sm text-muted">
-                        Upload PDF, DOC, DOCX, or a ZIP of those files. Existing email addresses are matched and not overwritten. New people receive a password-setup email, not a password.
-                    </p>
-                </div>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Import and review resumes"
+                    description="Upload PDF, DOC, DOCX, or a ZIP of those files. The system extracts contact details for review, then you confirm the batch to create or match candidates. Existing profile fields are not overwritten."
+                />
 
                 {can_import ? (
                     <form onSubmit={submit} className="rounded-xl border border-line bg-white p-5">
@@ -59,7 +63,7 @@ export default function ResumeImport({ can_import, batches }: { can_import: bool
                         />
                         {form.errors.files ? <p className="mt-2 text-sm text-danger">{form.errors.files}</p> : null}
                         <button type="submit" disabled={form.processing || form.data.files.length === 0} className="mt-4 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white disabled:bg-disabled">
-                            Upload
+                            Extract for review
                         </button>
                     </form>
                 ) : (
@@ -73,14 +77,25 @@ export default function ResumeImport({ can_import, batches }: { can_import: bool
                         <section key={batch.id} className="rounded-xl border border-line bg-white p-5">
                             <h2 className="text-base font-semibold text-ink">Import {batch.created_at}</h2>
                             <p className="mt-1 text-sm text-muted">
-                                Total {batch.total_files} · Created {batch.successful} · Matched {batch.matched} · Needs review {batch.needs_review} · Failed {batch.failed} · Emails queued {batch.emails_queued}
+                                Status {batch.status} · Total {batch.total_files} · Ready {batch.ready} · Created {batch.successful} · Matched {batch.matched} · Needs review {batch.needs_review} · Failed {batch.failed}
                             </p>
+                            {can_import && batch.status === 'awaiting_confirmation' && batch.ready + batch.matched > 0 ? (
+                                <button
+                                    type="button"
+                                    className="mt-3 rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white"
+                                    onClick={() => router.post(`/admin/candidates/imports/${batch.id}/confirm`)}
+                                >
+                                    Confirm import
+                                </button>
+                            ) : null}
                             <ul className="mt-3 divide-y divide-line text-sm">
                                 {batch.items.map((item) => (
                                     <li key={`${batch.id}-${item.filename}`} className="py-2">
                                         <p className="font-medium text-ink">{item.filename}</p>
                                         <p className="text-xs text-muted">
                                             {item.status} · email {item.email_status}
+                                            {item.extracted_name ? ` · ${item.extracted_name}` : ''}
+                                            {item.extracted_email ? ` · ${item.extracted_email}` : ''}
                                             {item.ournear_id ? ` · ${item.ournear_id}` : ''}
                                             {item.message ? ` · ${item.message}` : ''}
                                         </p>

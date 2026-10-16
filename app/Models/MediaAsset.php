@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Support\ShowcaseSchema;
 use Illuminate\Support\Facades\Storage;
 
 class MediaAsset extends Model
@@ -50,6 +51,14 @@ class MediaAsset extends Model
         return $this->hasMany(ContentItem::class, 'media_id');
     }
 
+    /**
+     * @return HasMany<ShowcaseCompany, $this>
+     */
+    public function showcaseCompanies(): HasMany
+    {
+        return $this->hasMany(ShowcaseCompany::class, 'media_asset_id');
+    }
+
     public function fileExists(): bool
     {
         return Storage::disk($this->disk)->exists($this->path);
@@ -71,7 +80,11 @@ class MediaAsset extends Model
     {
         $labels = [];
 
-        $this->loadMissing(['sections.page', 'items']);
+        $relations = ['sections.page', 'items'];
+        if (ShowcaseSchema::isReady()) {
+            $relations[] = 'showcaseCompanies';
+        }
+        $this->loadMissing($relations);
 
         foreach ($this->sections as $section) {
             $page = $section->page?->title ?? 'Website';
@@ -82,12 +95,20 @@ class MediaAsset extends Model
             $labels[] = 'Content item · '.$item->title;
         }
 
+        if (ShowcaseSchema::isReady()) {
+            foreach ($this->showcaseCompanies as $company) {
+                $labels[] = 'Showcase company · '.$company->name;
+            }
+        }
+
         return $labels;
     }
 
     public function isInUse(): bool
     {
-        return $this->sections()->exists() || $this->items()->exists();
+        return $this->sections()->exists()
+            || $this->items()->exists()
+            || (ShowcaseSchema::isReady() && $this->showcaseCompanies()->exists());
     }
 
     /**

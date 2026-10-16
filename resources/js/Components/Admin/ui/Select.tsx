@@ -1,12 +1,13 @@
 import type { SelectHTMLAttributes } from 'react';
-import { adminControlClass } from '@/Components/Admin/ui/Input';
+import CanonicalSelect from '@/Components/atoms/Select';
 
 type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
 
-export default function Select({ className = '', children, ...props }: SelectProps) {
+/** Admin UI adapter — delegates to canonical Select with admin surface. */
+export default function Select({ children, ...props }: SelectProps) {
     return (
-        <select className={`${adminControlClass} ${className}`} {...props}>
+        <CanonicalSelect surface="admin" {...props}>
             {children}
-        </select>
+        </CanonicalSelect>
     );
 }

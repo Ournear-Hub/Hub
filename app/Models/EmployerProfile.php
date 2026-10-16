@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BusinessIdPrefix;
+use App\Enums\EmployerStaffingAccessStatus;
 use App\Enums\EmployerSubmissionStatus;
 use App\Models\Concerns\HasBusinessId;
 use App\Support\EmployerPublicShare;
@@ -35,9 +36,15 @@ class EmployerProfile extends Model
         'benefits',
         'socials',
         'public_share',
+        'logo_path',
         'trial_job_used_at',
         'job_posting_approved_at',
         'job_posting_approved_by',
+        'staffing_access_status',
+        'staffing_access_requested_at',
+        'staffing_access_decided_at',
+        'staffing_access_decided_by_user_id',
+        'staffing_access_rejection_reason',
     ];
 
     protected function casts(): array
@@ -49,6 +56,9 @@ class EmployerProfile extends Model
             'trial_job_used_at' => 'datetime',
             'job_posting_approved_at' => 'datetime',
             'posting_restricted_at' => 'datetime',
+            'staffing_access_status' => EmployerStaffingAccessStatus::class,
+            'staffing_access_requested_at' => 'datetime',
+            'staffing_access_decided_at' => 'datetime',
         ];
     }
 
@@ -87,6 +97,14 @@ class EmployerProfile extends Model
     public function jobs(): HasMany
     {
         return $this->hasMany(Job::class, 'employer_id');
+    }
+
+    /**
+     * @return HasMany<CompanyRelationshipRecruiterAssignment, $this>
+     */
+    public function relationshipRecruiterAssignments(): HasMany
+    {
+        return $this->hasMany(CompanyRelationshipRecruiterAssignment::class, 'employer_profile_id');
     }
 
     /**
@@ -206,6 +224,13 @@ class EmployerProfile extends Model
         return $this->publicShare()[$key] ?? false;
     }
 
+    public function allowsPublicCompanyPage(): bool
+    {
+        $this->loadMissing('user');
+
+        return $this->user?->is_active === true && $this->shareAllows('enabled');
+    }
+
     public function ournearVerified(): bool
     {
         return $this->job_posting_approved_at !== null;
@@ -263,7 +288,8 @@ class EmployerProfile extends Model
             'company_name' => $this->company_name,
             'contact_person' => $this->contact_person,
             'mobile_number' => $this->mobile_number,
-            'industry' => $this->industry,
+            'industry' => $this->displayIndustry(),
+            'industry_id' => $this->industry_id,
             'about_company' => $this->about_company,
             'company_size' => $this->company_size,
             'company_website' => $this->company_website,
@@ -279,6 +305,7 @@ class EmployerProfile extends Model
             'benefits' => $this->benefitList(),
             'socials' => $this->socialLinks(),
             'public_share' => $this->publicShare(),
+            'logo_url' => $this->logoUrl(),
             'ournear_verified' => $this->ournearVerified(),
             'posting_restricted' => $this->postingRestricted(),
         ];
@@ -292,6 +319,23 @@ class EmployerProfile extends Model
     public function displayCompany(): string
     {
         return filled($this->company_name) ? (string) $this->company_name : 'Unnamed employer';
+    }
+
+    /** Account/recruiter workspace label — never substitute personal identity. */
+    public function accountWorkspaceCompanyName(): string
+    {
+        return filled($this->company_name) ? trim((string) $this->company_name) : '';
+    }
+
+    public function logoUrl(?bool $authorized = true): ?string
+    {
+        if (! filled($this->logo_path)) {
+            return null;
+        }
+
+        $logos = app(\App\Services\EmployerLogoService::class);
+
+        return $authorized ? $logos->authorizedUrl($this) : $logos->publicListingUrl($this);
     }
 
     /** Public-facing company label — never show internal "Unnamed employer" copy. */
@@ -390,8 +434,10 @@ class EmployerProfile extends Model
             'benefits' => $this->benefitList(),
             'socials' => $this->socialLinks(),
             'public_share' => $this->publicShare(),
-            'photo_url' => $this->user?->photoUrl(),
-            'verification_status' => $verified ? 'Verified' : 'Unverified',
+            'logo_url' => $this->logoUrl(),
+            'photo_url' => $this->logoUrl(),
+            'email_verification_status' => $verified ? 'Verified' : 'Unverified',
+            'verification_status' => $verified ? 'Email verified' : 'Email unverified',
             'email_verified' => $verified,
             'mobile_verified' => $this->user?->mobileVerified() === true,
             'ournear_verified' => $this->ournearVerified(),
@@ -399,6 +445,13 @@ class EmployerProfile extends Model
             'account_status_label' => $accountStatus?->label(),
             'job_posting_approved' => $this->ournearVerified(),
             'job_posting_approved_at' => $this->job_posting_approved_at?->toDateTimeString(),
+            'hiring_access_label' => $this->ournearVerified() ? 'Approved for posting' : 'Standard eligibility rules',
+            'talent_pool_access_label' => 'Via admin candidate allocation',
+            'staffing_access_status' => ($this->staffing_access_status ?? EmployerStaffingAccessStatus::NotRequested)->value,
+            'staffing_access_label' => ($this->staffing_access_status ?? EmployerStaffingAccessStatus::NotRequested)->label(),
+            'staffing_access_requested_at' => $this->staffing_access_requested_at?->toDateTimeString(),
+            'staffing_access_decided_at' => $this->staffing_access_decided_at?->toDateTimeString(),
+            'staffing_access_rejection_reason' => $this->staffing_access_rejection_reason,
             'posting_restricted' => $this->postingRestricted(),
             'posting_restricted_at' => $this->posting_restricted_at?->toDateTimeString(),
             'tags' => $this->user?->tags

@@ -2,38 +2,25 @@
 
 namespace App\Support;
 
-use App\Models\User;
-
 class CandidateAccountNav
 {
     /**
-     * @return list<array{href: string, label: string, group?: string}>
+     * Candidate-only sidebar (no recruiter / company workspace links).
+     *
+     * @return list<array{href: string, label: string, group?: string, icon?: string}>
      */
-    public static function items(?User $user = null): array
+    public static function items(): array
     {
-        $items = [
-            ['href' => '/account', 'label' => 'Dashboard', 'group' => 'OVERVIEW'],
+        return [
+            ['href' => '/account', 'label' => 'Personal Dashboard', 'group' => 'OVERVIEW', 'icon' => 'home'],
+            ['href' => '/account/profile#personal', 'label' => 'Personal Profile', 'group' => 'PROFILE', 'icon' => 'user'],
+            ['href' => '/account/profile#professional', 'label' => 'Professional Profile', 'group' => 'PROFILE', 'icon' => 'edit'],
+            ['href' => '/account/resumes/builder', 'label' => 'Hire Resume', 'group' => 'RESUMES', 'icon' => 'edit'],
+            ['href' => '/account/resumes', 'label' => 'My Resume', 'group' => 'RESUMES', 'icon' => 'file'],
+            ['href' => '/account/applications', 'label' => 'My Applications', 'group' => 'ACTIVITY', 'icon' => 'clipboard'],
+            ['href' => '/account/saved-jobs', 'label' => 'Saved Jobs', 'group' => 'ACTIVITY', 'icon' => 'search'],
+            ['href' => '/account/settings/account', 'label' => 'Settings', 'group' => 'ACCOUNT', 'icon' => 'settings'],
+            ['href' => '/account/contact', 'label' => 'Contact Us', 'group' => 'ACCOUNT', 'icon' => 'message'],
         ];
-
-        if ($user instanceof User && $user->canAccessHiringWorkspace()) {
-            $items[] = ['href' => '/account/hiring', 'label' => 'Hiring', 'group' => 'RECRUITING'];
-        }
-
-        $items = array_merge($items, [
-            ['href' => '/account/profile', 'label' => 'Profile', 'group' => 'PROFILE'],
-            ['href' => '/account/profile/professional', 'label' => 'Professional Profile', 'group' => 'PROFILE'],
-            ['href' => '/account/resumes/builder', 'label' => 'Hire Resume', 'group' => 'RESUMES'],
-            ['href' => '/account/resumes', 'label' => 'My Resume', 'group' => 'RESUMES'],
-            ['href' => '/account/applications', 'label' => 'Applications', 'group' => 'ACTIVITY'],
-            ['href' => '/account/saved-jobs', 'label' => 'Saved Jobs', 'group' => 'ACTIVITY'],
-            ['href' => '/account/notifications', 'label' => 'Notifications', 'group' => 'ACTIVITY'],
-            ['href' => '/account/settings/security', 'label' => 'Verification', 'group' => 'ACCOUNT'],
-            ['href' => '/account/documents', 'label' => 'Documents', 'group' => 'ACCOUNT'],
-            ['href' => '/account/settings', 'label' => 'Settings', 'group' => 'ACCOUNT'],
-            ['href' => '/account/profile#privacy', 'label' => 'Privacy & Visibility', 'group' => 'ACCOUNT'],
-            ['href' => '/contact', 'label' => 'Help & Support', 'group' => 'ACCOUNT'],
-        ]);
-
-        return $items;
     }
 }

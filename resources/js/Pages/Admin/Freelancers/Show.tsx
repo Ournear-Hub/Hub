@@ -1,5 +1,6 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Button, Select, StatusBadge } from '@/Components/Admin/ui';
 import type { SharedPageProps } from '@/types/page';
@@ -82,9 +83,7 @@ export default function FreelancersShow({ freelancer, statuses }: Props) {
         <AdminLayout title={freelancer.business_id}>
             <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
                 <div>
-                    <Link href="/admin/freelancers" className="text-sm font-medium text-brand">
-                        Back to freelancers
-                    </Link>
+                    <BackNavLink href="/admin/freelancers" label="Back to freelancers" />
                     <h1 className="mt-2 text-2xl font-semibold tracking-tight text-ink">{freelancer.name}</h1>
                     <p className="mt-1 text-sm text-muted">
                         {freelancer.business_id} · <StatusBadge status={freelancer.status_label} />

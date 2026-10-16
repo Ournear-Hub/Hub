@@ -10,6 +10,8 @@ enum BusinessIdPrefix: string
     case Application = 'ONT-A';
     case Employer = 'ONT-E';
     case Submission = 'ONT-S';
+    case TalentPoolSubmission = 'ONT-TPS';
+    case StaffingSubmission = 'ONT-SPS';
     case Placement = 'ONT-P';
     case Employee = 'ONT-W';
     case Replacement = 'ONT-R';

@@ -133,6 +133,12 @@ class AtsStage
             return self::Closed;
         }
 
+        // Reviewing is the Application status staff set when screening/review begins; the ATS stage
+        // must agree with it (it previously fell through to "Applied / New" when no screening row existed).
+        if ($application->status === ApplicationStatus::Reviewing) {
+            return self::Screening;
+        }
+
         if (in_array($application->screeningStage(), [
             ScreeningStage::Started,
             ScreeningStage::Matched,

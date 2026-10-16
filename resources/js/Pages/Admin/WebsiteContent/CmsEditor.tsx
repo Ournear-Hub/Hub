@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import StaffingIllustrationFields from '@/Components/Admin/StaffingIllustrationFields';
 import type { CmsPage } from '@/types/cms';
 import type { MediaOption } from '@/types/media';
 
@@ -98,6 +99,14 @@ export default function CmsEditor({ cmsPage, activeSection, mediaOptions }: Prop
                 </a>
                 <button
                     type="button"
+                    onClick={() => form.reset()}
+                    disabled={form.processing || !form.isDirty}
+                    className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-ink disabled:opacity-50"
+                >
+                    Cancel
+                </button>
+                <button
+                    type="button"
                     onClick={resetDefaults}
                     className="rounded-md border border-line bg-white px-4 py-2 text-sm font-semibold text-ink"
                 >
@@ -111,6 +120,17 @@ export default function CmsEditor({ cmsPage, activeSection, mediaOptions }: Prop
                     {form.processing ? 'Saving…' : 'Save Changes'}
                 </button>
             </div>
+
+            {cmsPage.slug === 'staffing' ? (
+                <div className="mb-4 rounded-xl border border-line bg-white p-4">
+                    <h2 className="text-sm font-semibold text-ink">Staffing Page Images</h2>
+                    <p className="mt-1 text-sm text-muted">
+                        Manage the hero photograph and optional workforce-partner accent image. Select{' '}
+                        <strong className="font-semibold text-ink">Staffing Hero Image</strong> or{' '}
+                        <strong className="font-semibold text-ink">Workforce Partner Section</strong> in Page Sections.
+                    </p>
+                </div>
+            ) : null}
 
             {Object.keys(form.errors).length > 0 ? (
                 <p className="mb-4 rounded-md border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -207,7 +227,42 @@ export default function CmsEditor({ cmsPage, activeSection, mediaOptions }: Prop
                         </div>
                     ) : null}
 
-                    {previewSection?.supports_image ? (
+                    {cmsPage.slug === 'home' && current.section_key === 'promo_banner' ? (
+                        <Field
+                            label="CTA destination path"
+                            value={(current.extra?.primary_href as string | undefined) ?? ''}
+                            onChange={(value) => updateExtra('primary_href', value)}
+                            hint="Same-origin path only, e.g. /hire or /account/jobs/create. Public pages use the path as-is; account paths run through company activation when needed."
+                        />
+                    ) : null}
+
+                    {cmsPage.slug === 'staffing' &&
+                    (current.section_key === 'hero' || current.section_key === 'workforce_partner') ? (
+                        <StaffingIllustrationFields
+                            slot={current.section_key === 'hero' ? 'hero' : 'workforce_partner'}
+                            mediaId={current.media_id ?? null}
+                            mobileMediaId={
+                                current.extra?.mobile_media_id != null && current.extra.mobile_media_id !== ''
+                                    ? Number(current.extra.mobile_media_id)
+                                    : null
+                            }
+                            imageEnabled={(current.extra?.image_enabled as string | undefined) !== '0'}
+                            mediaOptions={mediaOptions}
+                            imageAlt={(current.extra?.image_alt as string | undefined) ?? ''}
+                            objectPosition={(current.extra?.image_object_position as string | undefined) ?? 'center center'}
+                            mobileObjectPosition={
+                                (current.extra?.mobile_image_object_position as string | undefined) ?? 'center center'
+                            }
+                            onMediaChange={(mediaId) => updateSection({ media_id: mediaId })}
+                            onMobileMediaChange={(mobileMediaId) =>
+                                updateExtra('mobile_media_id', mobileMediaId != null ? String(mobileMediaId) : '')
+                            }
+                            onEnabledChange={(enabled) => updateExtra('image_enabled', enabled ? '1' : '0')}
+                            onAltChange={(value) => updateExtra('image_alt', value)}
+                            onObjectPositionChange={(value) => updateExtra('image_object_position', value)}
+                            onMobileObjectPositionChange={(value) => updateExtra('mobile_image_object_position', value)}
+                        />
+                    ) : previewSection?.supports_image ? (
                         <div>
                             <label className="mb-1 block text-sm font-medium text-ink">Image</label>
                             <select
@@ -285,6 +340,8 @@ export default function CmsEditor({ cmsPage, activeSection, mediaOptions }: Prop
                                 <ItemEditor
                                     key={item.id}
                                     item={item}
+                                    pageSlug={cmsPage.slug}
+                                    sectionKey={current.section_key}
                                     error={form.errors[`sections.${sectionIndex}.items.${itemIndex}.title`]}
                                     onChange={(patch) => updateItem(itemIndex, patch)}
                                 />
@@ -350,8 +407,22 @@ function Field({
     );
 }
 
+function itemBulletsHint(pageSlug: string, sectionKey: string): string {
+    if (pageSlug === 'home' && sectionKey === 'hero_slider') {
+        return 'Hero slides: line 1 = primary button label, line 2 = primary path (/hire, /account/jobs/create), line 3 = secondary label, line 4 = secondary path.';
+    }
+
+    if (pageSlug === 'home' && (sectionKey === 'hiring_features' || sectionKey === 'candidate_features')) {
+        return 'Feature cards: line 1 = link path (public or /account/…). Additional lines are optional bullet copy.';
+    }
+
+    return 'One point per line.';
+}
+
 function ItemEditor({
     item,
+    pageSlug,
+    sectionKey,
     onChange,
     error,
 }: {
@@ -364,6 +435,8 @@ function ItemEditor({
         is_active: boolean;
         bullets: string;
     };
+    pageSlug: string;
+    sectionKey: string;
     onChange: (patch: Partial<typeof item>) => void;
     error?: string;
 }) {
@@ -399,7 +472,7 @@ function ItemEditor({
                     value={item.bullets}
                     onChange={(value) => onChange({ bullets: value })}
                     multiline
-                    hint="One point per line."
+                    hint={itemBulletsHint(pageSlug, sectionKey)}
                 />
             </div>
         </article>

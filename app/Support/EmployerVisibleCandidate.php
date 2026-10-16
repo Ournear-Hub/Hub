@@ -4,7 +4,11 @@ namespace App\Support;
 
 use App\Models\Application;
 use App\Models\EmployerSubmission;
+use App\Models\StaffingCandidateSubmission;
+use App\Models\TalentPoolCompanySubmission;
 use App\Models\User;
+use App\Models\CandidateResume;
+use App\Services\ApplicationResumeDeliveryService;
 use App\Support\RecruitmentWorkspace;
 
 class EmployerVisibleCandidate
@@ -19,12 +23,15 @@ class EmployerVisibleCandidate
         $user = $application->user;
         $profile = $user?->candidateProfile;
         $shareEnabled = $profile?->shareAllows('enabled') === true;
+        $atsStage = AtsStage::for($application);
+        $resumeDelivery = app(ApplicationResumeDeliveryService::class);
+        $resumeAvailable = $resumeDelivery->snapshotAvailable($application);
 
         return [
             'id' => $application->id,
             'application_id' => $application->id,
             'business_id' => $application->business_id,
-            'name' => $user?->name ?: $application->full_name,
+            'name' => $application->candidateDisplayName(),
             'photo_url' => $user?->photoUrl(),
             'username' => $shareEnabled ? $user?->username : null,
             'designation' => $profile?->current_designation,
@@ -33,9 +40,14 @@ class EmployerVisibleCandidate
             'qualification' => $profile?->qualification ?: $application->qualification,
             'status' => $application->status->value,
             'status_label' => $application->status->toCandidateStatusLabel(),
+            'ats_stage' => $atsStage['value'],
+            'ats_stage_label' => $atsStage['label'],
+            'pipeline_stage_label' => EmployerApplicationPipeline::stageLabelForApplication($application->status),
             'applied_at' => $application->created_at?->toDateTimeString(),
-            'has_resume' => filled($application->getRawOriginal('resume_path')),
-            'resume_url' => route('account.employer.applications.resume', $application, false),
+            'has_resume' => $resumeAvailable,
+            'resume_url' => $resumeAvailable
+                ? route('account.employer.applications.resume', $application, false)
+                : null,
             'public_profile_url' => $shareEnabled && is_string($user?->username) && $user->username !== ''
                 ? route('profiles.show', ['user' => $user->username], false)
                 : null,
@@ -117,6 +129,103 @@ class EmployerVisibleCandidate
             'requirement_href' => $submission->job
                 ? route('account.employer.submissions.requirement', $submission->job, false)
                 : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function fromTalentPoolSubmission(TalentPoolCompanySubmission $submission): array
+    {
+        $submission->loadMissing(['candidateUser.candidateProfile', 'employerProfile']);
+        $user = $submission->candidateUser;
+        $profile = $user?->candidateProfile;
+        $shareEnabled = $profile?->shareAllows('enabled') === true;
+        $resume = $profile instanceof \App\Models\CandidateProfile
+            ? CandidateResume::query()
+                ->where('candidate_profile_id', $profile->id)
+                ->orderByDesc('is_primary')
+                ->orderByDesc('id')
+                ->first()
+            : null;
+        $hasResume = $resume !== null;
+
+        return [
+            'id' => $submission->id,
+            'submission_id' => $submission->id,
+            'business_id' => $submission->business_id,
+            'record_type' => 'talent_pool_company_submission',
+            'name' => $user?->name ?? 'Candidate',
+            'photo_url' => $user?->photoUrl(),
+            'username' => $shareEnabled ? $user?->username : null,
+            'designation' => $profile?->current_designation,
+            'location' => $profile?->classifiedLocation?->name ?: $profile?->location,
+            'experience' => $profile?->classifiedExperienceRange?->name ?: $profile?->experience,
+            'qualification' => $profile?->classifiedQualification?->name ?: $profile?->qualification,
+            'status' => $submission->status->value,
+            'status_label' => RecruitmentWorkspace::responseLabel($submission->status),
+            'submitted_at' => $submission->submitted_at?->toDateTimeString(),
+            'has_resume' => $hasResume,
+            'resume_url' => $hasResume
+                ? route('account.coordinated-talent-pool.resume', $submission, false)
+                : null,
+            'public_profile_url' => $shareEnabled && is_string($user?->username) && $user->username !== ''
+                ? route('profiles.show', ['user' => $user->username], false)
+                : null,
+            'submission_href' => route('account.coordinated-talent-pool.show', $submission, false),
+            'source_label' => 'Submitted by OurNear Talent Pool coordination (not a job application).',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public static function fromStaffingSubmission(StaffingCandidateSubmission $submission): array
+    {
+        $submission->loadMissing(['candidateUser.candidateProfile', 'employerEnquiry']);
+        $user = $submission->candidateUser;
+        $profile = $user?->candidateProfile;
+        $shareEnabled = $profile?->shareAllows('enabled') === true;
+        $resume = $profile instanceof \App\Models\CandidateProfile
+            ? CandidateResume::query()
+                ->where('candidate_profile_id', $profile->id)
+                ->orderByDesc('is_primary')
+                ->orderByDesc('id')
+                ->first()
+            : null;
+        $hasResume = $resume !== null;
+
+        return [
+            'id' => $submission->id,
+            'submission_id' => $submission->id,
+            'business_id' => $submission->business_id,
+            'record_type' => 'staffing_candidate_submission',
+            'name' => $user?->name ?? 'Candidate',
+            'photo_url' => $user?->photoUrl(),
+            'username' => $shareEnabled ? $user?->username : null,
+            'designation' => $profile?->current_designation,
+            'location' => $profile?->classifiedLocation?->name ?: $profile?->location,
+            'experience' => $profile?->classifiedExperienceRange?->name ?: $profile?->experience,
+            'qualification' => $profile?->classifiedQualification?->name ?: $profile?->qualification,
+            'status' => $submission->status->value,
+            'status_label' => $submission->status->label(),
+            'submitted_at' => $submission->submitted_at?->toDateTimeString(),
+            'client_feedback' => $submission->client_feedback,
+            'joining_date' => $submission->joining_date?->toDateString(),
+            'has_resume' => $hasResume,
+            'resume_url' => $hasResume
+                ? route('account.staffing-submissions.resume', $submission, false)
+                : null,
+            'public_profile_url' => $shareEnabled && is_string($user?->username) && $user->username !== ''
+                ? route('profiles.show', ['user' => $user->username], false)
+                : null,
+            'submission_href' => route('account.staffing-submissions.show', $submission, false),
+            'employer_enquiry_id' => $submission->employer_enquiry_id,
+            'source_label' => 'Submitted by OurNear Staffing coordination (not a job application).',
+            'allowed_client_statuses' => array_map(
+                fn ($status) => ['value' => $status->value, 'label' => $status->label()],
+                $submission->status->allowedClientTransitions(),
+            ),
         ];
     }
 

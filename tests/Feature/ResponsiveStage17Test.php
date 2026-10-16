@@ -38,15 +38,24 @@ class ResponsiveStage17Test extends TestCase
             'account.home',
             'account.profile.edit',
             'account.resumes.index',
-            'account.settings.index',
+            'account.settings.account',
             'account.settings.security',
-            'account.settings.communication',
+            'account.settings.verification',
+            'account.settings.password',
             'account.notifications.index',
             'account.applications.index',
             'account.saved-jobs.index',
         ] as $route) {
             $this->actingAs($candidate)->get(route($route))->assertOk();
         }
+
+        $this->actingAs($candidate)
+            ->get(route('account.settings.index'))
+            ->assertRedirect(route('account.settings.account'));
+
+        $this->actingAs($candidate)
+            ->get(route('account.settings.communication'))
+            ->assertRedirect(route('account.settings.account').'#communication');
     }
 
     public function test_admin_core_pages_render_for_super_admin(): void

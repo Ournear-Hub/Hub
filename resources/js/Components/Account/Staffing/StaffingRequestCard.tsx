@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
 import StatusBadge from '@/Components/Account/StatusBadge';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
 
 export type StaffingRequest = {
@@ -93,7 +93,7 @@ export default function StaffingRequestCard({ request, compact = false }: Props)
             </p>
             {request.detail_href ? (
                 <div className="mt-4">
-                    <Button href={request.detail_href} variant="primary" className="min-h-11 w-full sm:w-auto">
+                    <Button surface="public" href={request.detail_href} variant="primary" className="min-h-11 w-full sm:w-auto">
                         View details
                     </Button>
                 </div>

@@ -5,6 +5,7 @@ namespace App\Enums;
 enum RegistrationSource: string
 {
     case Website = 'website';
+    case Mobile = 'mobile';
     case Google = 'google';
     case Facebook = 'facebook';
     case Instagram = 'instagram';
@@ -20,6 +21,7 @@ enum RegistrationSource: string
     {
         return match ($this) {
             self::Website => 'Website',
+            self::Mobile => 'Mobile app',
             self::Google => 'Google',
             self::Facebook => 'Facebook',
             self::Instagram => 'Instagram',

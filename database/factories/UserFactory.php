@@ -72,7 +72,18 @@ class UserFactory extends Factory
             'role' => UserRole::Employer,
             'registration_source' => RegistrationSource::Website,
         ])->afterCreating(function (User $user) {
-            EmployerProfile::query()->create(['user_id' => $user->id]);
+            $title = \App\Models\JobTitle::query()
+                ->with('category.industry')
+                ->where('is_active', true)
+                ->first();
+            $industry = $title?->category?->industry
+                ?? \App\Models\Industry::query()->where('is_active', true)->orderBy('id')->first();
+            EmployerProfile::query()->create([
+                'user_id' => $user->id,
+                'company_name' => fake()->company(),
+                'industry_id' => $industry?->id,
+                'industry' => $industry?->name,
+            ]);
             $user->forceFill(['profile_completion' => $user->calculateProfileCompletion()])->saveQuietly();
         });
     }

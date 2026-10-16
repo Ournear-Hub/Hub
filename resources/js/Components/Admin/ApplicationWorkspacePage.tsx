@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { useCallback, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
 import ApplicationDrawer from '@/Components/Admin/ApplicationDrawer';
@@ -7,15 +7,15 @@ import {
     Button,
     Card,
     ConfirmDialog,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     SearchBar,
     Select,
     StatusBadge,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type {
     AdminApplicationListItem,
     ApplicationWorkspaceProps,
@@ -44,6 +44,20 @@ function matchLabel(row: AdminApplicationListItem): string {
     return label;
 }
 
+function compareCandidateLabel(row: AdminApplicationListItem): string {
+    const fromFull = row.full_name?.trim();
+    if (fromFull) {
+        return fromFull;
+    }
+
+    const fromCandidate = row.candidate?.name?.trim();
+    if (fromCandidate) {
+        return fromCandidate;
+    }
+
+    return 'Guest applicant';
+}
+
 export default function ApplicationWorkspacePage({
     title,
     description,
@@ -64,9 +78,14 @@ export default function ApplicationWorkspacePage({
     jobSummary,
     can_create_task = false,
 }: Props) {
-    const [compareIds, setCompareIds] = useState<number[]>([]);
+    const [compareRows, setCompareRows] = useState<Record<number, AdminApplicationListItem>>({});
     const [compareOpen, setCompareOpen] = useState(false);
     const [submitId, setSubmitId] = useState<number | null>(null);
+    const comparePanelRef = useRef<HTMLDivElement | null>(null);
+
+    const compared = Object.keys(compareRows)
+        .map((id) => applications.data.find((row) => row.id === Number(id)) ?? compareRows[Number(id)])
+        .filter((row): row is AdminApplicationListItem => row != null);
 
     const visit = (overrides: Record<string, string | undefined> = {}, replaceAll = false) => {
         const next = replaceAll ? overrides : { ...filters, ...overrides };
@@ -90,13 +109,30 @@ export default function ApplicationWorkspacePage({
         } as Record<string, string>);
     };
 
-    const toggleCompare = (id: number) => {
-        setCompareIds((current) =>
-            current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
-        );
+    const toggleCompare = (row: AdminApplicationListItem) => {
+        setCompareRows((current) => {
+            const next = { ...current };
+            if (next[row.id]) {
+                delete next[row.id];
+            } else {
+                next[row.id] = row;
+            }
+
+            return next;
+        });
     };
 
-    const compared = applications.data.filter((row) => compareIds.includes(row.id));
+    const openCompare = () => {
+        setCompareOpen(true);
+    };
+
+    useEffect(() => {
+        if (!compareOpen || compared.length < 2) {
+            return;
+        }
+
+        comparePanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, [compareOpen, compared.length]);
 
     const columns: Array<DataTableColumn<AdminApplicationListItem>> = [
         ...(variant === 'screening' && filters.job_id
@@ -107,10 +143,11 @@ export default function ApplicationWorkspacePage({
                       render: (row: AdminApplicationListItem) => (
                           <input
                               type="checkbox"
-                              checked={compareIds.includes(row.id)}
-                              aria-label={`Compare ${row.full_name}`}
+                              checked={Boolean(compareRows[row.id])}
+                              data-compare-candidate-name={compareCandidateLabel(row)}
+                              aria-label={`Compare candidate ${compareCandidateLabel(row)}`}
                               onClick={(event) => event.stopPropagation()}
-                              onChange={() => toggleCompare(row.id)}
+                              onChange={() => toggleCompare(row)}
                           />
                       ),
                   } satisfies DataTableColumn<AdminApplicationListItem>,
@@ -131,7 +168,7 @@ export default function ApplicationWorkspacePage({
             key: 'candidate',
             header: 'Candidate',
             className: 'font-medium text-ink',
-            render: (row) => row.full_name,
+            render: (row) => compareCandidateLabel(row),
         },
         {
             key: 'job_id',
@@ -283,11 +320,7 @@ export default function ApplicationWorkspacePage({
                 { label: title },
             ]}
         >
-            <div
-                className={selected ? 'pointer-events-none' : undefined}
-                inert={selected ? true : undefined}
-                aria-hidden={selected ? true : undefined}
-            >
+            <div>
                 <div className="mb-6">
                     <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
                     <p className="mt-1 text-sm text-muted">{description}</p>
@@ -302,10 +335,11 @@ export default function ApplicationWorkspacePage({
                                 </label>
                                 <Select
                                     id="screening-job"
-                                    value={filters.job_id}
+                                    value={filters.job_id ? String(filters.job_id) : ''}
                                     aria-label="Job"
                                     onChange={(event) => {
-                                        setCompareIds([]);
+                                        setCompareRows({});
+                                        setCompareOpen(false);
                                         visit({ job_id: event.target.value, application: '' });
                                     }}
                                 >
@@ -462,7 +496,7 @@ export default function ApplicationWorkspacePage({
                             </option>
                         ))}
                     </Select>
-                    <Select name="job_id" defaultValue={filters.job_id} aria-label="Job">
+                    <Select name="job_id" defaultValue={filters.job_id ? String(filters.job_id) : ''} aria-label="Job">
                         <option value="">All jobs</option>
                         {options.jobs.map((job) => (
                             <option key={job.id} value={job.id}>
@@ -585,19 +619,36 @@ export default function ApplicationWorkspacePage({
                                 type="button"
                                 variant="secondary"
                                 disabled={compared.length < 2}
-                                onClick={() => setCompareOpen(true)}
+                                onClick={openCompare}
                             >
-                                Compare selected
+                                Compare selected{compared.length > 0 ? ` (${compared.length})` : ''}
                             </Button>
                         </>
                     ) : null}
                 </FilterBar>
 
+                {variant === 'screening' && filters.job_id && compared.length >= 2 && !compareOpen ? (
+                    <p className="mb-4 text-sm text-muted">
+                        {compared.length} candidates selected for comparison. Click <span className="font-medium text-ink">Compare selected</span> above the table filters.
+                    </p>
+                ) : null}
+
                 {compareOpen && compared.length >= 2 ? (
-                    <div className="mb-6 overflow-x-auto rounded-xl border border-line bg-white p-4">
+                    <div
+                        id="screening-compare-panel"
+                        ref={comparePanelRef}
+                        className="mb-6 overflow-x-auto rounded-xl border border-line bg-white p-4"
+                    >
                         <div className="mb-3 flex items-center justify-between gap-3">
                             <div>
                                 <h2 className="text-sm font-semibold text-ink">Compare candidates for this job</h2>
+                                <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:gap-x-3">
+                                    {compared.map((row) => (
+                                        <span key={row.id} data-compare-candidate="" className="text-sm font-medium text-ink">
+                                            {compareCandidateLabel(row)}
+                                        </span>
+                                    ))}
+                                </div>
                                 <p className="mt-1 text-xs text-muted">
                                     Existing recorded fields only. Match % compares recorded fields; it does not rank, shortlist, reject, or hire. The human decision remains final.
                                 </p>
@@ -628,7 +679,7 @@ export default function ApplicationWorkspacePage({
                                     <th className="sticky left-0 bg-surface px-3 py-2 font-medium">Field</th>
                                     {compared.map((row) => (
                                         <th key={row.id} className="min-w-40 px-3 py-2 font-medium text-ink">
-                                            {row.full_name}
+                                            {compareCandidateLabel(row)}
                                         </th>
                                     ))}
                                 </tr>
@@ -668,20 +719,26 @@ export default function ApplicationWorkspacePage({
                     </div>
                 ) : null}
 
-                <DataTable
-                    columns={columns}
-                    rows={applications.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle={variant === 'screening' ? 'No applications match these screening filters.' : `No ${title.toLowerCase()} match these filters.`}
-                    emptyDescription={
-                        variant === 'screening'
-                            ? 'Existing applications remain available. Guest applications are included. Fields that are not stored show “Not recorded yet”; they are not invented.'
-                            : 'Existing applications remain available. Guest applications are included.'
-                    }
-                    selectedKey={selected?.id ?? null}
-                    onRowClick={(row) => visit({ application: String(row.id) })}
-                />
-                <Pagination links={applications.links} />
+                <div
+                    className={selected ? 'pointer-events-none' : undefined}
+                    inert={selected ? true : undefined}
+                    aria-hidden={selected ? true : undefined}
+                >
+                    <DataTable
+                        columns={columns}
+                        rows={applications.data}
+                        rowKey={(row) => row.id}
+                        emptyTitle={variant === 'screening' ? 'No applications match these screening filters.' : `No ${title.toLowerCase()} match these filters.`}
+                        emptyDescription={
+                            variant === 'screening'
+                                ? 'Existing applications remain available. Guest applications are included. Fields that are not stored show “Not recorded yet”; they are not invented.'
+                                : 'Existing applications remain available. Guest applications are included.'
+                        }
+                        selectedKey={selected?.id ?? null}
+                        onRowClick={(row) => visit({ application: String(row.id) })}
+                    />
+                    <Pagination links={applications.links} />
+                </div>
             </div>
 
             <Drawer

@@ -17,7 +17,7 @@ Do not treat this as a punch list to implement in this audit.
 ## MEDIUM
 
 - No `app/Jobs`; queue workers may be idle or unused depending on env.
-- `CommunicationPreferenceService::canSend` not consistently applied to all mail.
+- ~~`CommunicationPreferenceService::canSend` not consistently applied to all mail.~~ **Candidate recruitment paths addressed (REG-COM-002, 2026-10-12).** Employer in-app when System opted out unchanged; marketing/SMS/WhatsApp campaign sends may still need audit.
 - Automation executions store JSON evidence; history UI is admin-only, not Command Center.
 - MySQL FK name length forced short names on automation tables.
 - `tasks` table may be missing on some local DBs if Stage 6 migration pending; Stage 24 `task_id` may lack FK.

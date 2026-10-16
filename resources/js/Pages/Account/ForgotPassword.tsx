@@ -1,7 +1,10 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import FormField from '@/Components/Public/FormField';
+import Alert from '@/Components/molecules/Alert';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import Button from '@/Components/atoms/Button';
 import PageContainer from '@/Components/Public/PageContainer';
 
 type ForgotPasswordProps = {
@@ -31,11 +34,12 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
             </section>
             <section className="py-12">
                 <PageContainer className="max-w-md">
-                    {status && (
-                        <p className="mb-4 rounded-md border border-success/20 bg-success/10 px-3 py-2 text-sm text-success">
+                    <BackNavLink href="/login" label="Back to login" className="mb-4" />
+                    {status ? (
+                        <Alert variant="success" className="mb-4">
                             {status}
-                        </p>
-                    )}
+                        </Alert>
+                    ) : null}
                     <form onSubmit={submit} className="space-y-4 rounded-xl border border-line bg-white p-6">
                         <FormField
                             id="email"
@@ -46,19 +50,10 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
                             onChange={(event) => setData('email', event.target.value)}
                         />
                         {errors.email && <p className="-mt-2 text-sm text-danger">{errors.email}</p>}
-                        <button
-                            type="submit"
-                            disabled={processing}
-                            className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:bg-disabled"
-                        >
+                        <Button type="submit" surface="public" variant="primary" fullWidth loading={processing} disabled={processing}>
                             Send reset link
-                        </button>
+                        </Button>
                     </form>
-                    <p className="mt-6 text-center text-sm">
-                        <Link href="/login" className="font-medium text-brand hover:underline">
-                            Back to login
-                        </Link>
-                    </p>
                 </PageContainer>
             </section>
         </PublicLayout>

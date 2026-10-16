@@ -72,37 +72,37 @@ class ProductionUxStage15Test extends TestCase
         ]);
 
         $this->actingAs($owner)
-            ->get(route('account.home'))
+            ->get(route('account.hiring'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Home')
-                ->where('dashboard.jobs_count', 1)
-                ->where('dashboard.applicants_count', 1)
-                ->where('dashboard.submissions_count', 1)
-                ->where('dashboard.enquiries_count', 1)
-                ->has('dashboard.recent_applicants', 1)
-                ->where('dashboard.recent_applicants.0.name', 'Owner Applicant')
-                ->where('dashboard.recent_applicants.0.job.title', 'Owner Role')
-                ->missing('dashboard.recent_applicants.0.email')
-                ->missing('dashboard.recent_applicants.0.mobile')
-                ->missing('dashboard.recent_applicants.0.match_percent')
-                ->missing('dashboard.recent_applicants.0.screening_notes')
-                ->has('dashboard.recent_submissions', 1)
-                ->where('dashboard.recent_submissions.0.name', 'Owner Applicant')
-                ->missing('dashboard.recent_submissions.0.notes')
-                ->has('dashboard.next_actions'));
+                ->component('Account/Hiring/Dashboard')
+                ->where('workspace.jobs_count', 1)
+                ->where('workspace.applicants_count', 1)
+                ->where('workspace.submissions_count', 1)
+                ->where('workspace.enquiries_count', 1)
+                ->has('workspace.recent_applicants', 1)
+                ->where('workspace.recent_applicants.0.name', 'Owner Applicant')
+                ->where('workspace.recent_applicants.0.job.title', 'Owner Role')
+                ->missing('workspace.recent_applicants.0.email')
+                ->missing('workspace.recent_applicants.0.mobile')
+                ->missing('workspace.recent_applicants.0.match_percent')
+                ->missing('workspace.recent_applicants.0.screening_notes')
+                ->has('workspace.recent_submissions', 1)
+                ->where('workspace.recent_submissions.0.name', 'Owner Applicant')
+                ->missing('workspace.recent_submissions.0.notes')
+                ->has('workspace.next_actions'));
 
         $this->actingAs($other)
-            ->get(route('account.home'))
+            ->get(route('account.hiring'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Account/Home')
-                ->where('dashboard.jobs_count', 1)
-                ->where('dashboard.applicants_count', 1)
-                ->where('dashboard.submissions_count', 1)
-                ->where('dashboard.enquiries_count', 1)
-                ->where('dashboard.recent_applicants.0.name', 'Other Applicant')
-                ->where('dashboard.recent_applicants.0.job.title', 'Foreign Role'));
+                ->component('Account/Hiring/Dashboard')
+                ->where('workspace.jobs_count', 1)
+                ->where('workspace.applicants_count', 1)
+                ->where('workspace.submissions_count', 1)
+                ->where('workspace.enquiries_count', 1)
+                ->where('workspace.recent_applicants.0.name', 'Other Applicant')
+                ->where('workspace.recent_applicants.0.job.title', 'Foreign Role'));
     }
 
     public function test_employer_applicants_are_paginated_privacy_safe_and_job_scoped(): void
@@ -165,7 +165,9 @@ class ProductionUxStage15Test extends TestCase
                 ->where('applications.total', 16));
 
         $this->actingAs($other)->get(route('account.employer.jobs.applicants', $job))->assertForbidden();
-        $this->actingAs($this->makeCandidate())->get(route('account.employer.jobs.applicants', $job))->assertForbidden();
+        $this->actingAs($this->makeCandidate())
+            ->get(route('account.employer.jobs.applicants', $job))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/jobs/'.$job->slug.'/applicants']));
         $this->forgetAuthentication();
         $this->get(route('account.employer.jobs.applicants', $job))->assertRedirect(route('login'));
     }
@@ -313,8 +315,12 @@ class ProductionUxStage15Test extends TestCase
                 ->where('enquiries.data.0.company_name', 'Hidden Enquiry Co')
                 ->missing('enquiries.data.0.internal_notes'));
 
-        $this->actingAs($this->makeCandidate())->get(route('account.enquiries.index'))->assertForbidden();
-        $this->actingAs($this->makeCandidate())->get(route('account.employer.submissions.index'))->assertForbidden();
+        $this->actingAs($this->makeCandidate())
+            ->get(route('account.enquiries.index'))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/enquiries']));
+        $this->actingAs($this->makeCandidate())
+            ->get(route('account.employer.submissions.index'))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/submissions']));
     }
 
     public function test_application_snapshot_resume_stays_ownership_scoped_and_supports_inline_pdf(): void
@@ -352,7 +358,9 @@ class ProductionUxStage15Test extends TestCase
         $this->assertStringContainsString('attachment', strtolower((string) $forcedDownload->headers->get('Content-Disposition')));
 
         $this->actingAs($other)->get(route('account.employer.applications.resume', $application))->assertForbidden();
-        $this->actingAs($candidate)->get(route('account.employer.applications.resume', $application))->assertForbidden();
+        $this->actingAs($candidate)
+            ->get(route('account.employer.applications.resume', $application))
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/employer-applications/'.$application->id.'/resume']));
         $this->forgetAuthentication();
         $this->get(route('account.employer.applications.resume', $application))->assertRedirect(route('login'));
         $this->actingAs($other)->get(route('account.employer.jobs.edit', $job))->assertForbidden();

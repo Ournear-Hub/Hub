@@ -1,28 +1,32 @@
 import { router } from '@inertiajs/react';
 import { FormEvent, useState } from 'react';
 import AccountLayout from '@/Layouts/AccountLayout';
+import EmployerHiringApplicationsPipeline from '@/Components/Account/Recruiter/EmployerHiringApplicationsPipeline';
+import type { PipelineStageSummary } from '@/Components/Account/Recruiter/EmployerApplicantPipeline';
 import RecruiterCandidateSummary, {
     type RecruiterCandidateSummaryData,
 } from '@/Components/Account/Recruiter/RecruiterCandidateSummary';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
 
 type Props = {
     company_name: string;
     applications: Paginator<RecruiterCandidateSummaryData>;
+    pipeline_summary: PipelineStageSummary[];
     filters: {
         q: string;
         status: string;
+        stage: string;
     };
     status_options: Array<{ value: string; label: string }>;
 };
 
-export default function HiringApplicationsIndex({ company_name, applications, filters, status_options }: Props) {
+export default function HiringApplicationsIndex({ company_name, applications, pipeline_summary, filters, status_options }: Props) {
     const [q, setQ] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
     const empty = applications.data.length === 0;
-    const hasFilters = Boolean(filters.q || filters.status);
+    const hasFilters = Boolean(filters.q || filters.status || filters.stage);
     const noApplications = empty && applications.total === 0 && !hasFilters;
 
     const search = (event: FormEvent) => {
@@ -33,6 +37,9 @@ export default function HiringApplicationsIndex({ company_name, applications, fi
         }
         if (status) {
             params.set('status', status);
+        }
+        if (filters.stage) {
+            params.set('stage', filters.stage);
         }
         router.get(`/account/hiring/applications?${params.toString()}`, {}, { preserveScroll: true });
     };
@@ -51,6 +58,22 @@ export default function HiringApplicationsIndex({ company_name, applications, fi
                 <h1 className="mt-1 text-xl font-semibold text-ink">Applications</h1>
                 <p className="mt-1 text-sm text-muted">{company_name}</p>
             </section>
+
+            <div className="mb-4 rounded-xl border border-line bg-white p-4 sm:p-5">
+                <h2 className="text-sm font-semibold text-ink">Pipeline</h2>
+                <p className="mt-1 text-xs text-muted">
+                    Filter applications across all jobs by ATS stage. Applied → Screening → Shortlisted → Interview →
+                    Selected → Offer → Joined → Closed
+                </p>
+                <div className="mt-3">
+                    <EmployerHiringApplicationsPipeline
+                        summary={pipeline_summary}
+                        activeStage={filters.stage}
+                        searchQuery={filters.q}
+                        statusFilter={filters.status}
+                    />
+                </div>
+            </div>
 
             <form onSubmit={search} className="mb-4 grid gap-3 rounded-xl border border-line bg-white p-4 sm:grid-cols-[1fr_auto_auto] sm:items-end">
                 <label className="min-w-0 text-sm">
@@ -78,7 +101,7 @@ export default function HiringApplicationsIndex({ company_name, applications, fi
                         ))}
                     </select>
                 </label>
-                <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
+                <Button surface="public" type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
                     Filter
                 </Button>
             </form>
@@ -87,7 +110,7 @@ export default function HiringApplicationsIndex({ company_name, applications, fi
                 <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
                     <p className="text-sm font-semibold text-ink">No applications yet</p>
                     <p className="mt-2 text-sm text-muted">Applications will appear here when candidates apply to your jobs.</p>
-                    <Button href="/account/jobs" variant="secondary" className="mt-4 min-h-11">
+                    <Button surface="public" href="/account/jobs" variant="secondary" className="mt-4 min-h-11">
                         View jobs
                     </Button>
                 </div>

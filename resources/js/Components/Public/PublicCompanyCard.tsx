@@ -1,4 +1,6 @@
 import { Link } from '@inertiajs/react';
+import Card from '@/Components/atoms/Card';
+import { publicJobsForEmployer } from '@/utils/publicJobsUrl';
 
 export type PublicCompanyCardData = {
     id: number;
@@ -10,6 +12,7 @@ export type PublicCompanyCardData = {
     ournear_verified?: boolean;
     open_jobs: number;
     url: string;
+    public_jobs_url?: string;
 };
 
 function initials(name: string): string {
@@ -32,7 +35,11 @@ type Props = {
 
 export default function PublicCompanyCard({ company, compact = false }: Props) {
     return (
-        <article className="flex min-w-0 max-w-full flex-col rounded-xl border border-line bg-white p-4 shadow-sm transition-shadow hover:shadow-md sm:p-5">
+        <Card
+            as="article"
+            padding="standard"
+            className="flex min-w-0 max-w-full flex-col transition-shadow hover:shadow-md"
+        >
             <div className="flex min-w-0 items-start gap-3">
                 {company.logo_url ? (
                     <Link href={company.url} className="shrink-0">
@@ -79,11 +86,14 @@ export default function PublicCompanyCard({ company, compact = false }: Props) {
                     View company
                 </Link>
                 {company.open_jobs > 0 ? (
-                    <Link href="/jobs" className="text-sm font-medium text-muted hover:text-brand">
+                    <Link
+                        href={company.public_jobs_url ?? publicJobsForEmployer(company.id)}
+                        className="text-sm font-medium text-muted hover:text-brand"
+                    >
                         Browse jobs
                     </Link>
                 ) : null}
             </div>
-        </article>
+        </Card>
     );
 }

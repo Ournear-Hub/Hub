@@ -1,6 +1,9 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import AdminAuthLayout from '@/Layouts/AdminAuthLayout';
+import Alert from '@/Components/molecules/Alert';
+import Button from '@/Components/atoms/Button';
 
 type ForgotPasswordProps = {
     status?: string | null;
@@ -19,14 +22,15 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
     return (
         <AdminAuthLayout title="Forgot password">
             <Head title="Forgot password" />
+            <BackNavLink href="/admin/login" label="Back to admin login" className="mb-4" />
             <p className="mb-4 text-sm text-muted">
                 Enter the administrator email address. If an account exists, a reset link will be sent.
             </p>
-            {status && (
-                <p className="mb-4 rounded-md border border-success/20 bg-success/10 px-3 py-2 text-sm text-success">
+            {status ? (
+                <Alert variant="success" className="mb-4">
                     {status}
-                </p>
-            )}
+                </Alert>
+            ) : null}
             <form onSubmit={submit} className="space-y-4">
                 <div>
                     <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
@@ -42,19 +46,10 @@ export default function ForgotPassword({ status }: ForgotPasswordProps) {
                     />
                     {errors.email && <p className="mt-1 text-sm text-danger">{errors.email}</p>}
                 </div>
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:bg-disabled"
-                >
+                <Button type="submit" surface="admin" variant="primary" fullWidth loading={processing} disabled={processing}>
                     Send reset link
-                </button>
+                </Button>
             </form>
-            <p className="mt-6 text-center text-sm">
-                <Link href="/admin/login" className="font-medium text-brand hover:underline">
-                    Back to login
-                </Link>
-            </p>
         </AdminAuthLayout>
     );
 }

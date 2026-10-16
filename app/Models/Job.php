@@ -4,8 +4,11 @@ namespace App\Models;
 
 use App\Casts\RecoveredBackedEnumCast;
 use App\Enums\BusinessIdPrefix;
+use App\Enums\JobListingScope;
 use App\Enums\JobPublishingStatus;
 use App\Models\Concerns\HasBusinessId;
+use App\Models\Qualification;
+use App\Models\Skill;
 use App\Services\UserPhotoService;
 use Database\Factories\JobFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,6 +62,8 @@ class Job extends Model
         'accommodation',
         'featured',
         'urgent',
+        'listing_priority',
+        'listing_scope',
         'active',
         'publishing_status',
         'description',
@@ -82,6 +87,7 @@ class Job extends Model
             'posted_date' => 'date',
             'closing_date' => 'date',
             'joining_date' => 'date',
+            'listing_scope' => RecoveredBackedEnumCast::class.':'.JobListingScope::class,
             'publishing_status' => RecoveredBackedEnumCast::class.':'.JobPublishingStatus::class,
             'trial_expires_at' => 'datetime',
         ];
@@ -203,6 +209,22 @@ class Job extends Model
     }
 
     /**
+     * @return BelongsToMany<Qualification, $this>
+     */
+    public function qualifications(): BelongsToMany
+    {
+        return $this->belongsToMany(Qualification::class, 'job_listing_qualification')->withTimestamps();
+    }
+
+    /**
+     * @return BelongsToMany<Skill, $this>
+     */
+    public function skills(): BelongsToMany
+    {
+        return $this->belongsToMany(Skill::class, 'job_listing_skill')->withTimestamps();
+    }
+
+    /**
      * @param  Builder<Job>  $query
      * @return Builder<Job>
      */
@@ -211,6 +233,14 @@ class Job extends Model
         return $query
             ->where('active', true)
             ->where('publishing_status', JobPublishingStatus::Published)
+            ->whereIn('listing_scope', [
+                JobListingScope::EmployerPublic->value,
+                JobListingScope::TalentPoolAndPublic->value,
+            ])
+            ->whereIn('listing_scope', [
+                JobListingScope::EmployerPublic->value,
+                JobListingScope::TalentPoolAndPublic->value,
+            ])
             ->where(function (Builder $trial) {
                 $trial->where('posting_tier', '!=', 'trial')
                     ->orWhereNull('trial_expires_at')
@@ -229,6 +259,11 @@ class Job extends Model
         }
 
         if ($this->publishing_status !== JobPublishingStatus::Published) {
+            return false;
+        }
+
+        $scope = $this->listing_scope ?? JobListingScope::EmployerPublic;
+        if (! $scope->isPublicWhenPublished()) {
             return false;
         }
 
@@ -345,27 +380,45 @@ class Job extends Model
         return $slug;
     }
 
+    public function listingPriorityLabel(): ?string
+    {
+        return match ($this->listing_priority ?? 'standard') {
+            'urgent' => 'Urgent',
+            'immediate_requirement' => 'Immediate requirement',
+            default => $this->urgent ? 'Urgent' : null,
+        };
+    }
+
     /**
      * @return array<string, mixed>
      */
     public function toPublicCard(): array
     {
-        $this->loadMissing('employer.user');
+        $this->loadMissing([
+            'employer.user',
+            'classifiedIndustry',
+            'classifiedCategory',
+            'classifiedLocation',
+            'classifiedEmploymentType',
+            'classifiedExperienceRange',
+            'employer',
+            'skills',
+        ]);
 
         return [
             'title' => $this->title,
             'slug' => $this->slug,
             'project' => $this->project,
             'company_name' => $this->employer?->publicDisplayCompany() ?: $this->project,
-            'company_logo_url' => app(UserPhotoService::class)->publicUrl($this->employer?->user?->photo_path),
-            'company_url' => $this->employer && $this->employer->shareAllows('enabled')
+            'company_logo_url' => $this->employer?->logoUrl(false),
+            'company_url' => $this->employer instanceof EmployerProfile && $this->employer->allowsPublicCompanyPage()
                 ? route('companies.show', $this->employer, false)
                 : null,
-            'industry' => $this->industry,
-            'category' => $this->category,
-            'location' => $this->location,
-            'employment_type' => $this->employment_type,
-            'experience' => $this->experience,
+            'industry' => $this->displayIndustry(),
+            'category' => $this->displayPublicCategory() ?? '',
+            'location' => $this->displayLocation(),
+            'employment_type' => $this->displayEmploymentType(),
+            'experience' => $this->displayExperience(),
             'salary' => $this->salary,
             'vacancy' => $this->vacancy,
             'posted_date' => $this->posted_date?->toDateString(),
@@ -375,12 +428,19 @@ class Job extends Model
             'is_closed' => $this->isClosed(),
             'featured' => $this->featured,
             'urgent' => (bool) $this->urgent,
+            'listing_priority' => $this->listing_priority ?? 'standard',
+            'listing_priority_label' => $this->listingPriorityLabel(),
             'joining_date' => $this->joining_date?->toDateString(),
             'site' => $this->site,
             'accommodation' => $this->accommodation,
             'posting_tier' => $this->posting_tier,
             'trial_expires_at' => $this->trial_expires_at?->toIso8601String(),
-        ];
+            'skills' => $this->skills->pluck('name')->take(6)->values()->all(),
+            'status_label' => $this->isClosed() ? 'Closed' : ($this->active ? 'Open' : 'Draft'),
+            'share_url' => app(\App\Support\PublicShareUrlBuilder::class)->forJob($this),
+        ] + ($this->employer instanceof EmployerProfile && $this->employer->ournearVerified()
+            ? ['company_verified' => true]
+            : []);
     }
 
     /**
@@ -388,8 +448,12 @@ class Job extends Model
      */
     public function toPublicDetail(): array
     {
+        $this->loadMissing(['skills', 'qualifications']);
+
         return [
             ...$this->toPublicCard(),
+            'skills' => $this->skills->pluck('name')->values()->all(),
+            'qualifications' => $this->qualifications->pluck('name')->values()->all(),
             'description' => $this->description,
             'responsibilities' => $this->responsibilities,
             'requirements' => $this->requirements,
@@ -414,6 +478,8 @@ class Job extends Model
             'classifiedEmploymentType',
             'classifiedExperienceRange',
             'employer.user',
+            'skills',
+            'qualifications',
         ]);
 
         return [
@@ -466,7 +532,10 @@ class Job extends Model
             'applications_count' => $this->applications_count ?? $this->applications()->count(),
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
-            'skills' => null,
+            'skill_ids' => $this->skills->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'qualification_ids' => $this->qualifications->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+            'skills' => $this->skills->pluck('name')->values()->all(),
+            'qualifications' => $this->qualifications->pluck('name')->values()->all(),
             'notice_period' => null,
             'keywords' => null,
             'qualification' => null,
@@ -483,6 +552,24 @@ class Job extends Model
     public function displayCategory(): ?string
     {
         return $this->classifiedCategory?->name;
+    }
+
+    /**
+     * Public listings: master job category when set; otherwise legacy free-text only when no FK is assigned.
+     */
+    public function displayPublicCategory(): ?string
+    {
+        if ($this->classifiedCategory?->name) {
+            return $this->classifiedCategory->name;
+        }
+
+        if ($this->job_category_id !== null) {
+            return null;
+        }
+
+        $legacy = trim((string) $this->category);
+
+        return $legacy !== '' ? $legacy : null;
     }
 
     public function displayLocation(): string

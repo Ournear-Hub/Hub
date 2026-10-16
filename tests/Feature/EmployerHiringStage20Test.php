@@ -45,7 +45,7 @@ class EmployerHiringStage20Test extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('employerNav', fn (Assert $nav) => $nav
-                    ->where('0.group', 'HIRING')
+                    ->where('0.group', 'OVERVIEW')
                     ->where('0.href', '/account/hiring')
                     ->etc()));
     }
@@ -106,6 +106,6 @@ class EmployerHiringStage20Test extends TestCase
 
         $this->actingAs($candidate)
             ->get(route('account.hiring.candidates'))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/hiring/candidates']));
     }
 }

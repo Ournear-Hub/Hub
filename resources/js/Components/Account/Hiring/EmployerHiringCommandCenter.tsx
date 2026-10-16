@@ -1,6 +1,6 @@
 import { Link } from '@inertiajs/react';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
 import type { AccountEmployerHiringWorkspace } from '@/types/account';
 
 const modules = [
@@ -11,12 +11,6 @@ const modules = [
         href: '/account/jobs',
     },
     {
-        key: 'partnership',
-        title: 'Recruitment Partnership',
-        description: 'Recruitment requirements and candidates OurNear submits to your company.',
-        href: '/account/submissions',
-    },
-    {
         key: 'staffing',
         title: 'Staffing Services',
         description: 'Request and track manpower and workforce staffing support.',
@@ -25,8 +19,8 @@ const modules = [
     {
         key: 'talent',
         title: 'Talent Pool',
-        description: 'Candidates from your job applications, grouped by hiring stage.',
-        href: '/account/hiring/candidates',
+        description: 'Admin-assigned manpower support candidates for your company to review.',
+        href: '/account/talent-pool',
     },
 ] as const;
 
@@ -91,7 +85,7 @@ export default function EmployerHiringCommandCenter({ workspace, canAdminHiring 
                         <h2 id="hiring-action-required" className="mt-2 text-lg font-semibold text-ink">
                             {primaryAction.label}
                         </h2>
-                        <Button href={primaryAction.href} variant="primary" className="mt-4 min-h-11 w-full sm:w-auto">
+                        <Button surface="public" href={primaryAction.href} variant="primary" className="mt-4 min-h-11 w-full sm:w-auto">
                             Continue
                         </Button>
                         {workspace.actions_required.length > 1 ? (
@@ -112,27 +106,23 @@ export default function EmployerHiringCommandCenter({ workspace, canAdminHiring 
                             Hiring is up to date
                         </h2>
                         <p className="mt-2 text-sm text-muted">No urgent hiring tasks need your attention right now.</p>
-                        <Button href="/account/jobs" variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
+                        <Button surface="public" href="/account/jobs" variant="secondary" className="mt-4 min-h-11 w-full sm:w-auto">
                             View jobs
                         </Button>
                     </>
                 )}
             </section>
 
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <Card density="compact" as="article">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <Card padding="compact" as="article">
                     <p className="text-xs text-muted">Active jobs</p>
                     <p className="mt-1 text-2xl font-semibold text-ink">{workspace.active_jobs_count}</p>
                 </Card>
-                <Card density="compact" as="article">
+                <Card padding="compact" as="article">
                     <p className="text-xs text-muted">Applications</p>
                     <p className="mt-1 text-2xl font-semibold text-ink">{workspace.applicants_count}</p>
                 </Card>
-                <Card density="compact" as="article">
-                    <p className="text-xs text-muted">Submitted candidates</p>
-                    <p className="mt-1 text-2xl font-semibold text-ink">{workspace.submissions_count}</p>
-                </Card>
-                <Card density="compact" as="article">
+                <Card padding="compact" as="article">
                     <p className="text-xs text-muted">Enquiries</p>
                     <p className="mt-1 text-2xl font-semibold text-ink">{workspace.enquiries_count}</p>
                 </Card>
@@ -140,14 +130,14 @@ export default function EmployerHiringCommandCenter({ workspace, canAdminHiring 
 
             {workspace.can_post_job ? (
                 <div className="flex flex-wrap gap-3">
-                    <Button href="/account/jobs/create" variant="primary" className="min-h-11 w-full sm:w-auto">
+                    <Button surface="public" href="/account/jobs/create" variant="primary" className="min-h-11 w-full sm:w-auto">
                         Post a job
                     </Button>
                 </div>
             ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-                <Card as="section" density="compact">
+                <Card as="section" padding="compact">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                         <h2 className="text-base font-semibold text-ink">Active jobs</h2>
                         <Link href="/account/jobs" className="text-sm font-semibold text-brand hover:underline">
@@ -190,7 +180,7 @@ export default function EmployerHiringCommandCenter({ workspace, canAdminHiring 
                     )}
                 </Card>
 
-                <Card as="section" density="compact">
+                <Card as="section" padding="compact">
                     <h2 className="text-base font-semibold text-ink">Recent applicant activity</h2>
                     {workspace.recent_applicants.length > 0 ? (
                         <ul className="mt-3 divide-y divide-line">
@@ -226,7 +216,7 @@ export default function EmployerHiringCommandCenter({ workspace, canAdminHiring 
                 </h2>
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {modules.map((module) => (
-                        <Card key={module.key} as="article" density="compact" className="flex flex-col">
+                        <Card key={module.key} as="article" padding="compact" className="flex flex-col">
                             <h3 className="font-semibold text-ink">{module.title}</h3>
                             <p className="mt-2 flex-1 text-sm text-muted">{module.description}</p>
                             <Link

@@ -33,11 +33,15 @@ class ResumeImportController extends Controller
                 'needs_review' => $batch->needs_review,
                 'failed' => $batch->failed,
                 'emails_queued' => $batch->emails_queued,
+                'status' => $batch->status,
+                'ready' => $batch->items->where('status', 'ready')->count(),
                 'items' => $batch->items->map(fn ($item) => [
                     'filename' => $item->original_filename,
                     'status' => $item->status,
                     'email_status' => $item->email_status,
                     'message' => $item->message,
+                    'extracted_name' => $item->extracted_name,
+                    'extracted_email' => $item->extracted_email,
                     'ournear_id' => $item->user ? app(\App\Support\OurNearHireIdentity::class)->display($item->user, 'CAN') : null,
                     'profile_url' => $item->user?->username ? route('profiles.show', $item->user) : null,
                 ])->values()->all(),
@@ -53,12 +57,30 @@ class ResumeImportController extends Controller
     {
         $actor = $request->user();
         abort_unless($actor instanceof User, 403);
-        $batch = $imports->import($actor, $request->file('files', []));
+        $batch = $imports->stage($actor, $request->file('files', []));
 
         return redirect()
             ->route('admin.candidates.imports.index')
             ->with('success', sprintf(
-                'Import completed. Created %d, matched %d, needs review %d, failed %d.',
+                'Extraction completed. Ready %d, matched %d, needs review %d, failed %d. Confirm the batch to create candidates.',
+                $batch->items->where('status', 'ready')->count(),
+                $batch->matched,
+                $batch->needs_review,
+                $batch->failed,
+            ));
+    }
+
+    public function confirm(Request $request, ResumeImportBatch $batch, ResumeImportService $imports): RedirectResponse
+    {
+        $actor = $request->user();
+        abort_unless($actor instanceof User && $actor->hasPermission('candidates.manage'), 403);
+
+        $batch = $imports->confirm($actor, $batch);
+
+        return redirect()
+            ->route('admin.candidates.imports.index')
+            ->with('success', sprintf(
+                'Import confirmed. Created %d, matched %d, needs review %d, failed %d.',
                 $batch->successful,
                 $batch->matched,
                 $batch->needs_review,

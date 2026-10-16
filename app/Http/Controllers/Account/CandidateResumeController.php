@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Account;
 
+use App\Enums\DocumentType;
 use App\Enums\FileLifecycleStatus;
 use App\Enums\FileVisibility;
 use App\Http\Controllers\Controller;
@@ -16,15 +17,22 @@ use App\Services\ResumeBuilderService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Inertia\Response;
+use Inertia\Response as InertiaResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CandidateResumeController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request): InertiaResponse
     {
         $profile = $this->ownedProfile($request);
         $user = $request->user();
+
+        $documents = $profile->documents()
+            ->get()
+            ->map->toAccountArray()
+            ->values()
+            ->all();
 
         return Inertia::render('Account/Resumes/Index', [
             'resumes' => $profile->resumes()
@@ -39,10 +47,17 @@ class CandidateResumeController extends Controller
             'visibilities' => FileVisibility::options(),
             'completion_items' => $user->profileCompletionItems(),
             'profile_completion' => (int) $user->profile_completion,
+            'documents' => $documents,
+            'document_types' => DocumentType::options(),
+            'document_visibilities' => FileVisibility::options(),
+            'public_profile_url' => filled($user->username)
+                ? route('profiles.show', ['user' => $user->username], false)
+                : null,
+            'public_profile_share_enabled' => $profile->shareAllows('enabled'),
         ]);
     }
 
-    public function builder(Request $request, ResumeBuilderService $builder): Response
+    public function builder(Request $request, ResumeBuilderService $builder): InertiaResponse
     {
         $this->ownedProfile($request);
 
@@ -50,6 +65,19 @@ class CandidateResumeController extends Controller
             'preview' => $builder->preview($request->user()),
             'completion_items' => $request->user()->profileCompletionItems(),
             'profile_completion' => (int) $request->user()->profile_completion,
+        ]);
+    }
+
+    public function builderDownload(Request $request, ResumeBuilderService $builder): Response
+    {
+        $this->ownedProfile($request);
+        $preview = $builder->preview($request->user());
+        $html = view('account.hire-resume-export', ['preview' => $preview])->render();
+
+        return response($html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="ournear-hire-resume.html"',
+            'X-Content-Type-Options' => 'nosniff',
         ]);
     }
 

@@ -72,6 +72,7 @@ class CampaignReferralStage10Test extends TestCase
         ], CampaignStatus::cases());
         $this->assertSame([
             ShareChannel::Whatsapp,
+            ShareChannel::Email,
             ShareChannel::Copy,
             ShareChannel::Native,
         ], ShareChannel::cases());
@@ -251,18 +252,16 @@ class CampaignReferralStage10Test extends TestCase
 
         $this->forgetAuthentication();
         $this->withUnencryptedCookie(ReferralLink::COOKIE_NAME, 'BARELINK')
+            ->from(route('register'))
             ->post(route('register.store'), $this->registrationPayload([
                 'name' => 'Referred Employer',
                 'email' => 'referred.employer@example.com',
                 'username' => 'refemployer',
                 'role' => UserRole::Employer->value,
             ]))
-            ->assertRedirect();
+            ->assertSessionHasErrors('role');
 
-        $employer = User::query()->where('email', 'referred.employer@example.com')->first();
-        $this->assertNotNull($employer);
-        $this->assertTrue($employer->isEmployer());
-        $this->assertSame(RegistrationSource::Referral, $employer->registration_source);
+        $this->assertNull(User::query()->where('email', 'referred.employer@example.com')->first());
         $this->assertSame(0, EmployerAttribution::query()->count());
         $this->assertSame(0, Invoice::query()->count());
         $this->assertSame(0, Payment::query()->count());

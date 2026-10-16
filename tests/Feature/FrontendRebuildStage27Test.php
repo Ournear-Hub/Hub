@@ -41,7 +41,7 @@ class FrontendRebuildStage27Test extends TestCase
 
         $this->actingAs($candidate)
             ->get(route('account.employer.jobs.index'))
-            ->assertForbidden();
+            ->assertRedirect(route('account.hiring', ['destination' => '/account/jobs']));
     }
 
     public function test_candidate_activates_hiring_with_same_verified_email_without_changing_role(): void
@@ -52,10 +52,10 @@ class FrontendRebuildStage27Test extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->post(route('account.hiring.activate'), [
+            ->post(route('account.hiring.activate'), $this->hiringActivationPayload([
                 'company_name' => 'Dev Hire Co',
-                'hiring_email' => $candidate->email,
-            ])
+                'company_email' => $candidate->email,
+            ]))
             ->assertRedirect();
 
         $candidate->refresh();
@@ -79,15 +79,21 @@ class FrontendRebuildStage27Test extends TestCase
         ]);
 
         $this->actingAs($candidate)
-            ->from(route('account.hiring'))
-            ->post(route('account.hiring.activate'), [
+            ->post(route('account.hiring.activate'), $this->hiringActivationPayload([
                 'company_name' => 'Dev Hire Co',
+                'company_email' => 'recruiter-dev@example.com',
+            ]))
+            ->assertRedirect(route('account.hiring'));
+
+        $this->assertTrue(EmployerProfile::query()->where('user_id', $candidate->id)->exists());
+        $this->assertFalse($candidate->fresh()->hiringEmailVerified());
+
+        $this->actingAs($candidate)
+            ->post(route('account.hiring.email.send'), [
                 'hiring_email' => 'recruiter-dev@example.com',
             ])
-            ->assertRedirect(route('account.hiring'))
-            ->assertSessionHasErrors('hiring_email');
+            ->assertRedirect();
 
-        $this->assertFalse(EmployerProfile::query()->where('user_id', $candidate->id)->exists());
         Notification::assertSentTo($candidate, HiringEmailVerificationNotification::class);
 
         $hash = sha1('recruiter-dev@example.com');
@@ -98,14 +104,6 @@ class FrontendRebuildStage27Test extends TestCase
 
         $this->actingAs($candidate)->get($url)->assertRedirect(route('account.hiring'));
         $this->assertTrue($candidate->fresh()->hiringEmailVerified());
-
-        $this->actingAs($candidate)
-            ->post(route('account.hiring.activate'), [
-                'company_name' => 'Dev Hire Co',
-                'hiring_email' => 'recruiter-dev@example.com',
-            ])
-            ->assertRedirect();
-
         $this->assertTrue($candidate->fresh()->hiringServicesActive());
     }
 
@@ -126,7 +124,7 @@ class FrontendRebuildStage27Test extends TestCase
                 'company_name' => 'Dev Hire Co',
             ])
             ->assertRedirect(route('account.hiring'))
-            ->assertSessionHasErrors('mobile');
+            ->assertSessionHasErrors(['company_phone', 'company_email', 'industry_id']);
     }
 
     public function test_jobs_page_accepts_company_salary_work_mode_and_sort(): void

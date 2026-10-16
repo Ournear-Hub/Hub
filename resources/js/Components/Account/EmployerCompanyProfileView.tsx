@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import CompanyContactVerificationSection from '@/Components/Account/CompanyContactVerificationSection';
 import type { AccountCompanySocials, AccountProfile } from '@/types/account';
 
 type Props = {
@@ -65,10 +66,10 @@ export default function EmployerCompanyProfileView({ profile }: Props) {
                 <DetailRow label="Company size">{profile.company_size || <EmptyValue />}</DetailRow>
             </Section>
 
-            <Section title="Contact">
-                <DetailRow label="Contact person">{profile.contact_person || <EmptyValue />}</DetailRow>
-                <DetailRow label="Company mobile">{profile.mobile_number || <EmptyValue />}</DetailRow>
-                <DetailRow label="Account email">{profile.email || <EmptyValue />}</DetailRow>
+            <CompanyContactVerificationSection profile={profile} />
+
+            <Section title="Contact person">
+                <DetailRow label="Name">{profile.contact_person || <EmptyValue />}</DetailRow>
             </Section>
 
             <Section title="Locations & benefits">

@@ -1,0 +1,65 @@
+[project]
+name = "ournear-qa-agent"
+version = "0.1.0"
+description = "Human-simulation QA agent for OurNear Hire"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pytest>=8.0",
+    "pytest-playwright>=0.5",
+    "playwright>=1.49",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.8",
+]
+
+[project.scripts]
+ournear-qa = "ournear_qa.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+    "smoke: quick local sanity",
+    "p0: launch-critical journey",
+    "journey: end-to-end user journey",
+    "manual: companion manual-case browser evidence",
+    "stage1: Stage 1 public website browser checklist",
+    "stage2: Stage 2 candidate profile browser checklist",
+    "stage3: Stage 3 candidate application browser checklist",
+    "stage3_gap: Stage 3 gap-closure browser evidence (§F)",
+    "stage4: Stage 4 employer workspace browser checklist",
+    "stage5: Stage 5 employer application management browser checklist",
+    "phase5c: Phase 5C master-data Excel import/export browser acceptance",
+    "reg_md_001: REG-MD-001 master-data Excel browser closure",
+    "reg_md_001_ext: REG-MD-001 browser extension (entities, tokens, bounds)",
+    "reg_md_001_acceptance: REG-MD-001 final browser acceptance gaps",
+    "c3_upload: C3 employer logo and document browser upload",
+    "f1_visual: F1 public responsive visual closure",
+    "reg_php_003: REG-PHP-003 unverified employer publication policy browser",
+    "reg_php_003: REG-PHP-003 unverified employer publish policy browser",
+    "reg_md_001: REG-MD-001 master-data Excel browser QA closure",
+    "reg_com_001: REG-COM-001 admin message templates browser QA",
+    "reg_prod_002: REG-PROD-002 admin email delivery browser QA",
+    "reg_prod_001: REG-PROD-001 employer self-service reject browser QA",
+    "stage6: Stage 6 cross-role workflow browser checklist",
+    "stage7: Stage 7 decision and communication browser checklist",
+    "stage8: Stage 8 candidate admin workflow browser checklist",
+    "stage9: Stage 9 employer candidate workflow browser checklist",
+    "stage10: Stage 10 security negative recovery browser checklist",
+    "stage11: Stage 11 complete recruitment lifecycle browser checklist",
+    "stage12: Stage 12 final regression release gate",
+]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ournear_qa*"]

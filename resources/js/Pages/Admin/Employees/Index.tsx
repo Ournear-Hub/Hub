@@ -6,9 +6,7 @@ import Pagination from '@/Components/Pagination';
 import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Modal,
     SearchBar,
@@ -18,7 +16,10 @@ import {
     Textarea,
     Timeline,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { RecruitmentChainStep } from '@/Components/Admin/RecruitmentChain';
@@ -150,17 +151,21 @@ export default function EmployeesIndex({ employees, selected, filters, options, 
     ];
 
     return (
-        <AdminLayout title="Joined / Employees">
+        <AdminLayout
+            title="Joined / Employees"
+            breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Employees' }]}
+        >
             <div
                 className={selected ? 'pointer-events-none' : undefined}
                 inert={selected ? true : undefined}
                 aria-hidden={selected ? true : undefined}
             >
                 <div className="mb-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Joined / Employees</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Employees are created when a candidate joins a specific placement. This does not globally convert the candidate.
-                    </p>
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Joined employees from placements"
+                        description="Employees are created when a candidate joins a specific placement. This does not globally convert the candidate."
+                    />
                 </div>
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Employee, placement, employer, job, candidate ID" />

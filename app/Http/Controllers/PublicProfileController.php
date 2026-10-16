@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmployerProfile;
+use App\Models\Job;
 use App\Models\User;
+use App\Services\PublicJobStateService;
 use App\Services\UnifiedProfilePresenter;
 use App\Support\PublicContent;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -20,18 +23,41 @@ class PublicProfileController extends Controller
 
         return Inertia::render('Profiles/Show', [
             'content' => PublicContent::common(),
-            'profile' => $profiles->publicCandidate($user),
+            'profile' => $profiles->publicCandidate($user, $isOwner),
             'viewer' => [
                 'is_owner' => $isOwner,
             ],
         ]);
     }
 
-    public function company(EmployerProfile $employer, UnifiedProfilePresenter $profiles): Response
-    {
+    public function company(
+        Request $request,
+        EmployerProfile $employer,
+        UnifiedProfilePresenter $profiles,
+        PublicJobStateService $jobStates,
+    ): Response {
+        $company = $profiles->publicCompany($employer);
+
+        $openJobs = Job::query()
+            ->with([
+                'employer.user',
+                'classifiedIndustry',
+                'classifiedCategory',
+                'classifiedLocation',
+                'classifiedEmploymentType',
+                'classifiedExperienceRange',
+                'skills',
+            ])
+            ->where('employer_id', $employer->id)
+            ->publiclyVisible()
+            ->latest('posted_date')
+            ->limit(8)
+            ->get();
+
         return Inertia::render('Companies/Show', [
             'content' => PublicContent::common(),
-            'company' => $profiles->publicCompany($employer),
+            'company' => $company,
+            'open_job_cards' => $jobStates->decorateCollection($openJobs, $request->user()),
         ]);
     }
 }

@@ -43,6 +43,51 @@ class UnifiedProfileStage23FTest extends TestCase
         $this->assertSame('Mining Engineer | Open Cast', $candidate->fresh()->professional_headline);
     }
 
+    public function test_public_profile_includes_employment_timeline_fields_when_history_is_shared(): void
+    {
+        $candidate = $this->makeCandidate([
+            'username' => 'history-public',
+            'professional_headline' => 'Surveyor',
+        ]);
+        $profile = $candidate->candidateProfile;
+        $this->assertNotNull($profile);
+
+        $profile->employmentHistories()->create([
+            'company' => 'Mine Co',
+            'designation' => 'Surveyor',
+            'started_on' => '2020-01-01',
+            'ended_on' => '2022-06-01',
+            'is_current' => false,
+            'description' => 'Open-pit mapping',
+        ]);
+
+        $this->actingAs($candidate)
+            ->put(route('account.profile.privacy.update'), [
+                'enabled' => true,
+                'history' => true,
+                'headline' => true,
+            ])
+            ->assertRedirect();
+
+        $this->forgetAuthentication();
+        $this->get(route('profiles.show', ['user' => $candidate->username]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('profile.employment_history.0.company', 'Mine Co')
+                ->where('profile.employment_history.0.designation', 'Surveyor')
+                ->where('profile.employment_history.0.started_on', '2020-01-01')
+                ->where('profile.employment_history.0.description', 'Open-pit mapping')
+                ->missing('profile.business_id')
+                ->missing('profile.verifications'));
+
+        $this->actingAs($candidate)
+            ->get(route('profiles.show', ['user' => $candidate->username]))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('viewer.is_owner', true)
+                ->where('profile.verifications.email', true));
+    }
+
     public function test_public_profile_hides_private_education_projects_and_contact(): void
     {
         $candidate = $this->makeCandidate([

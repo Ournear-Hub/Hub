@@ -83,7 +83,7 @@ class LiveBrevoEmailVerificationQaTest extends BaseTestCase
             'hash' => sha1($user->email),
         ]);
 
-        $this->get($verifyUrl)->assertRedirect(route('account.settings.security'));
+        $this->get($verifyUrl)->assertRedirect(route('account.settings.verification'));
         $this->assertNotNull($user->fresh()->email_verified_at);
 
         $resendEmail = $this->qaEmail($inbox, 'resend-'.$stamp);
@@ -121,7 +121,7 @@ class LiveBrevoEmailVerificationQaTest extends BaseTestCase
 
         $newEmail = $this->qaEmail($inbox, 'change-'.$stamp);
         $this->actingAs($user->fresh(), 'account')
-            ->from(route('account.settings.security'))
+            ->from(route('account.settings.verification'))
             ->post(route('account.settings.email.change'), [
                 'email' => $newEmail,
             ])
@@ -137,7 +137,7 @@ class LiveBrevoEmailVerificationQaTest extends BaseTestCase
             'hash' => sha1($newEmail),
         ]);
 
-        $this->actingAs($user, 'account')->get($changeUrl)->assertRedirect(route('account.settings.security'));
+        $this->actingAs($user, 'account')->get($changeUrl)->assertRedirect(route('account.settings.verification'));
         $user->refresh();
         $this->assertSame($newEmail, $user->email);
         $this->assertNull($user->pending_email);

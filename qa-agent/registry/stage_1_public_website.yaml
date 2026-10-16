@@ -1,0 +1,129 @@
+# Stage 1 — public website & job discovery checklist (schema v1)
+# Executed via pytest tests/stage1/ with --ournear-suite stage1
+
+version: 1
+stage: 1
+title: Public website and job discovery
+module: public
+
+cases:
+  - id: STG1-PUB-001
+    feature_ids: [PUB-01]
+    route: /
+    summary: Home loads; primary navigation present
+  - id: STG1-PUB-002
+    feature_ids: [PUB-01]
+    route: /
+    summary: Primary nav links reach expected public routes (Jobs, Companies, Hire, Talent Pool, Staffing, About)
+  - id: STG1-PUB-003
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Jobs listing loads with search panel and result count
+  - id: STG1-PUB-004
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Keyword search via UI returns matching fixture job
+  - id: STG1-PUB-005
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Company filter via #job-company (desktop 1400×900)
+  - id: STG1-PUB-006
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Company filter usable on mobile 390×844
+  - id: STG1-PUB-007
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Employment type and location filters apply without error
+  - id: STG1-PUB-008
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Clear filters resets controls and broadens results
+  - id: STG1-PUB-009
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Company filter persists on pagination page 2
+  - id: STG1-PUB-010
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Impossible keyword shows honest empty state
+  - id: STG1-PUB-011
+    feature_ids: [PUB-03]
+    route: /jobs
+    summary: Job detail matches selected listing (desktop split + mobile full page)
+  - id: STG1-PUB-012
+    feature_ids: [PUB-03]
+    route: /jobs/{slug}/apply
+    summary: Guest Apply redirects to login with intended URL
+  - id: STG1-PUB-013
+    feature_ids: [PUB-02]
+    route: /jobs/qa-fixture-draft-a
+    summary: Draft fixture job is not publicly visible (404)
+  - id: STG1-PUB-014
+    feature_ids: [PUB-02]
+    route: /jobs/qa-fixture-published-a
+    summary: Published fixture job is publicly visible
+  - id: STG1-PUB-015
+    feature_ids: [PUB-04]
+    route: /companies
+    summary: Companies index loads
+  - id: STG1-PUB-016
+    feature_ids: [PUB-05]
+    route: /hire
+    summary: Hire platform page loads
+  - id: STG1-PUB-017
+    feature_ids: [PUB-05]
+    route: /talent-pool
+    summary: Talent pool page loads
+  - id: STG1-PUB-018
+    feature_ids: [PUB-05]
+    route: /staffing
+    summary: Staffing page loads
+  - id: STG1-PUB-019
+    feature_ids: [PUB-01]
+    route: /about
+    summary: About page loads
+  - id: STG1-PUB-020
+    feature_ids: [PUB-01]
+    route: /services
+    summary: Services page loads (published route)
+  - id: STG1-PUB-021
+    feature_ids: [PUB-07]
+    route: /for-employers
+    summary: For employers page loads
+  - id: STG1-PUB-022
+    feature_ids: [PUB-07]
+    route: /contact
+    summary: Contact page loads
+  - id: STG1-PUB-023
+    feature_ids: [PUB-08]
+    route: /privacy-policy
+    summary: Privacy policy loads
+  - id: STG1-PUB-024
+    feature_ids: [PUB-08]
+    route: /terms-and-conditions
+    summary: Terms and conditions load
+  - id: STG1-PUB-025
+    feature_ids: [PUB-09]
+    route: /freelancers
+    summary: Freelancer intake page loads
+  - id: STG1-PUB-026
+    feature_ids: [PUB-08]
+    route: /
+    summary: Footer support links (Contact, Privacy, Terms) navigate correctly
+  - id: STG1-PUB-027
+    feature_ids: [ACC-AUTH-01]
+    route: /login
+    summary: Login and Register links reachable from public header
+  - id: STG1-PUB-028
+    feature_ids: [PUB-02]
+    route: /jobs
+    summary: Filter query string survives browser reload
+  - id: STG1-PUB-029
+    feature_ids: [X-01]
+    route: /account
+    summary: Guest cannot access account workspace (redirect to login)
+  - id: STG1-PUB-030
+    feature_ids: [X-01]
+    route: /admin
+    summary: Guest cannot access admin workspace (redirect to admin login)

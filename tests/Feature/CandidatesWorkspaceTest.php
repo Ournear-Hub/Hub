@@ -98,7 +98,7 @@ class CandidatesWorkspaceTest extends TestCase
         $admin = $this->makeAdmin();
         $candidate = $this->makeCandidate();
         $path = 'candidate-resume.pdf';
-        Storage::disk('resumes')->put($path, 'resume-bytes');
+        Storage::disk('resumes')->put($path, \App\Support\ReadablePdfFixture::minimalOnePage());
         $application = Application::factory()->create([
             'user_id' => $candidate->id,
             'email' => $candidate->email,

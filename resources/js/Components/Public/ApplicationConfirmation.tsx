@@ -1,5 +1,5 @@
 import Alert from '@/Components/UI/Alert';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 
 export type ApplicationConfirmationPayload = {
     business_id: string | null;
@@ -32,14 +32,14 @@ export default function ApplicationConfirmation({ confirmation, className = '' }
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
                 {confirmation.href ? (
-                    <Button href={confirmation.href} variant="secondary" className="text-sm">
+                    <Button surface="public" href={confirmation.href} variant="secondary" className="text-sm">
                         View application
                     </Button>
                 ) : null}
-                <Button href="/jobs" variant="outline" className="text-sm">
+                <Button surface="public" href="/jobs" variant="outline" className="text-sm">
                     Browse more jobs
                 </Button>
-                <Button href="/account/profile" variant="ghost" className="text-sm">
+                <Button surface="public" href="/account/profile" variant="ghost" className="text-sm">
                     View profile
                 </Button>
             </div>

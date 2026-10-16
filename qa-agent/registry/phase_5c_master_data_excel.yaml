@@ -1,0 +1,28 @@
+# Phase 5C — master-data Excel import/export (browser acceptance)
+
+version: 1
+phase: 5c
+title: Master data Excel I/E
+module: admin
+
+cases:
+  - id: P5C-MD-001
+    feature_ids: [ADM-08]
+    route: /admin/master-data
+    summary: Admin sees Excel import/export panel on master-data tab
+  - id: P5C-MD-002
+    feature_ids: [ADM-08]
+    route: /admin/master-data/{type}/excel/template
+    summary: Download template workbook
+  - id: P5C-MD-003
+    feature_ids: [ADM-08]
+    route: /admin/master-data/{type}/excel/export
+    summary: Export existing industries workbook
+  - id: P5C-MD-004
+    feature_ids: [ADM-08]
+    route: /admin/master-data/{type}/excel/preview
+    summary: Upload valid workbook, preview, confirm, persisted row
+  - id: P5C-MD-005
+    feature_ids: [ADM-08]
+    route: /admin/master-data/{type}/excel/preview
+    summary: Invalid upload shows actionable error without persisting row

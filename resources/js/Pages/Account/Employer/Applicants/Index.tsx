@@ -1,5 +1,9 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
 import AccountLayout from '@/Layouts/AccountLayout';
+import EmployerApplicantComparePanel, {
+    type EmployerCompareApplicant,
+} from '@/Components/Account/Recruiter/EmployerApplicantComparePanel';
 import EmployerApplicantPipeline, {
     type PipelineStageSummary,
 } from '@/Components/Account/Recruiter/EmployerApplicantPipeline';
@@ -7,7 +11,7 @@ import EmployerApplicantSearch from '@/Components/Account/Recruiter/EmployerAppl
 import RecruiterCandidateSummary, {
     type RecruiterCandidateSummaryData,
 } from '@/Components/Account/Recruiter/RecruiterCandidateSummary';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
 
@@ -25,11 +29,17 @@ type Props = {
         q: string;
         status: string;
         stage: string;
+        compare?: string;
     };
     status_options: Array<{ value: string; label: string }>;
+    compare: {
+        open: boolean;
+        application_ids: number[];
+        applications: EmployerCompareApplicant[];
+    };
 };
 
-function applicantsListHref(jobSlug: string, filters: Props['filters']): string {
+function applicantsListHref(jobSlug: string, filters: Props['filters'], includeCompare = false): string {
     const params = new URLSearchParams();
     if (filters.q) {
         params.set('q', filters.q);
@@ -39,6 +49,9 @@ function applicantsListHref(jobSlug: string, filters: Props['filters']): string 
     }
     if (filters.stage) {
         params.set('stage', filters.stage);
+    }
+    if (includeCompare && filters.compare) {
+        params.set('compare', filters.compare);
     }
     const query = params.toString();
     return `/account/jobs/${jobSlug}/applicants${query ? `?${query}` : ''}`;
@@ -87,11 +100,76 @@ function profileContextQuery(
     return params.toString();
 }
 
-export default function EmployerApplicants({ job, applications, filters, status_options, pipeline_summary }: Props) {
+function compareCandidateLabel(row: RecruiterCandidateSummaryData): string {
+    return row.name?.trim() || 'Applicant';
+}
+
+export default function EmployerApplicants({
+    job,
+    applications,
+    filters,
+    status_options,
+    pipeline_summary,
+    compare,
+}: Props) {
+    const { errors } = usePage().props as { errors?: Record<string, string> };
+    const [selectedIds, setSelectedIds] = useState<number[]>(compare.application_ids ?? []);
+
+    useEffect(() => {
+        setSelectedIds(compare.application_ids ?? []);
+    }, [compare.application_ids]);
+
+    const selectedCount = selectedIds.length;
+    const compareOpen = compare.open && compare.applications.length >= 2;
+
+    const compareApplications = useMemo(
+        () =>
+            compare.applications.map((row) => ({
+                ...row,
+                application_href: applicationDetailHref(row.application_href, job.slug, filters),
+            })),
+        [compare.applications, filters, job.slug],
+    );
+
     const empty = applications.data.length === 0;
     const hasFilters = Boolean(filters.q || filters.status || filters.stage);
     const noApplicants = empty && applications.total === 0 && !hasFilters;
     const noMatches = empty && !noApplicants;
+
+    const visitApplicants = (compareIds: number[], openComparePanel: boolean) => {
+        router.get(
+            `/account/jobs/${job.slug}/applicants`,
+            {
+                q: filters.q || undefined,
+                status: filters.status || undefined,
+                stage: filters.stage || undefined,
+                compare: openComparePanel && compareIds.length >= 2 ? compareIds.join(',') : undefined,
+            },
+            { preserveScroll: true, preserveState: true },
+        );
+    };
+
+    const toggleCompare = (applicant: RecruiterCandidateSummaryData) => {
+        setSelectedIds((current) => {
+            if (current.includes(applicant.id)) {
+                return current.filter((id) => id !== applicant.id);
+            }
+
+            if (current.length >= 5) {
+                return current;
+            }
+
+            return [...current, applicant.id];
+        });
+    };
+
+    const openCompare = () => {
+        visitApplicants(selectedIds, true);
+    };
+
+    const hideCompare = () => {
+        visitApplicants(selectedIds, false);
+    };
 
     return (
         <AccountLayout
@@ -128,7 +206,10 @@ export default function EmployerApplicants({ job, applications, filters, status_
             </section>
 
             <div className="mb-4 rounded-xl border border-line bg-white p-4 sm:p-5">
-                <h2 className="text-sm font-semibold text-ink">Pipeline</h2>
+                <h2 className="text-sm font-semibold text-ink">Recruitment pipeline</h2>
+                <p className="mt-1 text-xs text-muted">
+                    Applied → Screening → Shortlisted → Interview → Selected → Offer → Joined → Closed
+                </p>
                 <div className="mt-3">
                     <EmployerApplicantPipeline
                         jobSlug={job.slug}
@@ -147,10 +228,12 @@ export default function EmployerApplicants({ job, applications, filters, status_
                 resultCount={applications.data.length}
             />
 
+            {errors?.compare ? <p className="mt-3 text-sm text-danger">{errors.compare}</p> : null}
+
             {noApplicants ? (
                 <div className="mt-4 rounded-xl border border-dashed border-line bg-white p-8 text-center">
                     <p className="text-sm text-muted">No applicants for this job yet.</p>
-                    <Button href="/account/jobs" variant="secondary" className="mt-4 min-h-11">
+                    <Button surface="public" href="/account/jobs" variant="secondary" className="mt-4 min-h-11">
                         View jobs
                     </Button>
                 </div>
@@ -159,7 +242,7 @@ export default function EmployerApplicants({ job, applications, filters, status_
             {noMatches ? (
                 <div className="mt-4 rounded-xl border border-dashed border-line bg-white p-8 text-center">
                     <p className="text-sm text-muted">No applicants match these filters.</p>
-                    <Button
+                    <Button surface="public"
                         href={`/account/jobs/${job.slug}/applicants`}
                         variant="secondary"
                         className="mt-4 min-h-11"
@@ -171,24 +254,64 @@ export default function EmployerApplicants({ job, applications, filters, status_
 
             {!empty ? (
                 <div className="mt-4 space-y-3">
-                    <p className="text-sm text-muted">
-                        {applications.total} total applicant{applications.total === 1 ? '' : 's'}
-                    </p>
-                    {applications.data.map((applicant) => (
-                        <RecruiterCandidateSummary
-                            key={applicant.id}
-                            candidate={{
-                                ...applicant,
-                                application_href: applicationDetailHref(
-                                    applicant.application_href,
-                                    job.slug,
-                                    filters,
-                                ),
-                            }}
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-sm text-muted">
+                            {applications.total} total applicant{applications.total === 1 ? '' : 's'}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                surface="public"
+                                variant="secondary"
+                                type="button"
+                                disabled={selectedCount < 2}
+                                onClick={openCompare}
+                            >
+                                Compare selected{selectedCount > 0 ? ` (${selectedCount})` : ''}
+                            </Button>
+                        </div>
+                    </div>
+
+                    {selectedCount >= 2 && !compareOpen ? (
+                        <p className="text-sm text-muted">
+                            {selectedCount} applicants selected. Click <span className="font-medium text-ink">Compare selected</span>{' '}
+                            to load a side-by-side view for this job.
+                        </p>
+                    ) : null}
+
+                    {compareOpen ? (
+                        <EmployerApplicantComparePanel
                             jobTitle={job.title}
-                            mode="application"
-                            profileQuery={profileContextQuery(job, applicant, filters)}
+                            applicants={compareApplications}
+                            onHide={hideCompare}
                         />
+                    ) : null}
+
+                    {applications.data.map((applicant) => (
+                        <div key={applicant.id} className="flex items-start gap-3">
+                            <input
+                                type="checkbox"
+                                className="mt-5"
+                                checked={selectedIds.includes(applicant.id)}
+                                data-compare-candidate-name={compareCandidateLabel(applicant)}
+                                aria-label={`Compare applicant ${compareCandidateLabel(applicant)}`}
+                                onChange={() => toggleCompare(applicant)}
+                            />
+                            <div className="min-w-0 flex-1">
+                                <RecruiterCandidateSummary
+                                    candidate={{
+                                        ...applicant,
+                                        application_href: applicationDetailHref(
+                                            applicant.application_href,
+                                            job.slug,
+                                            filters,
+                                        ),
+                                    }}
+                                    jobTitle={job.title}
+                                    mode="application"
+                                    profileQuery={profileContextQuery(job, applicant, filters)}
+                                />
+                            </div>
+                        </div>
                     ))}
                     <Pagination links={applications.links} />
                 </div>

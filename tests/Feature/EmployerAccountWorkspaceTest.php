@@ -29,9 +29,15 @@ class EmployerAccountWorkspaceTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Home')
                 ->where('role', 'employer')
-                ->where('dashboard.company_name', 'BuildCo')
-                ->where('dashboard.jobs_count', 1)
-                ->where('dashboard.eligibility.eligible', true));
+                ->where('dashboard', null));
+
+        $this->actingAs($employer)->get(route('account.hiring'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Account/Hiring/Dashboard')
+                ->where('workspace.company_name', 'BuildCo')
+                ->where('workspace.jobs_count', 1)
+                ->where('workspace.eligibility.eligible', true));
 
         $this->actingAs($employer)->get(route('account.employer.jobs.index'))
             ->assertOk()
@@ -77,6 +83,11 @@ class EmployerAccountWorkspaceTest extends TestCase
             'email_verified_at' => null,
             'mobile_verified_at' => null,
         ]);
+        $approved->employerProfile?->update([
+            'company_name' => 'Admin Approved Co',
+            'mobile_number' => '+919876543211',
+        ]);
+        $approved->forceFill(['hiring_email' => $approved->email])->save();
         $admin = $this->makeAdmin();
 
         $this->actingAs($admin)
@@ -90,15 +101,30 @@ class EmployerAccountWorkspaceTest extends TestCase
 
     public function test_employer_jobs_are_owned_validated_trial_then_basic_and_never_unpaid_featured(): void
     {
-        $employer = $this->eligibleEmployer();
+        $employer = $this->makeEmployer([
+            'email_verified_at' => null,
+            'mobile_verified_at' => null,
+        ]);
         $other = $this->eligibleEmployer();
-        $employer->employerProfile->update(['company_name' => 'Owner Company']);
+        $employer->employerProfile->update([
+            'company_name' => 'Owner Company',
+            'mobile_number' => '+919876543210',
+        ]);
+        $employer->forceFill(['hiring_email' => 'hr@owner.example'])->save();
 
         $this->actingAs($employer)
+            ->from(route('account.employer.jobs.create'))
             ->post(route('account.employer.jobs.store'), $this->jobPayload([
                 'employer_id' => $other->employerProfile->id,
                 'project' => 'Spoofed Company',
                 'featured' => true,
+            ]))
+            ->assertSessionHasErrors('employer_id');
+
+        $this->actingAs($employer)
+            ->post(route('account.employer.jobs.store'), $this->jobPayload([
+                'featured' => true,
+                'project' => '',
             ]))
             ->assertRedirect(route('account.employer.jobs.index'));
 
@@ -112,15 +138,24 @@ class EmployerAccountWorkspaceTest extends TestCase
 
         $this->actingAs($employer)
             ->post(route('account.employer.jobs.store'), $this->jobPayload(['title' => 'Second Basic Role']))
+            ->assertSessionHasErrors('posting');
+
+        $this->travel(61)->minutes();
+        $this->get(route('jobs.show', $trial))->assertNotFound();
+
+        $employer->forceFill([
+            'email_verified_at' => now(),
+            'mobile_verified_at' => now(),
+        ])->save();
+
+        $this->actingAs($employer)
+            ->post(route('account.employer.jobs.store'), $this->jobPayload(['title' => 'Second Basic Role']))
             ->assertRedirect(route('account.employer.jobs.index'));
 
         $basic = Job::query()->where('title', 'Second Basic Role')->firstOrFail();
         $this->assertSame('basic', $basic->posting_tier);
         $this->assertNull($basic->trial_expires_at);
         $this->assertFalse($basic->featured);
-
-        $this->travel(61)->minutes();
-        $this->get(route('jobs.show', $trial))->assertNotFound();
         $this->get(route('jobs.show', $basic))->assertOk();
     }
 
@@ -173,7 +208,10 @@ class EmployerAccountWorkspaceTest extends TestCase
             'email' => $candidate->email,
             'resume_path' => 'applications/snapshot.pdf',
         ]);
-        Storage::disk('resumes')->put('applications/snapshot.pdf', '%PDF-1.4');
+        Storage::disk('resumes')->put(
+            'applications/snapshot.pdf',
+            \App\Support\ReadablePdfFixture::minimalOnePage(),
+        );
 
         $this->actingAs($owner)->get(route('account.employer.jobs.applicants', $job))
             ->assertOk()
@@ -221,7 +259,7 @@ class EmployerAccountWorkspaceTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Account/Employer/Applicants/Index')
-                ->has('pipeline_summary', 8)
+                ->has('pipeline_summary', 9)
                 ->where('pipeline_summary.0.key', 'all')
                 ->where('pipeline_summary.0.count', 2)
                 ->where('filters.stage', 'shortlisted')

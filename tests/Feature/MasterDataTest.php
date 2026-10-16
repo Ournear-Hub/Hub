@@ -248,4 +248,28 @@ class MasterDataTest extends TestCase
         $this->assertNotNull($application->experience_range_id);
         $this->assertMatchesRegularExpression('/^ONT-A-\d{6}$/', (string) $application->business_id);
     }
+
+    public function test_bootstrapper_seeds_mining_and_infrastructure_job_categories(): void
+    {
+        app(MasterDataBootstrapper::class)->run();
+
+        $mining = Industry::findByName('Mining');
+        $infrastructure = Industry::findByName('Infrastructure');
+        $this->assertNotNull($mining);
+        $this->assertNotNull($infrastructure);
+
+        $miningCategories = JobCategory::query()
+            ->where('industry_id', $mining->id)
+            ->pluck('name')
+            ->all();
+        $this->assertContains('Open Cast & Surface Mining', $miningCategories);
+        $this->assertContains('Underground Mining', $miningCategories);
+
+        $infrastructureCategories = JobCategory::query()
+            ->where('industry_id', $infrastructure->id)
+            ->pluck('name')
+            ->all();
+        $this->assertContains('Civil & Structural Works', $infrastructureCategories);
+        $this->assertContains('Roads & Highways', $infrastructureCategories);
+    }
 }

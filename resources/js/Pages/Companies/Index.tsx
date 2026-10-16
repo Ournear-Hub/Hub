@@ -4,7 +4,7 @@ import PublicLayout from '@/Layouts/PublicLayout';
 import PublicCompanyCard, { type PublicCompanyCardData } from '@/Components/Public/PublicCompanyCard';
 import PublicPageHero from '@/Components/Public/PublicPageHero';
 import PageContainer from '@/Components/Public/PageContainer';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import FormField, { selectControlClass } from '@/Components/Public/FormField';
 import EmptyState from '@/Components/UI/EmptyState';
 import type { SiteContent } from '@/types/public';
@@ -89,7 +89,7 @@ export default function CompaniesIndex({ companies, filters, industries, locatio
                             </select>
                         </div>
                         <div className="flex items-end gap-2">
-                            <Button type="submit" variant="secondary" className="w-full md:w-auto">
+                            <Button surface="public" type="submit" variant="secondary" className="w-full md:w-auto">
                                 Search
                             </Button>
                         </div>
@@ -112,7 +112,7 @@ export default function CompaniesIndex({ companies, filters, industries, locatio
                                         Clear search
                                     </Link>
                                 ) : (
-                                    <Button href="/jobs" variant="outline">
+                                    <Button surface="public" href="/jobs" variant="outline">
                                         Browse jobs
                                     </Button>
                                 )

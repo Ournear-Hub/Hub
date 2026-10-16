@@ -3,7 +3,6 @@
 namespace App\Support;
 
 use App\Enums\EmployerSubmissionStatus;
-use App\Enums\UserRole;
 use App\Models\EmployerProfile;
 use App\Models\Industry;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -105,6 +104,11 @@ class EmployerQuery
             $query->whereHas('user.tags', fn (Builder $tag) => $tag->where('tags.id', $tagId));
         }
 
+        $staffingAccess = trim((string) $request->query('staffing_access', ''));
+        if ($staffingAccess !== '') {
+            $query->where('staffing_access_status', $staffingAccess);
+        }
+
         $from = trim((string) $request->query('date_from', ''));
         if ($from !== '') {
             $query->whereDate('created_at', '>=', $from);
@@ -147,6 +151,7 @@ class EmployerQuery
             'ournear_verified' => $request->string('ournear_verified')->toString(),
             'restricted' => $request->string('restricted')->toString(),
             'tag_id' => $request->string('tag_id')->toString(),
+            'staffing_access' => $request->string('staffing_access')->toString(),
             'date_from' => $request->string('date_from')->toString(),
             'date_to' => $request->string('date_to')->toString(),
             'employer' => $selectedId > 0 ? (string) $selectedId : '',
@@ -171,7 +176,9 @@ class EmployerQuery
                 'employees',
                 'replacements',
             ])
-            ->whereHas('user', fn ($user) => $user->where('role', UserRole::Employer->value))
+            ->whereHas('user')
+            ->whereNotNull('company_name')
+            ->where('company_name', '!=', '')
             ->latest();
     }
 }

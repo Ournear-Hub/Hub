@@ -100,8 +100,6 @@ export default function OurNearResume({ preview }: { preview: ResumeBuilderPrevi
         ['Designation', professional.current_designation],
         ['Company', professional.current_company],
         ['Industry', professional.industry],
-        ['Functional area', professional.functional_area],
-        ['Experience', professional.experience],
         ['Location', personal.location],
     ].filter(([, value]) => recorded(value));
 

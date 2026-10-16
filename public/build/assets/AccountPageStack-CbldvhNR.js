@@ -1,0 +1,1 @@
+import{j as o}from"./app-2VvbXxLL.js";import{a as r}from"./classNames-BAHVgBTk.js";function m({children:t,className:a=""}){return o.jsx("div",{className:`${r.pageStack} ${a}`.trim(),children:t})}export{m as A};

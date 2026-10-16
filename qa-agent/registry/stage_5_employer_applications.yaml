@@ -1,0 +1,56 @@
+# Stage 5 — employer application management (schema v1)
+
+version: 1
+stage: 5
+title: Employer hiring and applicant management
+module: employer
+
+cases:
+  - id: STG5-LIST-001
+    feature_ids: [EMP-04]
+    route: /account/hiring/applications
+    summary: Cross-job applications list shows fixture application
+  - id: STG5-LIST-002
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applicants
+    summary: Per-job applicants list for fixture job
+  - id: STG5-DET-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Application detail shows ID, status, contact snapshot
+  - id: STG5-RES-001
+    feature_ids: [EMP-03, JRN-EMPLOYER-RESUME-01]
+    route: /account/employer-applications/{id}/resume
+    summary: View and download readable application resume PDF
+  - id: STG5-RES-002
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Detail and resume controls persist after reload
+  - id: STG5-FILT-001
+    feature_ids: [EMP-04]
+    route: /account/hiring/applications
+    summary: Search filter returns matching fixture row
+  - id: STG5-FILT-002
+    feature_ids: [EMP-04]
+    route: /account/hiring/applications
+    summary: Clear filters restores full list
+  - id: STG5-REL-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Application detail survives logout and re-login
+  - id: STG5-CNT-001
+    feature_ids: [EMP-04]
+    route: /account/hiring/applications
+    summary: List total matches employer-scoped application count
+  - id: STG5-ACT-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer self-service status change controls
+  - id: STG5-ISO-001
+    feature_ids: [EMP-09]
+    route: /account/hiring/applications
+    summary: Employer B cannot view Employer A application or resume
+  - id: STG5-ISO-002
+    feature_ids: [X-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Candidate cannot open employer application route

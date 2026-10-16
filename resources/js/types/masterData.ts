@@ -23,6 +23,7 @@ export type JobFormLookups = {
     employment_types: MasterOption[];
     experience_ranges: MasterOption[];
     qualifications: MasterOption[];
+    skills: MasterOption[];
     notice_periods?: Array<{ value: string; label: string }>;
     employers?: Array<{
         id: number;

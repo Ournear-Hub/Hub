@@ -16,7 +16,7 @@ use App\Services\UserPhotoService;
 use App\Services\CommunicationPreferenceService;
 use App\Support\AccessCatalog;
 use Database\Factories\UserFactory;
-use Illuminate\Auth\Notifications\VerifyEmail;
+use App\Notifications\VerifyAccountEmailNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,13 +26,14 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
-    use HasBusinessId, HasFactory, Notifiable;
+    use HasApiTokens, HasBusinessId, HasFactory, Notifiable;
 
     /**
      * @var list<string>|null
@@ -510,13 +511,13 @@ class User extends Authenticatable implements MustVerifyEmail
             [
                 'key' => 'experience',
                 'label' => 'Experience',
-                'complete' => filled($profile?->experience) || filled($profile?->experience_range_id),
+                'complete' => filled($profile?->experience_range_id),
                 'points' => 2,
             ],
             [
                 'key' => 'industry_or_function',
-                'label' => 'Industry or functional area',
-                'complete' => filled($profile?->industry_id) || filled($profile?->job_category_id),
+                'label' => 'Industry',
+                'complete' => filled($profile?->industry_id),
                 'points' => 2,
             ],
             [
@@ -540,7 +541,7 @@ class User extends Authenticatable implements MustVerifyEmail
             return;
         }
 
-        $this->notify(new VerifyEmail);
+        $this->notify(new VerifyAccountEmailNotification);
 
         if (\Illuminate\Support\Facades\Schema::hasTable('user_activities')) {
             app(UserActivityService::class)->record(
@@ -585,7 +586,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'whatsapp_verified' => $this->whatsappVerified(),
             'account_status' => $status->value,
             'account_status_label' => $status->label(),
-            'profile_completion' => (int) $this->profile_completion,
+            'profile_completion' => $this->calculateProfileCompletion(),
             'completion_items' => $this->profileCompletionItems(),
             'business_id' => $this->business_id,
         ];
@@ -630,10 +631,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function hiringServicesActive(): bool
     {
-        return $this->emailVerified()
-            && $this->mobileVerified()
-            && $this->hiringEmailVerified()
-            && $this->canAccessHiringWorkspace();
+        return app(\App\Services\EmployerPostingEligibilityService::class)->workspaceReady($this);
     }
 
     public function mobileVerified(): bool

@@ -1,11 +1,18 @@
-import { Link } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import Button from '@/Components/Public/Button';
-import PublicPageHero from '@/Components/Public/PublicPageHero';
-import ProfileShell from '@/Components/Profile/ProfileShell';
+import Button from '@/Components/atoms/Button';
+import CompanyLogo from '@/Components/Public/CompanyLogo';
+import PublicShareMenu from '@/Components/Public/PublicShareMenu';
+import JobCard from '@/Components/Public/JobCard';
 import PageContainer from '@/Components/Public/PageContainer';
 import EmptyState from '@/Components/UI/EmptyState';
+import OurNearIcon from '@/icons/OurNearIcon';
 import type { SiteContent } from '@/types/public';
+import type { PublicJobCard } from '@/types/jobs';
+import { publicJobsForEmployer } from '@/utils/publicJobsUrl';
+
+type CompanyTab = 'overview' | 'jobs' | 'benefits';
 
 type Props = {
     content: SiteContent;
@@ -23,166 +30,219 @@ type Props = {
         locations?: string[];
         benefits?: string[];
         socials?: Record<string, string | null>;
-        open_jobs?: Array<{
-            title: string;
-            slug: string;
-            location: string | null;
-            employment_type: string | null;
-        }>;
+        public_jobs_url?: string;
+        share_url?: string;
     };
+    open_job_cards: PublicJobCard[];
 };
 
-function companyInitials(name: string): string {
-    return (
-        name
-            .split(/\s+/)
-            .filter(Boolean)
-            .slice(0, 2)
-            .map((part) => part[0])
-            .join('')
-            .toUpperCase() || 'EP'
-    );
+function tabHref(companyId: number, tab: CompanyTab): string {
+    if (tab === 'overview') {
+        return `/companies/${companyId}`;
+    }
+    return `/companies/${companyId}?tab=${tab}`;
 }
 
-export default function PublicCompanyProfile({ company }: Props) {
+export default function PublicCompanyProfile({ company, open_job_cards }: Props) {
+    const { url } = usePage();
     const socials = Object.entries(company.socials ?? {}).filter(([, url]) => Boolean(url));
-    const companyUrl = `/companies/${company.id}`;
     const locationLine = (company.locations ?? []).filter(Boolean).join(', ') || null;
-    const openJobs = company.open_jobs ?? [];
-    const metaLine =
-        [company.industry, company.company_size, locationLine].filter(Boolean).join(' · ') ||
-        'Company profile on OurNear Jobs';
+    const jobsBoardUrl = company.public_jobs_url ?? publicJobsForEmployer(company.id);
+    const benefits = company.benefits ?? [];
+    const tab = useMemo((): CompanyTab => {
+        const query = url.includes('?') ? url.split('?')[1] : '';
+        const value = new URLSearchParams(query).get('tab');
+        if (value === 'jobs' || value === 'benefits') {
+            return value;
+        }
+        return 'overview';
+    }, [url]);
+
+    const tabs = useMemo(() => {
+        const items: Array<{ id: CompanyTab; label: string; href: string }> = [
+            { id: 'overview', label: 'Overview', href: tabHref(company.id, 'overview') },
+            { id: 'jobs', label: 'Jobs', href: tabHref(company.id, 'jobs') },
+        ];
+        if (benefits.length > 0) {
+            items.push({ id: 'benefits', label: 'Benefits', href: tabHref(company.id, 'benefits') });
+        }
+        return items;
+    }, [benefits.length, company.id]);
+
+    const selectTab = (href: string) => {
+        router.get(href, {}, { preserveState: true, preserveScroll: true, replace: true });
+    };
+
+    const identityMeta = [company.industry, company.company_size, locationLine].filter(Boolean);
 
     return (
         <PublicLayout title={company.company_name}>
-            <PublicPageHero
-                title={company.company_name}
-                description={metaLine}
-                breadcrumbs={[
-                    { label: 'Home', href: '/' },
-                    { label: 'Companies', href: '/companies' },
-                    { label: company.company_name },
-                ]}
-                actions={
-                    <>
-                        <Button href="/jobs" variant="outline" className="border-white/30 bg-transparent text-white hover:bg-white/10">
-                            Browse jobs
-                        </Button>
-                        {company.company_website ? (
-                            <Button href={company.company_website} variant="primary">
-                                Visit website
-                            </Button>
-                        ) : null}
-                    </>
-                }
-            />
+            <section className="border-b border-line bg-white py-6 md:py-8">
+                <PageContainer className="max-w-5xl min-w-0">
+                    <nav className="text-sm text-muted" aria-label="Breadcrumb">
+                        <ol className="flex flex-wrap items-center gap-1">
+                            <li>
+                                <Link href="/" className="hover:text-brand">
+                                    Home
+                                </Link>
+                            </li>
+                            <li aria-hidden="true">/</li>
+                            <li>
+                                <Link href="/companies" className="hover:text-brand">
+                                    Companies
+                                </Link>
+                            </li>
+                            <li aria-hidden="true">/</li>
+                            <li className="font-medium text-ink">{company.company_name}</li>
+                        </ol>
+                    </nav>
+
+                    <div className="mt-6 rounded-xl border border-line bg-white p-5 shadow-sm sm:p-6">
+                        <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
+                            <div className="mx-auto flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line bg-surface/60 p-2 sm:mx-0 sm:h-28 sm:w-28">
+                                <CompanyLogo
+                                    name={company.company_name}
+                                    src={company.logo_url}
+                                    sizeClass="h-full w-full max-h-24 max-w-24 sm:max-h-28 sm:max-w-28"
+                                    shape="rounded-lg"
+                                />
+                            </div>
+                            <div className="min-w-0 flex-1 text-center sm:text-left">
+                                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                                    <h1 className="break-words text-2xl font-semibold text-brand">{company.company_name}</h1>
+                                    {company.ournear_verified ? (
+                                        <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-1 text-xs font-semibold text-brand">
+                                            <OurNearIcon name="verified-badge" size="sm" decorative />
+                                            OurNear verified
+                                        </span>
+                                    ) : null}
+                                </div>
+                                {identityMeta.length > 0 ? (
+                                    <p className="mt-2 text-sm text-muted">{identityMeta.join(' · ')}</p>
+                                ) : null}
+                                {company.company_website ? (
+                                    <a
+                                        href={company.company_website}
+                                        target="_blank"
+                                        rel="noopener noreferrer nofollow"
+                                        className="mt-3 inline-flex text-sm font-semibold text-brand hover:underline"
+                                    >
+                                        Visit website
+                                    </a>
+                                ) : null}
+                                {company.business_id ? (
+                                    <p className="mt-2 text-xs text-muted">OurNear ID {company.business_id}</p>
+                                ) : null}
+                            </div>
+                            <div className="flex shrink-0 flex-wrap items-center justify-center gap-2 sm:justify-end">
+                                {company.share_url ? (
+                                    <PublicShareMenu
+                                        label="Share company profile"
+                                        context={{
+                                            type: 'company',
+                                            title: company.company_name,
+                                            url: company.share_url,
+                                            subtitle: company.industry,
+                                            location: locationLine,
+                                        }}
+                                    />
+                                ) : null}
+                                <Button surface="public" href={jobsBoardUrl} variant="primary">
+                                    View all jobs
+                                </Button>
+                            </div>
+                        </div>
+
+                        <nav className="mt-6 flex flex-wrap gap-2 border-t border-line pt-4" aria-label="Company profile sections">
+                            {tabs.map((item) => {
+                                const active = tab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        onClick={() => selectTab(item.href)}
+                                        className={`rounded-md px-3 py-1.5 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 ${
+                                            active ? 'bg-brand text-white' : 'text-muted hover:bg-surface hover:text-ink'
+                                        }`}
+                                        aria-current={active ? 'page' : undefined}
+                                    >
+                                        {item.label}
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                </PageContainer>
+            </section>
 
             <section className="py-8 md:py-10">
-                <PageContainer className="max-w-4xl min-w-0">
-                    <ProfileShell
-                        name={company.company_name}
-                        photoUrl={company.logo_url}
-                        profileHref={companyUrl}
-                        businessId={company.business_id}
-                        subtitle={[company.industry, company.company_size].filter(Boolean).join(' · ') || null}
-                        location={locationLine}
-                        badge={company.ournear_verified ? 'OurNear verified' : null}
-                        shape="rounded"
-                        heading="h2"
-                        actions={
-                            company.company_website ? (
-                                <a
-                                    href={company.company_website}
-                                    target="_blank"
-                                    rel="noopener noreferrer nofollow"
-                                    className="inline-flex rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white"
-                                >
-                                    Visit website
-                                </a>
-                            ) : null
-                        }
-                    >
-                        <article className="min-w-0 space-y-8 rounded-xl border border-line bg-white p-6 sm:p-8">
-                            {!company.logo_url ? (
-                                <div
-                                    className="flex h-20 w-20 items-center justify-center rounded-xl bg-brand/10 text-lg font-semibold text-brand lg:hidden"
-                                    aria-hidden
-                                >
-                                    {companyInitials(company.company_name)}
-                                </div>
-                            ) : null}
-
-                            <section>
-                                <h2 className="text-lg font-semibold text-ink">About company</h2>
+                <PageContainer className="max-w-5xl min-w-0 space-y-8">
+                    {tab === 'overview' ? (
+                        <>
+                            <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
+                                <h2 className="text-lg font-semibold text-ink">Company overview</h2>
                                 {company.about_company ? (
-                                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted">{company.about_company}</p>
+                                    <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted">{company.about_company}</p>
                                 ) : (
-                                    <p className="mt-2 text-sm text-muted">No company description has been published yet.</p>
+                                    <p className="mt-3 text-sm text-muted">No company description has been published yet.</p>
                                 )}
-                            </section>
+                            </article>
 
                             {company.company_details ? (
-                                <section>
+                                <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
                                     <h2 className="text-lg font-semibold text-ink">Company details</h2>
-                                    <p className="mt-2 whitespace-pre-line text-sm leading-6 text-muted">{company.company_details}</p>
-                                </section>
+                                    <p className="mt-3 whitespace-pre-line text-sm leading-6 text-muted">{company.company_details}</p>
+                                </article>
                             ) : null}
 
-                            {locationLine ? (
-                                <section>
-                                    <h2 className="text-lg font-semibold text-ink">Locations</h2>
-                                    <p className="mt-2 text-sm text-muted">{locationLine}</p>
-                                </section>
-                            ) : null}
-
-                            {(company.benefits ?? []).length > 0 ? (
-                                <section>
-                                    <h2 className="text-lg font-semibold text-ink">Benefits</h2>
-                                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
-                                        {company.benefits?.map((benefit) => (
-                                            <li key={benefit}>{benefit}</li>
-                                        ))}
+                            {(company.industry || locationLine) ? (
+                                <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
+                                    <h2 className="text-lg font-semibold text-ink">Industry & location</h2>
+                                    <ul className="mt-3 space-y-1 text-sm text-muted">
+                                        {company.industry ? <li>Industry: {company.industry}</li> : null}
+                                        {locationLine ? <li>Locations: {locationLine}</li> : null}
                                     </ul>
-                                </section>
+                                </article>
                             ) : null}
 
                             {socials.length > 0 ? (
-                                <ul className="flex flex-wrap gap-3 text-sm">
-                                    {socials.map(([network, url]) => (
-                                        <li key={network}>
-                                            <a
-                                                href={url ?? undefined}
-                                                target="_blank"
-                                                rel="noopener noreferrer nofollow"
-                                                className="font-medium capitalize text-brand hover:underline"
-                                            >
-                                                {network}
-                                            </a>
-                                        </li>
-                                    ))}
-                                </ul>
+                                <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
+                                    <h2 className="text-lg font-semibold text-ink">Online presence</h2>
+                                    <ul className="mt-3 flex flex-wrap gap-3 text-sm">
+                                        {socials.map(([network, url]) => (
+                                            <li key={network}>
+                                                <a
+                                                    href={url ?? undefined}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer nofollow"
+                                                    className="font-medium capitalize text-brand hover:underline"
+                                                >
+                                                    {network}
+                                                </a>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </article>
                             ) : null}
 
-                            <section className="border-t border-line pt-8">
+                            <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
                                 <div className="flex flex-wrap items-end justify-between gap-3">
                                     <h2 className="text-lg font-semibold text-ink">Open jobs</h2>
-                                    {openJobs.length > 0 ? (
-                                        <Link href="/jobs" className="text-sm font-semibold text-brand hover:underline">
+                                    {open_job_cards.length > 0 ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => selectTab(tabHref(company.id, 'jobs'))}
+                                            className="text-sm font-semibold text-brand hover:underline"
+                                        >
                                             View all jobs
-                                        </Link>
+                                        </button>
                                     ) : null}
                                 </div>
-                                {openJobs.length > 0 ? (
-                                    <ul className="mt-4 space-y-3">
-                                        {openJobs.map((job) => (
-                                            <li key={job.slug} className="min-w-0 rounded-lg border border-line bg-canvas/50 p-4">
-                                                <Link href={`/jobs/${job.slug}`} className="font-semibold text-brand hover:underline">
-                                                    {job.title}
-                                                </Link>
-                                                <p className="mt-1 text-sm text-muted">
-                                                    {[job.location, job.employment_type].filter(Boolean).join(' · ') ||
-                                                        'Details on job page'}
-                                                </p>
+                                {open_job_cards.length > 0 ? (
+                                    <ul className="mt-4 space-y-4">
+                                        {open_job_cards.slice(0, 3).map((job) => (
+                                            <li key={job.slug}>
+                                                <JobCard job={job} compact hideActions linkable={false} />
                                             </li>
                                         ))}
                                     </ul>
@@ -192,16 +252,62 @@ export default function PublicCompanyProfile({ company }: Props) {
                                         title="No open jobs"
                                         description="This company has no published vacancies right now."
                                         action={
-                                            <Button href="/jobs" variant="outline">
+                                            <Button surface="public" href="/jobs" variant="outline">
                                                 Browse all jobs
                                             </Button>
                                         }
                                     />
                                 )}
-                            </section>
+                            </article>
+                        </>
+                    ) : null}
+
+                    {tab === 'jobs' ? (
+                        <article className="space-y-4">
+                            <div className="flex flex-wrap items-end justify-between gap-3">
+                                <h2 className="text-lg font-semibold text-ink">Open jobs</h2>
+                                <Link href={jobsBoardUrl} className="text-sm font-semibold text-brand hover:underline">
+                                    View all on job board
+                                </Link>
+                            </div>
+                            {open_job_cards.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {open_job_cards.map((job) => (
+                                        <li key={job.slug}>
+                                            <JobCard job={job} compact openInWorkspace />
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <EmptyState
+                                    title="No open jobs"
+                                    description="This company has no published vacancies right now."
+                                    action={
+                                        <Button surface="public" href="/jobs" variant="outline">
+                                            Browse all jobs
+                                        </Button>
+                                    }
+                                />
+                            )}
                         </article>
-                    </ProfileShell>
-                    <p className="mt-4 text-xs text-muted">Private company documents are not displayed publicly.</p>
+                    ) : null}
+
+                    {tab === 'benefits' ? (
+                        <article className="rounded-xl border border-line bg-white p-6 sm:p-8">
+                            <h2 className="text-lg font-semibold text-ink">Benefits</h2>
+                            {benefits.length > 0 ? (
+                                <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-muted">
+                                    {benefits.map((benefit) => (
+                                        <li key={benefit}>{benefit}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-3 text-sm text-muted">No benefits have been published for this company.</p>
+                            )}
+                        </article>
+                    ) : null}
+
+                    <p className="text-xs text-muted">Private company documents are not displayed publicly.</p>
                 </PageContainer>
             </section>
         </PublicLayout>

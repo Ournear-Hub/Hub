@@ -1,5 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import EmploymentTimeline from '@/Components/Account/EmploymentTimeline';
+import Combobox from '@/Components/molecules/Combobox';
 import FormField from '@/Components/Public/FormField';
 import type {
     AccountCertification,
@@ -79,12 +81,19 @@ export default function CandidateProfessionalSections({ professional, lookups, f
     const [skillName, setSkillName] = useState('');
     const [editingHistoryId, setEditingHistoryId] = useState<number | null>(null);
 
+    const skillOptions = useMemo(
+        () =>
+            (lookups.skills ?? []).map((skill) => ({
+                value: skill.name,
+                label: skill.name,
+            })),
+        [lookups.skills],
+    );
+
     const professionalForm = useForm({
         current_designation: data.current_designation ?? '',
         current_company: data.current_company ?? '',
         industry_id: data.industry_id ? String(data.industry_id) : '',
-        job_category_id: data.job_category_id ? String(data.job_category_id) : '',
-        experience: data.experience ?? '',
         experience_range_id: data.experience_range_id ? String(data.experience_range_id) : '',
         qualification: data.qualification ?? '',
         qualification_id: data.qualification_id ? String(data.qualification_id) : '',
@@ -109,16 +118,76 @@ export default function CandidateProfessionalSections({ professional, lookups, f
         description: '',
     });
 
-    const categories = lookups.categories.filter(
-        (category) =>
-            !professionalForm.data.industry_id ||
-            String(category.industry_id ?? '') === professionalForm.data.industry_id ||
-            String(category.id) === professionalForm.data.job_category_id,
-    );
+    useEffect(() => {
+        professionalForm.setData({
+            current_designation: data.current_designation ?? '',
+            current_company: data.current_company ?? '',
+            industry_id: data.industry_id ? String(data.industry_id) : '',
+            experience_range_id: data.experience_range_id ? String(data.experience_range_id) : '',
+            qualification: data.qualification ?? '',
+            qualification_id: data.qualification_id ? String(data.qualification_id) : '',
+            current_salary: salaryValue(data.current_salary),
+            expected_salary: salaryValue(data.expected_salary),
+            notice_period: data.notice_period ?? '',
+            employment_preference: data.employment_preference ?? '',
+            preferred_location_ids: data.preferred_location_ids,
+            preferred_employment_type_ids: data.preferred_employment_type_ids,
+            willing_to_relocate: data.willing_to_relocate ?? false,
+            availability: data.availability ?? '',
+        });
+    }, [professional]);
 
     const submitProfessional = (event: FormEvent) => {
         event.preventDefault();
-        professionalForm.put('/account/profile/professional');
+
+        const onSuccess = () => {
+            onCancel?.();
+        };
+
+        const onError = (errors: Record<string, string>) => {
+            Object.entries(errors).forEach(([key, message]) => {
+                professionalForm.setError(key as keyof typeof professionalForm.data, message);
+            });
+        };
+
+        if (focus === 'preferences') {
+            router.put(
+                '/account/profile/professional',
+                {
+                    preferred_location_ids: professionalForm.data.preferred_location_ids,
+                    preferred_employment_type_ids: professionalForm.data.preferred_employment_type_ids,
+                    employment_preference: professionalForm.data.employment_preference,
+                    willing_to_relocate: professionalForm.data.willing_to_relocate,
+                    availability: professionalForm.data.availability,
+                },
+                { preserveScroll: true, onSuccess, onError },
+            );
+            return;
+        }
+
+        if (focus === 'professional') {
+            router.put(
+                '/account/profile/professional',
+                {
+                    current_designation: professionalForm.data.current_designation,
+                    current_company: professionalForm.data.current_company,
+                    industry_id: professionalForm.data.industry_id,
+                    experience_range_id: professionalForm.data.experience_range_id,
+                    qualification: professionalForm.data.qualification,
+                    qualification_id: professionalForm.data.qualification_id,
+                    current_salary: professionalForm.data.current_salary,
+                    expected_salary: professionalForm.data.expected_salary,
+                    notice_period: professionalForm.data.notice_period,
+                },
+                { preserveScroll: true, onSuccess, onError },
+            );
+            return;
+        }
+
+        professionalForm.put('/account/profile/professional', {
+            preserveScroll: true,
+            onSuccess,
+        });
     };
 
     const addSkill = (event: FormEvent) => {
@@ -128,13 +197,19 @@ export default function CandidateProfessionalSections({ professional, lookups, f
             { name: skillName },
             {
                 preserveScroll: true,
-                onSuccess: () => setSkillName(''),
+                onSuccess: () => {
+                    setSkillName('');
+                    router.reload({ only: ['profile'] });
+                },
             },
         );
     };
 
     const removeSkill = (id: number) => {
-        router.delete(`/account/profile/skills/${id}`, { preserveScroll: true });
+        router.delete(`/account/profile/skills/${id}`, {
+            preserveScroll: true,
+            onSuccess: () => router.reload({ only: ['profile'] }),
+        });
     };
 
     const startEditHistory = (history: AccountEmploymentHistory) => {
@@ -163,14 +238,20 @@ export default function CandidateProfessionalSections({ professional, lookups, f
         if (editingHistoryId) {
             historyForm.put(`/account/profile/employment-history/${editingHistoryId}`, {
                 preserveScroll: true,
-                onSuccess: () => resetHistoryForm(),
+                onSuccess: () => {
+                    resetHistoryForm();
+                    router.reload({ only: ['profile'] });
+                },
             });
             return;
         }
 
         historyForm.post('/account/profile/employment-history', {
             preserveScroll: true,
-            onSuccess: () => resetHistoryForm(),
+            onSuccess: () => {
+                resetHistoryForm();
+                router.reload({ only: ['profile'] });
+            },
         });
     };
 
@@ -178,7 +259,10 @@ export default function CandidateProfessionalSections({ professional, lookups, f
         if (!window.confirm('Remove this employment history record?')) {
             return;
         }
-        router.delete(`/account/profile/employment-history/${id}`, { preserveScroll: true });
+        router.delete(`/account/profile/employment-history/${id}`, {
+            preserveScroll: true,
+            onSuccess: () => router.reload({ only: ['profile'] }),
+        });
     };
 
     return (
@@ -218,10 +302,7 @@ export default function CandidateProfessionalSections({ professional, lookups, f
                             id="industry_id"
                             className={selectClass}
                             value={professionalForm.data.industry_id}
-                            onChange={(event) => {
-                                professionalForm.setData('industry_id', event.target.value);
-                                professionalForm.setData('job_category_id', '');
-                            }}
+                            onChange={(event) => professionalForm.setData('industry_id', event.target.value)}
                         >
                             <option value="">Not selected</option>
                             {lookups.industries
@@ -238,33 +319,6 @@ export default function CandidateProfessionalSections({ professional, lookups, f
                         </select>
                         {professionalForm.errors.industry_id && (
                             <p className="mt-1 text-sm text-danger">{professionalForm.errors.industry_id}</p>
-                        )}
-                    </div>
-                    <div>
-                        <label htmlFor="job_category_id" className="mb-1 block text-sm font-medium text-ink">
-                            Functional area
-                        </label>
-                        <select
-                            id="job_category_id"
-                            className={selectClass}
-                            value={professionalForm.data.job_category_id}
-                            onChange={(event) => professionalForm.setData('job_category_id', event.target.value)}
-                        >
-                            <option value="">Not selected</option>
-                            {categories
-                                .filter(
-                                    (category) =>
-                                        category.selectable !== false ||
-                                        String(category.id) === professionalForm.data.job_category_id,
-                                )
-                                .map((category) => (
-                                    <option key={category.id} value={category.id}>
-                                        {category.name}
-                                    </option>
-                                ))}
-                        </select>
-                        {professionalForm.errors.job_category_id && (
-                            <p className="mt-1 text-sm text-danger">{professionalForm.errors.job_category_id}</p>
                         )}
                     </div>
                     <div>
@@ -294,48 +348,53 @@ export default function CandidateProfessionalSections({ professional, lookups, f
                             <p className="mt-1 text-sm text-danger">{professionalForm.errors.experience_range_id}</p>
                         )}
                     </div>
-                    <FormField
-                        id="experience"
-                        label="Experience notes"
-                        value={professionalForm.data.experience}
-                        onChange={(event) => professionalForm.setData('experience', event.target.value)}
-                    />
-                    {professionalForm.errors.experience && (
-                        <p className="-mt-2 text-sm text-danger">{professionalForm.errors.experience}</p>
-                    )}
                     <div>
-                        <label htmlFor="qualification_id" className="mb-1 block text-sm font-medium text-ink">
+                        <label htmlFor="qualification_pick" className="mb-1 block text-sm font-medium text-ink">
                             Qualification
                         </label>
-                        <select
-                            id="qualification_id"
-                            className={selectClass}
-                            value={professionalForm.data.qualification_id}
-                            onChange={(event) => professionalForm.setData('qualification_id', event.target.value)}
-                        >
-                            <option value="">Not classified</option>
-                            {lookups.qualifications
+                        <Combobox
+                            id="qualification_pick"
+                            surface="public"
+                            placeholder="Search qualifications"
+                            emptyMessage="No matching qualification"
+                            options={lookups.qualifications
                                 .filter(
                                     (item) =>
                                         item.selectable !== false ||
                                         String(item.id) === professionalForm.data.qualification_id,
                                 )
-                                .map((item) => (
-                                    <option key={item.id} value={item.id}>
-                                        {item.name}
-                                    </option>
-                                ))}
-                        </select>
+                                .map((item) => ({ value: String(item.id), label: item.name }))}
+                            value={professionalForm.data.qualification_id}
+                            onChange={(next) => {
+                                const selected = lookups.qualifications.find((item) => String(item.id) === next);
+                                professionalForm.setData({
+                                    qualification_id: next,
+                                    qualification: selected?.name ?? '',
+                                });
+                            }}
+                        />
                         {professionalForm.errors.qualification_id && (
                             <p className="mt-1 text-sm text-danger">{professionalForm.errors.qualification_id}</p>
                         )}
                     </div>
                     <FormField
                         id="qualification"
-                        label="Qualification notes"
-                        value={professionalForm.data.qualification}
-                        onChange={(event) => professionalForm.setData('qualification', event.target.value)}
+                        label="Or enter qualification if not listed"
+                        value={
+                            professionalForm.data.qualification_id
+                                ? ''
+                                : (professionalForm.data.qualification ?? '')
+                        }
+                        onChange={(event) =>
+                            professionalForm.setData({
+                                qualification_id: '',
+                                qualification: event.target.value,
+                            })
+                        }
                     />
+                    {professionalForm.errors.qualification && (
+                        <p className="-mt-2 text-sm text-danger">{professionalForm.errors.qualification}</p>
+                    )}
                     <div className="grid gap-4 sm:grid-cols-2">
                         <FormField
                             id="current_salary"
@@ -525,14 +584,15 @@ export default function CandidateProfessionalSections({ professional, lookups, f
                     )}
                 </div>
                 <form onSubmit={addSkill} className="flex flex-col gap-3 sm:flex-row">
-                    <input
+                    <Combobox
                         id="skill_name"
-                        name="name"
+                        surface="public"
+                        className="min-w-0 flex-1"
+                        placeholder="Search or enter a skill"
+                        emptyMessage="Press Add skill to save this name"
+                        options={skillOptions}
                         value={skillName}
-                        onChange={(event) => setSkillName(event.target.value)}
-                        placeholder="Add a skill"
-                        className={selectClass}
-                        maxLength={64}
+                        onChange={setSkillName}
                     />
                     <button
                         type="submit"
@@ -552,44 +612,11 @@ export default function CandidateProfessionalSections({ professional, lookups, f
             {show('experience') ? (
             <section className="space-y-4 rounded-xl border border-line bg-white p-6">
                 <h2 className="text-lg font-semibold text-ink">Employment history</h2>
-                {data.employment_histories.length === 0 ? (
-                    <p className="text-sm text-muted">No employment history added yet.</p>
-                ) : (
-                    <ul className="space-y-3">
-                        {data.employment_histories.map((history) => (
-                            <li key={history.id} className="rounded-md bg-surface px-3 py-3 text-sm">
-                                <p className="font-medium text-ink">
-                                    {history.designation} · {history.company}
-                                    {history.is_internship ? ' · Internship' : ''}
-                                    {history.is_current ? ' · Current' : ''}
-                                </p>
-                                <p className="text-muted">
-                                    {[history.started_on, history.is_current ? 'Present' : history.ended_on]
-                                        .filter(Boolean)
-                                        .join(' – ')}
-                                    {history.industry ? ` · ${history.industry}` : ''}
-                                </p>
-                                {history.description ? <p className="mt-1 text-ink">{history.description}</p> : null}
-                                <div className="mt-2 flex gap-3">
-                                    <button
-                                        type="button"
-                                        className="font-medium text-brand"
-                                        onClick={() => startEditHistory(history)}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="font-medium text-danger"
-                                        onClick={() => removeHistory(history.id)}
-                                    >
-                                        Remove
-                                    </button>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                )}
+                <EmploymentTimeline
+                    histories={data.employment_histories}
+                    onEdit={startEditHistory}
+                    onRemove={removeHistory}
+                />
 
                 <form onSubmit={submitHistory} className="space-y-4 border-t border-line pt-4">
                     <h3 className="text-sm font-semibold text-ink">
@@ -712,7 +739,9 @@ export default function CandidateProfessionalSections({ professional, lookups, f
             </section>
             ) : null}
 
-            {show('certifications') ? <CertificationSection certifications={data.certifications ?? []} /> : null}
+            {show('certifications') ? (
+                <CertificationSection certifications={data.certifications ?? []} onCancel={onCancel} />
+            ) : null}
             {show('education') ? <EducationSection educations={data.educations ?? []} /> : null}
             {show('projects') ? <ProjectSection projects={data.projects ?? []} /> : null}
             {show('languages') ? (
@@ -725,7 +754,15 @@ export default function CandidateProfessionalSections({ professional, lookups, f
     );
 }
 
-function CertificationSection({ certifications }: { certifications: AccountCertification[] }) {
+function CertificationSection({
+    certifications,
+    onCancel,
+}: {
+    certifications: AccountCertification[];
+    onCancel?: () => void;
+}) {
+    const [editingId, setEditingId] = useState<number | null>(null);
+
     const form = useForm({
         name: '',
         issuer: '',
@@ -733,18 +770,61 @@ function CertificationSection({ certifications }: { certifications: AccountCerti
         expires_on: '',
     });
 
+    const resetForm = () => {
+        setEditingId(null);
+        form.reset();
+        form.clearErrors();
+    };
+
+    const startEdit = (item: AccountCertification) => {
+        setEditingId(item.id);
+        form.setData({
+            name: item.name,
+            issuer: item.issuer ?? '',
+            issued_on: item.issued_on ?? '',
+            expires_on: item.expires_on ?? '',
+        });
+        form.clearErrors();
+    };
+
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        const onSuccess = () => {
+            resetForm();
+            router.reload({ only: ['profile'] });
+        };
+
+        if (editingId) {
+            form.put(`/account/profile/certifications/${editingId}`, {
+                preserveScroll: true,
+                onSuccess,
+            });
+            return;
+        }
+
         form.post('/account/profile/certifications', {
             preserveScroll: true,
-            onSuccess: () => form.reset(),
+            onSuccess,
+        });
+    };
+
+    const remove = (id: number) => {
+        if (!window.confirm('Remove this certification?')) {
+            return;
+        }
+        router.delete(`/account/profile/certifications/${id}`, {
+            preserveScroll: true,
+            onSuccess: () => router.reload({ only: ['profile'] }),
         });
     };
 
     return (
         <section className="space-y-4 rounded-xl border border-line bg-white p-6">
             <h2 className="text-lg font-semibold text-ink">Certifications</h2>
-            <p className="text-sm text-muted">These do not change your profile completion score.</p>
+            <p className="text-sm text-muted">
+                Save certification details with or without a linked document. These do not change your profile
+                completion score.
+            </p>
             {certifications.length === 0 ? (
                 <p className="text-sm text-muted">No certifications added yet.</p>
             ) : (
@@ -756,19 +836,26 @@ function CertificationSection({ certifications }: { certifications: AccountCerti
                                 <p className="text-muted">
                                     {[item.issuer, item.issued_on, item.expires_on].filter(Boolean).join(' · ')}
                                 </p>
+                                {item.candidate_document_id ? (
+                                    <p className="text-xs text-muted">Document linked</p>
+                                ) : null}
                             </div>
-                            <button
-                                type="button"
-                                className="font-medium text-danger"
-                                onClick={() => router.delete(`/account/profile/certifications/${item.id}`, { preserveScroll: true })}
-                            >
-                                Remove
-                            </button>
+                            <div className="flex shrink-0 gap-3">
+                                <button type="button" className="font-medium text-brand" onClick={() => startEdit(item)}>
+                                    Edit
+                                </button>
+                                <button type="button" className="font-medium text-danger" onClick={() => remove(item.id)}>
+                                    Remove
+                                </button>
+                            </div>
                         </li>
                     ))}
                 </ul>
             )}
             <form onSubmit={submit} className="space-y-3 border-t border-line pt-4">
+                <h3 className="text-sm font-semibold text-ink">
+                    {editingId ? 'Edit certification' : 'Add certification'}
+                </h3>
                 <FormField
                     id="certification_name"
                     label="Certification name"
@@ -798,14 +885,29 @@ function CertificationSection({ certifications }: { certifications: AccountCerti
                         onChange={(event) => form.setData('expires_on', event.target.value)}
                     />
                 </div>
-                <button
-                    type="submit"
-                    disabled={form.processing}
-                    className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:bg-disabled"
-                >
-                    Add certification
-                </button>
+                {(form.errors.issued_on || form.errors.expires_on) && (
+                    <p className="-mt-2 text-sm text-danger">{form.errors.issued_on || form.errors.expires_on}</p>
+                )}
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        type="submit"
+                        disabled={form.processing}
+                        className="rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:bg-disabled"
+                    >
+                        {editingId ? 'Save certification' : 'Add certification'}
+                    </button>
+                    {editingId ? (
+                        <button type="button" className="text-sm font-medium text-muted" onClick={resetForm}>
+                            Cancel edit
+                        </button>
+                    ) : null}
+                </div>
             </form>
+            {onCancel ? (
+                <button type="button" className="text-sm font-medium text-muted" onClick={onCancel}>
+                    Done
+                </button>
+            ) : null}
         </section>
     );
 }

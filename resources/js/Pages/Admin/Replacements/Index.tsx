@@ -6,9 +6,7 @@ import Pagination from '@/Components/Pagination';
 import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Modal,
     SearchBar,
@@ -18,7 +16,10 @@ import {
     Textarea,
     Timeline,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { Paginator } from '@/types/jobs';
 import type { EligibleReplacementApplication, ReplacementDetail, ReplacementListItem } from '@/types/replacements';
@@ -115,18 +116,18 @@ export default function ReplacementsIndex({
     ];
 
     return (
-        <AdminLayout title="Replacements">
+        <AdminLayout title="Replacements" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Replacements' }]}>
             <div
                 className={selected ? 'pointer-events-none' : undefined}
                 inert={selected ? true : undefined}
                 aria-hidden={selected ? true : undefined}
             >
                 <div className="mb-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Replacements</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        A replacement starts from a joined employee. The original employee and placement stay on file; the
-                        replacement candidate follows the existing recruitment workflow.
-                    </p>
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Employee replacement pipeline"
+                        description="A replacement starts from a joined employee. The original employee and placement stay on file; the replacement candidate follows the existing recruitment workflow."
+                    />
                 </div>
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Replacement, employee, employer, job, candidate ID" />

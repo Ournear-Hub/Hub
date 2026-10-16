@@ -1,0 +1,75 @@
+# Stage 3 — candidate job application & history (schema v1)
+
+version: 1
+stage: 3
+title: Candidate application workflow
+module: candidate
+
+policy_note: >-
+  Guests may open /jobs/{slug}/apply and are redirected to login with a safe same-origin intended
+  destination preserved server-side. STG3-APPLY-002 covers the full guest → login → apply browser journey.
+  STG3-APPLY-003 covers concurrent overlapping submission acceptance.
+
+cases:
+  - id: STG3-AUTH-001
+    feature_ids: [PUB-03, CAN-07]
+    route: /jobs/{slug}/apply
+    summary: Guest apply redirects to login (authentication required)
+  - id: STG3-AUTH-002
+    feature_ids: [PUB-03]
+    route: /jobs/qa-fixture-draft-a/apply
+    summary: Draft job apply not available (404)
+  - id: STG3-AUTH-004
+    feature_ids: [PUB-03]
+    route: /login
+    summary: Unsafe external intended URL rejected (security regression)
+  - id: STG3-APPLY-001
+    feature_ids: [CAN-07, JRN-CANDIDATE-APPLY-01]
+    route: /jobs/{slug}/apply
+    summary: Authenticated candidate completes new application end-to-end
+  - id: STG3-APPLY-002
+    feature_ids: [CAN-07, PUB-03]
+    route: /jobs/{slug}/apply
+    summary: Guest → login → intended apply URL → submit → persist → duplicate guard
+  - id: STG3-APPLY-003
+    feature_ids: [CAN-07]
+    route: /jobs/{slug}/apply
+    summary: Concurrent overlapping POSTs create at most one application
+  - id: STG3-APPLY-004
+    feature_ids: [CAN-07]
+    route: /jobs/qa-fixture-published-a
+    summary: Already-applied fixture job shows Applied; apply URL guarded
+  - id: STG3-APPLY-005
+    feature_ids: [CAN-07]
+    route: /jobs/{slug}/apply
+    summary: Apply page shows library resume ready when resume exists
+  - id: STG3-HIST-001
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Applications list shows fixture application
+  - id: STG3-HIST-002
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Application list survives hard reload
+  - id: STG3-HIST-003
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Application detail shows timeline section
+  - id: STG3-HIST-004
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: History persists after logout and re-login
+  - id: STG3-HIST-005
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Filter tabs (All/Active/Completed/Rejected) load without error
+  - id: STG3-MOB-001
+    feature_ids: [CAN-07]
+    route: /account/applications
+    summary: Applications list usable on mobile 390×844
+  - id: STG3-INT-001
+    feature_ids: [X-03]
+    route: /account/applications
+    summary: New application receives ONT-A-* business id on confirmation
+
+superseded: []

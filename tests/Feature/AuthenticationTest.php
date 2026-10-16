@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Enums\StaffRoleSlug;
 use App\Enums\UserRole;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
@@ -67,9 +69,9 @@ class AuthenticationTest extends TestCase
             'name' => 'Asha Candidate',
             'username' => 'asha-candidate',
             'email' => 'asha@example.com',
+            'mobile' => '+971501234567',
             'password' => 'Password1!',
             'password_confirmation' => 'Password1!',
-            'role' => UserRole::Candidate->value,
             'accept_terms' => true,
         ]);
 
@@ -86,7 +88,10 @@ class AuthenticationTest extends TestCase
         $this->from(route('login'))->post(route('login.store'), [
             'login' => 'asha@example.com',
             'password' => 'Password1!',
-        ])->assertSessionHasErrors('login');
+        ])->assertRedirect(route('account.home'));
+        $this->assertAuthenticatedAs($user);
+
+        Auth::guard('account')->logout();
 
         $login = $this->post(route('login.store'), [
             'login' => 'asha-candidate',
@@ -104,9 +109,9 @@ class AuthenticationTest extends TestCase
                 'name' => 'Safe Registration',
                 'username' => 'safe-registration',
                 'email' => 'safe-registration@example.com',
+                'mobile' => '+971501234568',
                 'password' => 'Password1!',
                 'password_confirmation' => 'Password1!',
-                'role' => UserRole::Candidate->value,
                 'accept_terms' => true,
             ])
             ->assertRedirect(route('login'));
@@ -115,26 +120,31 @@ class AuthenticationTest extends TestCase
         $this->assertTrue(User::query()->where('email', 'safe-registration@example.com')->firstOrFail()->isCandidate());
     }
 
-    public function test_employer_can_register_and_log_in(): void
+    public function test_public_registration_does_not_create_employer_accounts(): void
     {
-        $response = $this->post(route('register.store'), [
-            'name' => 'Ravi Employer',
+        $response = $this->from(route('register'))
+            ->post(route('register.store'), [
+                'name' => 'Ravi Employer',
+                'username' => 'ravi-employer',
+                'email' => 'ravi@example.com',
+                'password' => 'Password1!',
+                'password_confirmation' => 'Password1!',
+                'role' => UserRole::Employer->value,
+                'accept_terms' => true,
+            ]);
+
+        $response->assertSessionHasErrors('role');
+        $this->assertGuest();
+        $this->assertNull(User::query()->where('email', 'ravi@example.com')->first());
+    }
+
+    public function test_employer_created_via_factory_can_log_in(): void
+    {
+        $employer = $this->makeEmployer([
             'username' => 'ravi-employer',
             'email' => 'ravi@example.com',
-            'password' => 'Password1!',
-            'password_confirmation' => 'Password1!',
-            'role' => UserRole::Employer->value,
-            'accept_terms' => true,
+            'password' => Hash::make('Password1!'),
         ]);
-
-        $response->assertRedirect(route('login'));
-        $this->assertGuest();
-
-        $user = User::query()->where('email', 'ravi@example.com')->first();
-        $this->assertNotNull($user);
-        $this->assertTrue($user->isEmployer());
-        $this->assertSame('ravi-employer', $user->username);
-        $this->assertDatabaseHas('employer_profiles', ['user_id' => $user->id]);
 
         $login = $this->post(route('login.store'), [
             'login' => 'ravi-employer',
@@ -142,7 +152,7 @@ class AuthenticationTest extends TestCase
         ]);
 
         $login->assertRedirect(route('account.home'));
-        $this->assertAuthenticatedAs($user);
+        $this->assertAuthenticatedAs($employer, 'account');
     }
 
     public function test_candidate_login_discards_stale_admin_intended_url(): void

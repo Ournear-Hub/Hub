@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Account;
 use App\Enums\LanguageProficiency;
 use App\Enums\NoticePeriod;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Account\UpdateAccountCompanyLogoRequest;
 use App\Http\Requests\Account\UpdateAccountPhotoRequest;
 use App\Http\Requests\Account\UpdateProfileRequest;
 use App\Http\Requests\Account\UpdatePublicCompanyShareRequest;
 use App\Http\Requests\Account\UpdatePublicShareRequest;
+use App\Enums\FileLifecycleStatus;
 use App\Models\CandidateProfile;
+use App\Models\CandidateResume;
 use App\Models\EmployerProfile;
 use App\Services\AccountDashboardService;
 use App\Services\AccountProfileService;
@@ -18,6 +21,7 @@ use App\Services\EmployerCompanyService;
 use App\Services\MasterData\MasterDataService;
 use App\Services\UnifiedProfilePresenter;
 use App\Support\CandidatePublicShare;
+use App\Support\EmployerPublicShare;
 use App\Support\EmployerSocials;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,6 +48,38 @@ class ProfileController extends Controller
         MasterDataService $masterData,
         UnifiedProfilePresenter $unified,
     ): Response {
+        return $this->renderProfilePage($request, $profiles, $masterData, $unified, companyWorkspace: false);
+    }
+
+    public function company(
+        Request $request,
+        AccountProfileService $profiles,
+        MasterDataService $masterData,
+        UnifiedProfilePresenter $unified,
+    ): Response|RedirectResponse {
+        $user = $request->user();
+        $this->authorize('update', $user);
+
+        if (! $user->canAccessHiringWorkspace()) {
+            if ($user->isCandidate()) {
+                return redirect()
+                    ->route('account.hiring')
+                    ->with('warning', 'Activate hiring services before managing a company profile.');
+            }
+
+            abort(403);
+        }
+
+        return $this->renderProfilePage($request, $profiles, $masterData, $unified, companyWorkspace: true);
+    }
+
+    private function renderProfilePage(
+        Request $request,
+        AccountProfileService $profiles,
+        MasterDataService $masterData,
+        UnifiedProfilePresenter $unified,
+        bool $companyWorkspace,
+    ): Response {
         $user = $request->user();
         $this->authorize('update', $user);
         $user->load([
@@ -62,27 +98,42 @@ class ProfileController extends Controller
 
         $profile = $user->toAccountProfileArray();
 
-        if ($user->isCandidate()) {
+        if ($companyWorkspace || $user->isEmployer()) {
+            $profile = array_merge($profile, $user->employerProfile?->toAccountArray() ?? []);
+        } elseif ($user->isCandidate()) {
             $profile['experience'] = $user->candidateProfile?->experience;
             $profile['qualification'] = $user->candidateProfile?->qualification;
             $profile['professional'] = $user->candidateProfile?->toProfessionalArray();
-        } else {
-            $profile = array_merge($profile, $user->employerProfile?->toAccountArray() ?? []);
+            $libraryResume = $user->candidateProfile?->resumes()
+                ->where('status', FileLifecycleStatus::Active)
+                ->orderByDesc('is_primary')
+                ->orderByDesc('id')
+                ->first();
+            $profile['library_resume'] = [
+                'has_upload' => $libraryResume instanceof CandidateResume,
+                'title' => $libraryResume instanceof CandidateResume ? $libraryResume->title : null,
+            ];
         }
 
         $profile = array_merge($profile, $unified->ownerIdentity($user));
 
+        $showCompanyUi = $companyWorkspace || $user->isEmployer();
+
         return Inertia::render('Account/Profile', [
-            'role' => $user->role->value,
+            'role' => $showCompanyUi ? 'employer' : $user->role->value,
+            'companyWorkspace' => $companyWorkspace,
             'profile' => $profile,
             'languages' => $profiles->languageOptions(),
             'lookups' => [
                 ...$masterData->formOptions(),
                 'notice_periods' => NoticePeriod::options(),
                 'language_proficiencies' => LanguageProficiency::options(),
-                'public_share_fields' => $user->isEmployer()
+                'public_share_fields' => $showCompanyUi
                     ? []
                     : CandidatePublicShare::fieldOptions(),
+                'company_public_share_fields' => $showCompanyUi
+                    ? EmployerPublicShare::fieldOptions()
+                    : [],
                 'social_fields' => EmployerSocials::fieldOptions(),
             ],
         ]);
@@ -114,14 +165,20 @@ class ProfileController extends Controller
         $user = $request->user();
         $this->authorize('update', $user);
 
+        $companyOnly = $request->isCompanyProfileUpdate();
+
         $profiles->updateProfile(
             $user,
             $request->profileAttributes(),
-            $request->file('photo'),
-            $request->boolean('remove_photo'),
+            $companyOnly ? null : $request->file('photo'),
+            $companyOnly ? false : $request->boolean('remove_photo'),
+            $companyOnly,
         );
 
-        return back()->with('success', 'Your profile has been updated.');
+        return back()->with(
+            'success',
+            $companyOnly ? 'Your company profile has been updated.' : 'Your profile has been updated.',
+        );
     }
 
     public function updatePhoto(UpdateAccountPhotoRequest $request, AccountProfileService $profiles): RedirectResponse
@@ -142,5 +199,33 @@ class ProfileController extends Controller
         $profiles->removePhoto($user);
 
         return back()->with('success', 'Your profile photo has been removed.');
+    }
+
+    public function updateCompanyLogo(
+        UpdateAccountCompanyLogoRequest $request,
+        AccountProfileService $profiles,
+    ): RedirectResponse {
+        $user = $request->user();
+        $user->loadMissing('employerProfile');
+        $profile = $user->employerProfile;
+        abort_unless($profile instanceof EmployerProfile, 403);
+        $this->authorize('updateLogo', $profile);
+
+        $profiles->updateCompanyLogo($user, $request->file('logo'));
+
+        return back()->with('success', 'Your company logo has been updated.');
+    }
+
+    public function destroyCompanyLogo(Request $request, AccountProfileService $profiles): RedirectResponse
+    {
+        $user = $request->user();
+        $user->loadMissing('employerProfile');
+        $profile = $user->employerProfile;
+        abort_unless($profile instanceof EmployerProfile, 403);
+        $this->authorize('updateLogo', $profile);
+
+        $profiles->removeCompanyLogo($user);
+
+        return back()->with('success', 'Your company logo has been removed.');
     }
 }

@@ -6,6 +6,7 @@ on:
       - main
       - staging
       - staging-baseline-2026-10-07
+      - release/web-mobile-2026-10-17
   pull_request:
     branches:
       - main
@@ -45,7 +46,15 @@ jobs:
         run: composer validate --no-check-publish
 
       - name: Install PHP dependencies
-        run: composer install --no-interaction --prefer-dist --no-progress
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: Install Laravel package dependencies
+        run: php artisan package:discover --ansi
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ':memory:'
 
       - name: Install frontend dependencies
         run: npm ci

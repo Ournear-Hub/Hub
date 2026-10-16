@@ -123,7 +123,16 @@ export type CandidateRecruitment = {
     jobs: Array<{ id: number; business_id: string | null; title: string; slug: string; workspace_url: string }>;
     applications: CandidateApplication[];
     screening: Array<{ id: number; business_id: string | null; job_title?: string | null; decision: string; href: string }>;
-    shortlisted: Array<{ id: number; business_id: string | null; job_title?: string | null; href: string }>;
+    shortlisted: Array<{
+        id: number;
+        application_id: number;
+        job_id: number | null;
+        business_id: string | null;
+        job_title?: string | null;
+        href: string;
+        default_recruiter_user_id: number | null;
+        can_assign: boolean;
+    }>;
     interviews: Array<{
         id: number | null;
         application_id: number;
@@ -207,6 +216,8 @@ export type CandidateWorkspaceProps = {
     jobs?: Array<{ id: number; title: string; business_id: string | null }>;
     saved_searches?: SavedTalentSearch[];
     can_manage?: boolean;
+    can_assign_talent_pool?: boolean;
+    talent_pool_recruiters?: Array<{ id: number; name: string }>;
     can_create_task?: boolean;
     staffUsers?: StaffUserOption[];
 };

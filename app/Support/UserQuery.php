@@ -57,6 +57,11 @@ class UserQuery
             $query->whereHas('roles', fn (Builder $role) => $role->where('roles.id', $roleId));
         }
 
+        $staffRole = trim((string) $request->query('staff_role', ''));
+        if ($staffRole !== '' && StaffRoleSlug::tryFrom($staffRole) instanceof StaffRoleSlug) {
+            $query->whereHas('roles', fn (Builder $role) => $role->where('slug', $staffRole));
+        }
+
         return $query->paginate(15)->withQueryString();
     }
 

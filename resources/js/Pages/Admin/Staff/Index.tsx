@@ -5,9 +5,7 @@ import Pagination from '@/Components/Pagination';
 import {
     Button,
     ConfirmDialog,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Label,
     Modal,
@@ -15,7 +13,9 @@ import {
     Select,
     StatusBadge,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { Paginator } from '@/types/jobs';
 import type { StaffRoleOption, UserDetail, UserListItem } from '@/types/security';
 

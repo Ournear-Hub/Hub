@@ -27,8 +27,8 @@ Authenticated redirect: admin paths → `admin.dashboard`; else `account.home`.
 | Routes | `routes/account.php` (`login`, `register`, `logout`, password reset) |
 | Username | Unique; availability `register.check-username` |
 | Email verification | Account verification routes |
-| Middleware | `auth:account`, `account.member`, `account.candidate`, `account.employer` |
-| Ensure classes | `EnsureAccountMember`, `EnsureCandidate`, `EnsureEmployer`, `EnsureActiveUser` |
+| Middleware | `auth:account`, `account.member`, `account.verified`, `account.candidate`, `account.employer` |
+| Ensure classes | `EnsureAccountMember`, `EnsureAccountEmailVerified`, `EnsureCandidate`, `EnsureEmployer`, `EnsureActiveUser` |
 
 Account login identifier: email **or** username (covered by DualGuard tests).
 

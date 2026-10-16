@@ -50,6 +50,9 @@ final class QaHiringFixtures
 
     public const COMPANY_B = 'QA Hiring Co B';
 
+    /** Extra published roles for Employer A so public /jobs pagination can be verified under one company label. */
+    public const PUBLISHED_A_PAGINATION_JOBS = 15;
+
     /**
      * @return array<string, mixed>
      */
@@ -88,6 +91,16 @@ final class QaHiringFixtures
                 self::TITLE_PUBLISHED_B,
                 published: true,
             );
+
+            for ($index = 1; $index <= self::PUBLISHED_A_PAGINATION_JOBS; $index++) {
+                $suffix = str_pad((string) $index, 2, '0', STR_PAD_LEFT);
+                $this->ensureJob(
+                    $employerA->employerProfile,
+                    'qa-fixture-published-a-'.$suffix,
+                    'QA Fixture Published Role (Employer A) '.$suffix,
+                    published: true,
+                );
+            }
 
             $this->ensureCandidateResume($candidate);
             $application = $this->ensureApplication($candidate, $publishedA);
@@ -237,7 +250,7 @@ final class QaHiringFixtures
 
         $file = UploadedFile::fake()->createWithContent(
             'qa-fixture-resume.pdf',
-            "%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n%%EOF\n"
+            ReadablePdfFixture::minimalOnePage(),
         );
 
         app(CandidateResumeLibraryService::class)->upload($profile, $file, [
@@ -302,9 +315,7 @@ final class QaHiringFixtures
         if ((int) $application->job_id !== (int) $publishedA->id) {
             throw new RuntimeException('Application job mismatch.');
         }
-        if ($application->status !== ApplicationStatus::New) {
-            throw new RuntimeException('Application status is not New.');
-        }
+        // QA lifecycle may advance the fixture application during manual audits; associations still must hold.
         if (trim((string) $application->resume_path) === '') {
             throw new RuntimeException('Application resume snapshot missing.');
         }

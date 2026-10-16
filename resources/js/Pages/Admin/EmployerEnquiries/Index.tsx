@@ -7,15 +7,16 @@ import StatCard from '@/Components/Admin/StatCard';
 import {
     ActivityFeed,
     Button,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     SearchBar,
     Select,
     StatusBadge,
     Textarea,
 } from '@/Components/Admin/ui';
+import DataTable from '@/Components/molecules/DataTable';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
 import type { Paginator } from '@/types/jobs';
 
 type Note = {
@@ -117,10 +118,16 @@ export default function EmployerEnquiriesIndex({
     };
 
     return (
-        <AdminLayout title="Employer Enquiries">
+        <AdminLayout
+            title="Staffing Enquiries"
+            breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Staffing Enquiries' }]}
+        >
             <div className="mb-6">
-                <h1 className="text-2xl font-semibold tracking-tight text-ink">Employer Enquiries</h1>
-                <p className="mt-1 text-sm text-muted">Workforce and project requests submitted from the public website.</p>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Workforce and project requests"
+                    description="Enquiries submitted from the public For Employers flow. Distinct from Recruitment Partnership submissions and ATS applications."
+                />
             </div>
 
             <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">

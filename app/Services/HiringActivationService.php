@@ -3,14 +3,21 @@
 namespace App\Services;
 
 use App\Models\EmployerProfile;
+use App\Models\Industry;
 use App\Models\User;
 use App\Notifications\HiringEmailVerificationNotification;
+use App\Support\ApplicationUrlResolver;
+use App\Support\MobileNumber;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class HiringActivationService
 {
+    public function __construct(
+        private EmployerPostingEligibilityService $postingEligibility,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -22,20 +29,12 @@ class HiringActivationService
         $hiringEmail = $user->hiringEmail();
         $hiringEmailVerified = $user->hiringEmailVerified();
         $hasCompany = $user->employerProfile !== null;
-        $active = $emailVerified && $mobileVerified && $hiringEmailVerified && $hasCompany;
+        $workspaceReady = $this->postingEligibility->workspaceReady($user);
+        $posting = $this->postingEligibility->for($user);
 
-        $message = 'Hiring services active';
-        if (! $active) {
-            if (! $emailVerified) {
-                $message = 'Email verification is required to activate hiring services.';
-            } elseif (! $mobileVerified) {
-                $message = 'Mobile verification required to activate hiring services.';
-            } elseif (! $hiringEmailVerified) {
-                $message = 'Verify recruiter email to activate hiring services.';
-            } elseif (! $hasCompany) {
-                $message = 'Add your company name to activate hiring services. This uses your existing account.';
-            }
-        }
+        $message = $workspaceReady
+            ? 'Your employer workspace is ready. You can publish one trial job for one hour. Verify your contact details to unlock unlimited job publishing.'
+            : 'Enter your company name, company phone, and company email to activate your employer workspace.';
 
         return [
             'email_verified' => $emailVerified,
@@ -44,10 +43,18 @@ class HiringActivationService
             'is_employer' => $user->isEmployer(),
             'has_company' => $hasCompany,
             'company_name' => $user->employerProfile?->company_name,
+            'company_phone' => $user->employerProfile?->mobile_number,
+            'industry_id' => $user->employerProfile?->industry_id,
             'hiring_email' => $hiringEmail,
             'hiring_email_verified' => $hiringEmailVerified,
             'uses_account_email' => strtolower($hiringEmail) === strtolower((string) $user->email),
-            'hiring_active' => $active,
+            'hiring_active' => $workspaceReady,
+            'workspace_ready' => $workspaceReady,
+            'trial_available' => $posting['trial_available'],
+            'trial_active' => $posting['trial_active'],
+            'trial_expired' => $posting['trial_expired'],
+            'trial_expires_at' => $posting['trial_expires_at'],
+            'unlimited_publishing' => $posting['unlimited_publishing'],
             'message' => $message,
         ];
     }
@@ -76,6 +83,8 @@ class HiringActivationService
         if ($user->hiringEmailVerified()) {
             return;
         }
+
+        app(ApplicationUrlResolver::class)->applyForUrlGeneration();
 
         $url = URL::temporarySignedRoute(
             'account.hiring.email.verify',
@@ -106,40 +115,56 @@ class HiringActivationService
         ])->save();
     }
 
-    public function activate(User $user, string $companyName, ?string $hiringEmail = null): EmployerProfile
+    public function activate(User $user, string $companyName, string $companyPhone, ?string $companyEmail = null, ?int $industryId = null): EmployerProfile
     {
-        if (! $user->emailVerified()) {
-            throw ValidationException::withMessages([
-                'email' => 'Email verification is required to activate hiring services.',
-            ]);
-        }
-
-        if (! $user->mobileVerified()) {
-            throw ValidationException::withMessages([
-                'mobile' => 'Mobile verification required to activate hiring services.',
-            ]);
-        }
-
-        $this->saveHiringEmail($user, $hiringEmail);
-        $user->refresh();
-
-        if (! $user->hiringEmailVerified()) {
-            $this->sendHiringEmailVerification($user);
-            throw ValidationException::withMessages([
-                'hiring_email' => 'Verify Recruiter Email. A verification link was sent to the hiring email.',
-            ]);
-        }
-
         $name = trim($companyName);
         if ($name === '') {
             throw ValidationException::withMessages([
-                'company_name' => 'Company name is required to activate hiring services.',
+                'company_name' => 'Company name is required to activate your employer workspace.',
             ]);
         }
 
+        $phone = MobileNumber::normalize($companyPhone);
+        if (! is_string($phone) || $phone === '') {
+            throw ValidationException::withMessages([
+                'company_phone' => 'A valid company phone number is required.',
+            ]);
+        }
+
+        $email = trim((string) $companyEmail);
+        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw ValidationException::withMessages([
+                'company_email' => 'A valid company email address is required.',
+            ]);
+        }
+
+        if ($industryId === null || $industryId <= 0) {
+            throw ValidationException::withMessages([
+                'industry_id' => 'Select your company industry.',
+            ]);
+        }
+
+        $industry = Industry::query()->find($industryId);
+        if ($industry === null || ! $industry->isSelectable()) {
+            throw ValidationException::withMessages([
+                'industry_id' => 'Select an active industry.',
+            ]);
+        }
+
+        $this->saveHiringEmail($user, $email);
+        $user->refresh();
+
+        $industryName = $industry->name;
+
         $profile = $user->employerProfile;
         if ($profile instanceof EmployerProfile) {
-            $profile->fill(['company_name' => $name])->save();
+            $profile->fill([
+                'company_name' => $name,
+                'mobile_number' => $phone,
+                'contact_person' => $profile->contact_person ?: $user->name,
+                'industry_id' => $industryId,
+                'industry' => $industryName,
+            ])->save();
 
             return $profile->fresh() ?? $profile;
         }
@@ -148,7 +173,9 @@ class HiringActivationService
             'user_id' => $user->id,
             'company_name' => $name,
             'contact_person' => $user->name,
-            'mobile_number' => $user->mobile,
+            'mobile_number' => $phone,
+            'industry_id' => $industryId,
+            'industry' => $industryName,
         ]);
     }
 }

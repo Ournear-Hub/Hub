@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\PermissionName;
 use App\Models\Application;
 use App\Models\User;
+use App\Support\EmployerApplicationAccess;
 
 class ApplicationPolicy
 {
@@ -43,6 +44,21 @@ class ApplicationPolicy
     }
 
     public function withdraw(User $user, Application $application): bool
+    {
+        return $this->ownedByCandidate($user, $application);
+    }
+
+    public function manageAsEmployer(User $user, Application $application): bool
+    {
+        return EmployerApplicationAccess::managesApplication($user, $application);
+    }
+
+    public function respondToInterview(User $user, Application $application): bool
+    {
+        return $this->ownedByCandidate($user, $application);
+    }
+
+    public function submitCorrectionRequest(User $user, Application $application): bool
     {
         return $this->ownedByCandidate($user, $application);
     }

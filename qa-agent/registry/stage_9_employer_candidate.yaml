@@ -1,0 +1,64 @@
+# Stage 9 — employer ↔ candidate workflow (schema v1)
+
+version: 1
+stage: 9
+title: Employer and candidate interaction
+module: employer_candidate
+
+cases:
+  - id: STG9-EMP-001
+    feature_ids: [EMP-03, EMP-04]
+    route: /account/hiring/applications
+    summary: Employer sees ONT-A-* with Interview status on list and detail
+  - id: STG9-EMP-002
+    feature_ids: [EMP-03]
+    route: /account/employer-applications/{id}/resume
+    summary: Employer resume download remains readable
+  - id: STG9-EMP-003
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer detail persists after reload
+  - id: STG9-EMP-ACT-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer interview schedule or pipeline actions
+  - id: STG9-INT-ADM-001
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin schedules or verifies interview on Interview tab
+  - id: STG9-INT-ADM-002
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Interview row persists after reload
+  - id: STG9-INT-EMP-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer self-service interview scheduling
+  - id: STG9-COMM-001
+    feature_ids: [EMP-08]
+    route: /account
+    summary: Employer-to-candidate in-app messaging
+  - id: STG9-CAND-RESP-001
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Candidate interview accept/decline or response controls
+  - id: STG9-CAND-001
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: Candidate interview notification when newly scheduled
+  - id: STG9-CAND-002
+    feature_ids: [CAN-07]
+    route: /account/applications/{id}
+    summary: Candidate application shows Interview status
+  - id: STG9-X-001
+    feature_ids: [X-01]
+    route: cross-role
+    summary: Interview status consistent employer and candidate
+  - id: STG9-AUTH-001
+    feature_ids: [EMP-09]
+    route: /account/hiring/applications
+    summary: Employer B isolation
+  - id: STG9-AUTH-002
+    feature_ids: [X-03]
+    route: /account/applications/{id}
+    summary: Non-owner cannot access application

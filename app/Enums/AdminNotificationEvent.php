@@ -40,6 +40,11 @@ enum AdminNotificationEvent: string
     case CampaignActivated = 'campaign_activated';
     case ReferralAttributed = 'referral_attributed';
     case AutomationRecommended = 'automation_recommended';
+    case TalentPoolAssignmentProgress = 'talent_pool_assignment_progress';
+    case TalentPoolSubmissionCreated = 'talent_pool_submission_created';
+    case CompanyRelationshipRecruiterAssigned = 'company_relationship_recruiter_assigned';
+    case TalentPoolEmployerResponse = 'talent_pool_employer_response';
+    case StaffingAccessRequested = 'staffing_access_requested';
 
     public function category(): string
     {
@@ -61,6 +66,8 @@ enum AdminNotificationEvent: string
             self::InvestorVerified, self::OpportunityInterestReceived, self::OpportunityStageChanged => 'Investor',
             self::CampaignActivated, self::ReferralAttributed => 'Campaign',
             self::AutomationRecommended => 'Automation',
+            self::TalentPoolAssignmentProgress, self::TalentPoolSubmissionCreated, self::CompanyRelationshipRecruiterAssigned, self::TalentPoolEmployerResponse => 'Talent Pool',
+            self::StaffingAccessRequested => 'Staffing',
         };
     }
 

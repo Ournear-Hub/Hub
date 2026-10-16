@@ -1,5 +1,6 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import AdminAuthLayout from '@/Layouts/AdminAuthLayout';
 
 type ResetPasswordProps = {
@@ -73,10 +74,8 @@ export default function ResetPassword({ email, token }: ResetPasswordProps) {
                     Reset password
                 </button>
             </form>
-            <p className="mt-6 text-center text-sm">
-                <Link href="/admin/login" className="font-medium text-brand hover:underline">
-                    Back to login
-                </Link>
+            <p className="mt-6 flex justify-center">
+                <BackNavLink href="/admin/login" label="Back to login" />
             </p>
         </AdminAuthLayout>
     );

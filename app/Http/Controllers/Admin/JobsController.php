@@ -17,6 +17,7 @@ use App\Models\JobCategory;
 use App\Models\Location;
 use App\Models\Task;
 use App\Services\JobLifecycleService;
+use App\Services\JobListingRequirementService;
 use App\Services\MasterData\MasterDataService;
 use App\Services\RecruitmentActivityService;
 use App\Support\JobListingQuery;
@@ -103,9 +104,17 @@ class JobsController extends Controller
         return $this->index($request, $jobs, $masterData);
     }
 
-    public function store(StoreJobRequest $request, RecruitmentActivityService $activities): RedirectResponse
-    {
+    public function store(
+        StoreJobRequest $request,
+        RecruitmentActivityService $activities,
+        JobListingRequirementService $requirements,
+    ): RedirectResponse {
         $job = Job::query()->create($this->payload($request));
+        $requirements->sync(
+            $job,
+            $request->input('qualification_ids'),
+            $request->input('skill_ids'),
+        );
         $this->recordEmployerAssignment($job, null, $request->user(), $activities);
 
         return redirect()
@@ -134,6 +143,7 @@ class JobsController extends Controller
         Job $job,
         RecruitmentActivityService $activities,
         JobLifecycleService $lifecycle,
+        JobListingRequirementService $requirements,
     ): RedirectResponse {
         $previousEmployerId = $job->employer_id;
         $previousStatus = $job->publishing_status;
@@ -141,6 +151,11 @@ class JobsController extends Controller
         $target = $data['publishing_status'] ?? $job->publishing_status;
         unset($data['publishing_status'], $data['active']);
         $job->update($data);
+        $requirements->sync(
+            $job,
+            $request->input('qualification_ids'),
+            $request->input('skill_ids'),
+        );
 
         $targetStatus = $target instanceof JobPublishingStatus
             ? $target
@@ -273,6 +288,12 @@ class JobsController extends Controller
      */
     private function syncMasterString(array &$data, string $idKey, string $stringKey, string $model, ?Job $job): void
     {
+        if ($job !== null && ! array_key_exists($idKey, $data)) {
+            unset($data[$idKey], $data[$stringKey]);
+
+            return;
+        }
+
         $id = $data[$idKey] ?? null;
 
         if (filled($id)) {

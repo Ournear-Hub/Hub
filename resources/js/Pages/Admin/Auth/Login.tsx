@@ -1,6 +1,9 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import AdminAuthLayout from '@/Layouts/AdminAuthLayout';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import Alert from '@/Components/molecules/Alert';
+import Button from '@/Components/atoms/Button';
 import type { SharedPageProps } from '@/types/page';
 
 export default function Login() {
@@ -19,11 +22,12 @@ export default function Login() {
     return (
         <AdminAuthLayout title="Admin login">
             <Head title="Admin login" />
-            {flash.status && (
-                <p className="mb-4 rounded-md border border-success/20 bg-success/10 px-3 py-2 text-sm text-success">
+            <BackNavLink href="/" label="Back to website" className="mb-4" />
+            {flash.status ? (
+                <Alert variant="success" className="mb-4">
                     {flash.status}
-                </p>
-            )}
+                </Alert>
+            ) : null}
             <form onSubmit={submit} className="space-y-4">
                 <div>
                     <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
@@ -66,13 +70,9 @@ export default function Login() {
                         Forgot password?
                     </Link>
                 </div>
-                <button
-                    type="submit"
-                    disabled={processing}
-                    className="w-full rounded-md bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:opacity-95 disabled:bg-disabled"
-                >
+                <Button type="submit" surface="admin" variant="primary" fullWidth loading={processing} disabled={processing}>
                     Log in
-                </button>
+                </Button>
             </form>
         </AdminAuthLayout>
     );

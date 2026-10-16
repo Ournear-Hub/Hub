@@ -22,10 +22,9 @@ class UserFoundationStage1Test extends TestCase
     public function test_candidate_registration_defaults_to_website_source(): void
     {
         $this->post(route('register.store'), $this->registrationPayload([
-            'role' => UserRole::Candidate->value,
             'email' => 'stage1.candidate@example.com',
             'username' => 'stage1candidate',
-        ]))->assertRedirect();
+        ]))->assertRedirect(route('login'));
 
         $user = User::query()->where('email', 'stage1.candidate@example.com')->first();
         $this->assertNotNull($user);
@@ -40,18 +39,17 @@ class UserFoundationStage1Test extends TestCase
         );
     }
 
-    public function test_employer_registration_defaults_to_website_source(): void
+    public function test_public_registration_rejects_employer_role_payload(): void
     {
-        $this->post(route('register.store'), $this->registrationPayload([
-            'role' => UserRole::Employer->value,
-            'email' => 'stage1.employer@example.com',
-            'username' => 'stage1employer',
-        ]))->assertRedirect();
+        $this->from(route('register'))
+            ->post(route('register.store'), $this->registrationPayload([
+                'role' => UserRole::Employer->value,
+                'email' => 'stage1.employer@example.com',
+                'username' => 'stage1employer',
+            ]))
+            ->assertSessionHasErrors('role');
 
-        $user = User::query()->where('email', 'stage1.employer@example.com')->first();
-        $this->assertNotNull($user);
-        $this->assertTrue($user->isEmployer());
-        $this->assertSame(RegistrationSource::Website, $user->registration_source);
+        $this->assertNull(User::query()->where('email', 'stage1.employer@example.com')->first());
     }
 
     public function test_admin_created_staff_defaults_to_admin_source(): void

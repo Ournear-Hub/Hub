@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CandidateInterviewResponse;
 use App\Enums\InterviewLifecycleStatus;
 use App\Enums\InterviewMode;
 use App\Enums\InterviewOutcome;
@@ -36,6 +37,9 @@ class ApplicationInterview extends Model
         'outcome',
         'notes',
         'confirmed_at',
+        'candidate_response',
+        'candidate_responded_at',
+        'candidate_response_note',
         'cancelled_at',
         'cancelled_reason',
         'rescheduled_from_id',
@@ -51,6 +55,8 @@ class ApplicationInterview extends Model
         return [
             'scheduled_at' => 'datetime',
             'confirmed_at' => 'datetime',
+            'candidate_response' => CandidateInterviewResponse::class,
+            'candidate_responded_at' => 'datetime',
             'cancelled_at' => 'datetime',
             'reminder_sent_at' => 'datetime',
             'sort_order' => 'integer',
@@ -104,6 +110,41 @@ class ApplicationInterview extends Model
     public function displayInterviewerName(): string
     {
         return $this->interviewer?->name ?: (string) $this->interviewer_name;
+    }
+
+    public function candidateCanRespond(): bool
+    {
+        $lifecycle = $this->lifecycle_status ?? InterviewLifecycleStatus::Scheduled;
+
+        return $lifecycle->isOpen()
+            && $this->candidate_response === null
+            && $this->scheduled_at !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toAccountArray(): array
+    {
+        $lifecycle = $this->lifecycle_status ?? InterviewLifecycleStatus::Scheduled;
+        $response = $this->candidate_response;
+
+        return [
+            'id' => $this->id,
+            'sort_order' => $this->sort_order,
+            'scheduled_at_label' => $this->scheduled_at?->toDateTimeString(),
+            'mode' => $this->mode->value,
+            'mode_label' => ucfirst(str_replace('_', ' ', $this->mode->value)),
+            'location_or_link' => $this->location_or_link,
+            'interviewer_name' => $this->displayInterviewerName(),
+            'lifecycle_status' => $lifecycle->value,
+            'lifecycle_label' => $lifecycle->label(),
+            'candidate_response' => $response?->value,
+            'candidate_response_label' => $response?->label(),
+            'candidate_responded_at' => $this->candidate_responded_at?->toDateTimeString(),
+            'candidate_response_note' => $this->candidate_response_note,
+            'can_respond' => $this->candidateCanRespond(),
+        ];
     }
 
     /**

@@ -1,0 +1,22 @@
+# Stage 12 — final regression and release gate (schema v1)
+
+version: 1
+stage: 12
+title: Final regression, release readiness, launch gate
+module: release
+
+cases:
+  - id: STG12-GATE-001
+    summary: Release readiness evaluator semantics preserved
+  - id: STG12-GATE-002
+    summary: P0 critical journeys registered as implemented
+  - id: STG12-REG-001
+    summary: Full PHPUnit regression suite
+  - id: STG12-REG-002
+    summary: TypeScript check
+  - id: STG12-REG-003
+    summary: Frontend production build
+  - id: STG12-SCORE-001
+    summary: Consolidated Stage 1-11 scorecard documented
+  - id: STG12-DEC-001
+    summary: Final release gate status with rationale

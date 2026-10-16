@@ -80,6 +80,16 @@ class CandidateQuery
             });
         }
 
+        $assignedRecruiterUserId = $request->integer('assigned_recruiter_user_id');
+        if ($assignedRecruiterUserId > 0) {
+            $query->whereIn('users.id', function ($sub) use ($assignedRecruiterUserId) {
+                $sub->select('candidate_user_id')
+                    ->from('recruiter_talent_pool_assignments')
+                    ->where('assigned_recruiter_user_id', $assignedRecruiterUserId)
+                    ->whereNull('archived_at');
+            });
+        }
+
         $jobId = $request->integer('job_id');
         if ($jobId > 0) {
             $query->whereHas('applications', fn (Builder $application) => $application->where('job_id', $jobId));

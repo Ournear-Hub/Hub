@@ -1,1 +1,0 @@
-import{j as i}from"./app-DKG1WQxt.js";import{d as m}from"./icons-IsAvSNuV.js";function n({density:r="standard",className:s="",as:a="div",children:t}){return i.jsx(a,{className:`${m[r]} ${s}`.trim(),children:t})}export{n as C};

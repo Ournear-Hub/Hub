@@ -7,8 +7,9 @@ import RecruiterCandidateSummary, {
 import RecruitmentRequirementCard, {
     type RecruitmentRequirement,
 } from '@/Components/Account/Recruiter/RecruitmentRequirementCard';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
 import Pagination from '@/Components/Pagination';
 import StatusBadge from '@/Components/Account/StatusBadge';
 import { formatAppliedAt } from '@/Components/Account/CandidateHome/candidateHomeNextAction';
@@ -128,29 +129,27 @@ export default function EmployerSubmissions({
                         separate from Direct Hiring / ATS on your job applicants.
                     </p>
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Button href={support_href} variant="primary" className="min-h-11 w-full sm:w-auto">
+                        <Button surface="public" href={support_href} variant="primary" className="min-h-11 w-full sm:w-auto">
                             Request recruitment support
                         </Button>
-                        <Link href="/account/hiring" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
-                            Back to Hiring Command Center
-                        </Link>
+                        <BackNavLink href="/account/hiring" label="Back to Hiring Command Center" />
                     </div>
                 </header>
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Active requirements</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.active_requirements}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Candidate submissions</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.candidate_submissions}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Pending review</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.pending_review_count}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Selected</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.selected_count}</p>
                     </Card>
@@ -170,7 +169,7 @@ export default function EmployerSubmissions({
                 ) : null}
 
                 {recent_submissions.length > 0 && !hasFilters ? (
-                    <Card as="section" density="compact">
+                    <Card as="section" padding="compact">
                         <h2 className="text-base font-semibold text-ink">Recent candidate submissions</h2>
                         <ul className="mt-3 divide-y divide-line">
                             {recent_submissions.map((candidate) => (
@@ -205,7 +204,7 @@ export default function EmployerSubmissions({
                         <p className="mt-2 text-sm text-muted">
                             When OurNear shares candidates for your roles, they will appear here grouped by requirement.
                         </p>
-                        <Button href={support_href} variant="secondary" className="mt-4 min-h-11">
+                        <Button surface="public" href={support_href} variant="secondary" className="mt-4 min-h-11">
                             Request recruitment support
                         </Button>
                     </div>
@@ -221,7 +220,7 @@ export default function EmployerSubmissions({
                         {noMatches ? (
                             <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
                                 <p className="text-sm text-muted">No requirements match these filters.</p>
-                                <Button href="/account/submissions" variant="secondary" className="mt-4 min-h-11">
+                                <Button surface="public" href="/account/submissions" variant="secondary" className="mt-4 min-h-11">
                                     Clear filters
                                 </Button>
                             </div>
@@ -250,7 +249,7 @@ export default function EmployerSubmissions({
                     </>
                 )}
 
-                <Card as="section" density="compact" className="bg-surface/40">
+                <Card as="section" padding="compact" className="bg-surface/40">
                     <h2 className="text-sm font-semibold text-ink">Need workforce supply?</h2>
                     <p className="mt-2 text-sm text-muted">
                         Staffing Services enquiries are separate from Recruitment Partnership submissions.

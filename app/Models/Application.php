@@ -129,6 +129,14 @@ class Application extends Model
     }
 
     /**
+     * @return HasMany<ApplicationCorrectionRequest, $this>
+     */
+    public function correctionRequests(): HasMany
+    {
+        return $this->hasMany(ApplicationCorrectionRequest::class)->latest('id');
+    }
+
+    /**
      * @return HasOne<ApplicationScreening, $this>
      */
     public function screening(): HasOne
@@ -172,7 +180,7 @@ class Application extends Model
             'applied_at' => $this->created_at?->toDateTimeString(),
             'has_resume' => filled($this->getRawOriginal('resume_path') ?? $this->attributes['resume_path'] ?? null),
             'resume_url' => route('account.applications.resume', $this),
-            'status' => $this->status->toCandidateLabel(),
+            'status' => $this->status->toCandidateStatusLabel(),
             'can_withdraw' => $this->candidateCanWithdraw(),
             'withdraw_requires_confirmation' => $this->status === ApplicationStatus::Selected,
             'job' => $this->job ? [
@@ -204,6 +212,21 @@ class Application extends Model
         return is_array($notes) ? array_values($notes) : [];
     }
 
+    public function candidateDisplayName(): string
+    {
+        if (filled($this->full_name)) {
+            return (string) $this->full_name;
+        }
+
+        $this->loadMissing('user');
+
+        if (filled($this->user?->name)) {
+            return (string) $this->user->name;
+        }
+
+        return 'Guest applicant';
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -223,11 +246,12 @@ class Application extends Model
         $profile = $this->user?->candidateProfile;
         $submitBlockedReason = $this->submitBlockedReason();
         $ats = AtsStage::for($this);
+        $displayName = $this->candidateDisplayName();
 
         return [
             'id' => $this->id,
             'business_id' => $this->business_id,
-            'full_name' => $this->full_name,
+            'full_name' => $displayName,
             'mobile' => $this->mobile,
             'email' => $this->email,
             'current_location' => $this->displayLocation(),
@@ -249,7 +273,7 @@ class Application extends Model
             'candidate' => [
                 'id' => $profile?->id,
                 'business_id' => $profile?->business_id,
-                'name' => $this->full_name,
+                'name' => $displayName,
                 'profile_url' => $this->user?->username ? route('profiles.show', $this->user) : null,
                 'workspace_url' => $profile ? route('admin.candidates.index', ['candidate' => $profile->id], false) : null,
             ],
@@ -542,6 +566,13 @@ class Application extends Model
             'employer' => $job['employer'],
             'workspace_url' => route('admin.jobs.index', ['job' => $this->job->slug], false),
         ];
+    }
+
+    public function resumeStoragePath(): ?string
+    {
+        $path = $this->getRawOriginal('resume_path') ?? $this->attributes['resume_path'] ?? null;
+
+        return is_string($path) && $path !== '' ? $path : null;
     }
 
     public function adminResumeUrl(): string

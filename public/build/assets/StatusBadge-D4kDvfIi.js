@@ -1,0 +1,1 @@
+import{j as n}from"./app-2VvbXxLL.js";import{B as s}from"./Badge-BXOqdyiN.js";function f({tone:u,variant:a,toneClassName:r,className:t="",children:o}){if(r)return n.jsx(s,{toneClassName:r,className:t,children:o});const e=u??a??"neutral";return n.jsx(s,{variant:e,className:t,children:o})}export{f as S};

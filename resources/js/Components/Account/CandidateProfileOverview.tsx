@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import DetailSection from '@/Components/organisms/DetailSection';
 import type { AccountProfile } from '@/types/account';
 
 type SectionKey =
@@ -60,9 +61,9 @@ export default function CandidateProfileOverview({ profile, onEdit }: Props) {
 
     return (
         <div className="mt-6 space-y-4">
-            <Section title="About" onEdit={() => onEdit('about')}>
+            <DetailSection title="About" onEdit={() => onEdit('about')}>
                 <p className="whitespace-pre-line text-muted">{profile.bio || 'Add a short professional summary.'}</p>
-            </Section>
+            </DetailSection>
 
             <Section title="Professional information" onEdit={() => onEdit('professional')}>
                 <dl className="grid gap-3 sm:grid-cols-2">
@@ -210,7 +211,11 @@ export default function CandidateProfileOverview({ profile, onEdit }: Props) {
                 </article>
                 <article className="rounded-xl border border-line bg-white p-5">
                     <h2 className="font-semibold text-ink">My Resume</h2>
-                    <p className="mt-2 text-sm text-muted">One uploaded personal resume.</p>
+                    <p className="mt-2 text-sm text-muted">
+                        {profile.library_resume?.has_upload
+                            ? profile.library_resume.title ?? 'Uploaded personal resume on file.'
+                            : 'Upload a resume for job applications.'}
+                    </p>
                     <Link href="/account/resumes" className="mt-4 inline-block text-sm font-semibold text-brand">
                         Open My Resume
                     </Link>
@@ -229,7 +234,7 @@ export default function CandidateProfileOverview({ profile, onEdit }: Props) {
                         </li>
                         <li>WhatsApp — {profile.whatsapp_number ? 'Saved' : 'Optional'} · verification not required</li>
                     </ul>
-                    <Link href="/account/settings/security" className="mt-4 inline-block text-sm font-semibold text-brand">
+                    <Link href="/account/settings/verification" className="mt-4 inline-block text-sm font-semibold text-brand">
                         Open verification
                     </Link>
                 </article>
@@ -237,9 +242,9 @@ export default function CandidateProfileOverview({ profile, onEdit }: Props) {
                     <h2 className="font-semibold text-ink">Documents</h2>
                     <p className="mt-2 text-sm text-muted">Private documents stay in your account.</p>
                     {publicUrl ? (
-                        <a href={publicUrl} className="mt-4 block text-sm font-semibold text-brand">
+                        <Link href={publicUrl} className="mt-4 block text-sm font-semibold text-brand">
                             View public profile
-                        </a>
+                        </Link>
                     ) : null}
                     <Link href="/account/documents" className="mt-2 inline-block text-sm font-semibold text-brand">
                         Open documents

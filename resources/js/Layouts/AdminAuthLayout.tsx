@@ -12,7 +12,7 @@ export default function AdminAuthLayout({ title, children }: AdminAuthLayoutProp
             <header className="border-b border-line bg-brand px-4 py-5">
                 <div className="mx-auto flex max-w-md flex-col items-center text-center">
                     <Link href="/admin/login" aria-label="OurNear admin">
-                        <BrandMark inverted className="text-xl" />
+                        <BrandMark inverted className="text-xl" usePublicBranding />
                     </Link>
                     <p className="mt-2 text-xs tracking-wide text-white/80">
                         Right People. Right Training. Right Results.

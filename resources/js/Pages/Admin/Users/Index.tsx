@@ -2,8 +2,11 @@ import { Link, router } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import Pagination from '@/Components/Pagination';
-import { Button, DataTable, FilterBar, Input, SearchBar, Select, StatusBadge } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import { Button, Input, SearchBar, Select, StatusBadge } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import type { Paginator } from '@/types/jobs';
 import type { StaffRoleOption, TagOption, UserListItem, UserSegmentOption } from '@/types/security';
 
@@ -128,18 +131,19 @@ export default function UsersIndex({ users, filters, options, can_manage }: Prop
 
     return (
         <AdminLayout title="Users" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Users' }]}>
-            <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Users</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        One platform identity per person. Candidate and employer records stay attached as profiles.
-                    </p>
-                </div>
-                {can_manage ? (
-                    <Link href="/admin/staff">
-                        <Button>Admin Users</Button>
-                    </Link>
-                ) : null}
+            <div className="mb-6">
+                <DetailHeader
+                    headingLevel={2}
+                    title="Platform user directory"
+                    description="One platform identity per person. Candidate and employer records stay attached as profiles."
+                    actions={
+                        can_manage ? (
+                            <Link href="/admin/staff">
+                                <Button>Admin Users</Button>
+                            </Link>
+                        ) : undefined
+                    }
+                />
             </div>
 
             <div className="mb-4 flex flex-wrap gap-2">

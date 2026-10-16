@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import PageContainer from '@/Components/Public/PageContainer';
 import type { SiteContent } from '@/types/public';
 
@@ -65,9 +66,7 @@ export default function FreelancersReceived({ content, confirmation, message }: 
                             Save your Freelancer ID for future reference.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-4">
-                            <Link href="/freelancers" className="text-sm font-medium text-brand">
-                                Back to freelancers
-                            </Link>
+                            <BackNavLink href="/freelancers" label="Back to freelancers" />
                             <Link href="/jobs" className="text-sm font-medium text-brand">
                                 Browse jobs
                             </Link>

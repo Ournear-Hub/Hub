@@ -227,7 +227,7 @@ class PhaseF5OperationsWorkspaceTest extends TestCase
                 ->where('notifications.data.0.category', 'Application')
                 ->where('notifications.data.0.is_unread', true)
                 ->where('notifications.data.0.recipient.id', $admin->id)
-                ->has('categories', 17)
+                ->has('categories', count(AdminNotificationEvent::categories()))
                 ->where('categories.0', 'Application')
                 ->where('categories.1', 'Freelancer')
                 ->where('categories.9', 'Payment')
@@ -237,7 +237,9 @@ class PhaseF5OperationsWorkspaceTest extends TestCase
                 ->where('categories.13', 'Partner')
                 ->where('categories.14', 'Investor')
                 ->where('categories.15', 'Campaign')
-                ->where('categories.16', 'Automation'));
+                ->where('categories.16', 'Automation')
+                ->where('categories.17', 'Talent Pool')
+                ->where('categories.18', 'Staffing'));
 
         $this->actingAs($admin)
             ->get(route('admin.notifications.index', ['category' => 'Payment']))

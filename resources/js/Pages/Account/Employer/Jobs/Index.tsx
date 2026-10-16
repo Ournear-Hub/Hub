@@ -1,6 +1,8 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import AccountLayout from '@/Layouts/AccountLayout';
+import Button from '@/Components/atoms/Button';
 import Pagination from '@/Components/Pagination';
+import { typography } from '@/design-system/classNames';
 import type { AdminJob, Paginator } from '@/types/jobs';
 import type { SharedPageProps } from '@/types/page';
 
@@ -29,7 +31,7 @@ const listingTabs: Array<{ key: Listing; label: string }> = [
 ];
 
 export default function EmployerJobsIndex({ jobs, listing = 'all', eligibility, featured }: Props) {
-    const flash = usePage<SharedPageProps>().props.flash;
+    const { flash, errors } = usePage<SharedPageProps>().props;
 
     const remove = (job: AdminJob) => {
         if (window.confirm(`Delete ${job.title}?`)) {
@@ -42,21 +44,19 @@ export default function EmployerJobsIndex({ jobs, listing = 'all', eligibility, 
     };
 
     return (
-        <AccountLayout
-            title="Job management"
-            description="Post jobs, manage your own listings, and review applicants."
-            breadcrumbs={[
-                { label: 'Hiring', href: '/account/hiring' },
-                { label: 'Jobs' },
-            ]}
-            action={
-                <Link href="/account/jobs/create" className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white">
+        <AccountLayout title="Jobs" hideShellHeader>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                    <h1 className={`${typography.pageTitle} text-ink`}>Jobs</h1>
+                    <p className="mt-1 text-sm text-muted">Post jobs, manage your listings, and review applicants.</p>
+                </div>
+                <Button surface="account" variant="primary" href="/account/jobs/create" className="shrink-0">
                     Create Job
-                </Link>
-            }
-        >
+                </Button>
+            </div>
             {flash.success ? <p className="mb-4 rounded-md bg-success/10 px-3 py-2 text-sm text-success">{flash.success}</p> : null}
             {flash.error ? <p className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{flash.error}</p> : null}
+            {errors.posting ? <p className="mb-4 rounded-md bg-danger/10 px-3 py-2 text-sm text-danger">{errors.posting}</p> : null}
             {!eligibility.eligible ? (
                 <section className="mb-4 rounded-xl border border-accent/40 bg-accent/10 p-4 text-sm text-ink">
                     <p className="font-semibold">Publishing requires verification</p>

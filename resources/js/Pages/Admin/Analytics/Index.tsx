@@ -2,8 +2,12 @@ import { Link, router } from '@inertiajs/react';
 import { FormEvent, useEffect, useState, type ReactNode } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import StatCard from '@/Components/Admin/StatCard';
-import { Button, Card, DataTable, EmptyState, FilterBar, Input, Label, StatusBadge } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import { Button, Card, EmptyState, Input, Label, StatusBadge } from '@/Components/Admin/ui';
+import BackNavLink from '@/Components/molecules/BackNavLink';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 
 type Metric = {
     value: number | string | null;
@@ -283,16 +287,18 @@ export default function AnalyticsIndex(props: AnalyticsPageProps) {
 
     return (
         <AdminLayout title="Analytics" breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Analytics' }]}>
+            <BackNavLink href="/admin" label="Back to dashboard" className="mb-4" />
             <div className="space-y-8">
-                <div>
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Operational analytics</h1>
-                    <p className="mt-1 text-sm text-muted">
-                        Date-bounded aggregates from existing records. This is not a single-cohort hiring funnel. Match % is not used as a hiring KPI.
-                    </p>
-                    <p className="mt-1 text-xs text-muted">
-                        {period.definition} Timezone: {period.timezone}.
-                    </p>
-                </div>
+                <DetailHeader
+                    headingLevel={2}
+                    title="Operational analytics"
+                    description="Date-bounded aggregates from existing records. This is not a single-cohort hiring funnel. Match % is not used as a hiring KPI."
+                    meta={
+                        <p className="text-xs text-muted">
+                            {period.definition} Timezone: {period.timezone}.
+                        </p>
+                    }
+                />
 
                 <FilterBar onSubmit={apply} className="md:grid-cols-6">
                     <div>
@@ -707,11 +713,6 @@ export default function AnalyticsIndex(props: AnalyticsPageProps) {
                     </p>
                 ) : null}
 
-                <p className="text-xs text-muted">
-                    <Link href="/admin" className="font-medium text-brand hover:underline">
-                        Back to Dashboard
-                    </Link>
-                </p>
             </div>
         </AdminLayout>
     );

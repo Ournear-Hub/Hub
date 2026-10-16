@@ -1,0 +1,56 @@
+# Stage 7 — decision and communication loop (schema v1)
+
+version: 1
+stage: 7
+title: Admin decision → employer → candidate communication
+module: decision_communication
+
+cases:
+  - id: STG7-ADM-001
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Admin shortlists correct application with confirmation and persistence
+  - id: STG7-ADM-002
+    feature_ids: [ADM-03]
+    route: /admin/applications
+    summary: Shortlist action survives reload
+  - id: STG7-EMP-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer sees Shortlisted label after admin decision
+  - id: STG7-EMP-002
+    feature_ids: [EMP-08]
+    route: /account/notifications
+    summary: Employer notification center accessible (no false cross-employer leak)
+  - id: STG7-EMP-ACT-001
+    feature_ids: [EMP-03]
+    route: /account/jobs/{slug}/applications/{id}
+    summary: Employer self-service decision controls (Stage 5/6 dependency)
+  - id: STG7-CAND-001
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: Candidate receives in-app shortlisted notification
+  - id: STG7-CAND-002
+    feature_ids: [CAN-05]
+    route: /account/applications/{id}
+    summary: Candidate detail and timeline show Shortlisted
+  - id: STG7-CAND-003
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: Notification deep link opens applications destination
+  - id: STG7-NOTIF-001
+    feature_ids: [CAN-09]
+    route: /account/notifications
+    summary: In-platform notification content references correct job context
+  - id: STG7-EMAIL-001
+    feature_ids: [CAN-09]
+    route: email
+    summary: Email delivery for shortlist decision (product sends mail for reject/select only)
+  - id: STG7-X-001
+    feature_ids: [X-01]
+    route: cross-role
+    summary: Stored Shortlisted status consistent across admin employer candidate
+  - id: STG7-AUTH-001
+    feature_ids: [X-03]
+    route: /account/applications/{id}
+    summary: Other candidate cannot access private application

@@ -5,16 +5,23 @@ namespace App\Services;
 use App\Enums\ApplicationStatus;
 use App\Enums\CandidateNotificationEvent;
 use App\Enums\EmployerNotificationEvent;
+use App\Enums\SystemMessageTemplateKey;
 use App\Models\Application;
 use App\Models\ApplicationInterview;
 use App\Models\User;
 use App\Notifications\CandidateLifecycleNotification;
+use App\Services\MessageTemplateService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
 class CandidateNotificationService
 {
+    public function __construct(
+        private ?MessageTemplateService $messageTemplates = null,
+        private ?CommunicationPreferenceService $preferences = null,
+    ) {}
+
     public function notifyApplicationReceived(Application $application): void
     {
         $application->loadMissing('job');
@@ -23,7 +30,11 @@ class CandidateNotificationService
             $application,
             CandidateNotificationEvent::ApplicationReceived,
             'Application received',
-            'We received your application for '.($application->job?->title ?? 'this role').'.',
+            $this->inAppBody(
+                SystemMessageTemplateKey::ApplicationReceivedInApp->value,
+                $application,
+                'We received your application for '.($application->job?->title ?? 'this role').'.',
+            ),
             ['application_id' => $application->id],
         );
     }
@@ -50,10 +61,26 @@ class CandidateNotificationService
         $title = $application->job?->title ?? 'this role';
 
         $body = match ($event) {
-            CandidateNotificationEvent::ApplicationStatusChanged => 'Your application for '.$title.' is now being reviewed.',
-            CandidateNotificationEvent::ApplicationShortlisted => 'You have been shortlisted for '.$title.'.',
-            CandidateNotificationEvent::ApplicationSelected => 'You have been selected for '.$title.'.',
-            CandidateNotificationEvent::ApplicationRejected => 'Your application for '.$title.' was unsuccessful.',
+            CandidateNotificationEvent::ApplicationStatusChanged => $this->inAppBody(
+                SystemMessageTemplateKey::ApplicationReviewingInApp->value,
+                $application,
+                'Your application for '.$title.' is now being reviewed.',
+            ),
+            CandidateNotificationEvent::ApplicationShortlisted => $this->inAppBody(
+                SystemMessageTemplateKey::ApplicationShortlistedInApp->value,
+                $application,
+                'You have been shortlisted for '.$title.'.',
+            ),
+            CandidateNotificationEvent::ApplicationSelected => $this->inAppBody(
+                SystemMessageTemplateKey::ApplicationSelectedInApp->value,
+                $application,
+                'You have been selected for '.$title.'.',
+            ),
+            CandidateNotificationEvent::ApplicationRejected => $this->inAppBody(
+                SystemMessageTemplateKey::ApplicationRejectedInApp->value,
+                $application,
+                'Your application for '.$title.' was unsuccessful.',
+            ),
             default => 'There is an update on your application for '.$title.'.',
         };
 
@@ -74,7 +101,12 @@ class CandidateNotificationService
             $application,
             CandidateNotificationEvent::InterviewScheduled,
             'Interview scheduled',
-            'An interview has been scheduled for '.($application->job?->title ?? 'this role').'.',
+            $this->inAppBody(
+                SystemMessageTemplateKey::InterviewScheduledInApp->value,
+                $application,
+                'An interview has been scheduled for '.($application->job?->title ?? 'this role').'.',
+                $interview,
+            ),
             ['application_id' => $application->id, 'interview_id' => $interview->id],
         );
     }
@@ -87,7 +119,12 @@ class CandidateNotificationService
             $application,
             CandidateNotificationEvent::InterviewRescheduled,
             'Interview rescheduled',
-            'Your interview for '.($application->job?->title ?? 'this role').' has been rescheduled.',
+            $this->inAppBody(
+                SystemMessageTemplateKey::InterviewRescheduledInApp->value,
+                $application,
+                'Your interview for '.($application->job?->title ?? 'this role').' has been rescheduled.',
+                $interview,
+            ),
             ['application_id' => $application->id, 'interview_id' => $interview->id],
         );
     }
@@ -100,7 +137,12 @@ class CandidateNotificationService
             $application,
             CandidateNotificationEvent::InterviewCancelled,
             'Interview cancelled',
-            'Your interview for '.($application->job?->title ?? 'this role').' was cancelled.',
+            $this->inAppBody(
+                SystemMessageTemplateKey::InterviewCancelledInApp->value,
+                $application,
+                'Your interview for '.($application->job?->title ?? 'this role').' was cancelled.',
+                $interview,
+            ),
             ['application_id' => $application->id, 'interview_id' => $interview->id],
         );
     }
@@ -113,8 +155,31 @@ class CandidateNotificationService
             $application,
             CandidateNotificationEvent::InterviewReminder,
             'Interview reminder',
-            'Reminder: you have an upcoming interview for '.($application->job?->title ?? 'this role').'.',
+            $this->inAppBody(
+                SystemMessageTemplateKey::InterviewReminderInApp->value,
+                $application,
+                'Reminder: you have an upcoming interview for '.($application->job?->title ?? 'this role').'.',
+                $interview,
+            ),
             ['application_id' => $application->id, 'interview_id' => $interview->id],
+        );
+    }
+
+    public function notifyApplicationMessageReceived(Application $application, string $preview): void
+    {
+        $application->loadMissing('job');
+
+        $title = 'New message about your application';
+        $body = str($preview)->limit(120)->toString();
+        $url = route('account.applications.show', $application, false);
+
+        $this->send(
+            $application,
+            CandidateNotificationEvent::ApplicationMessageReceived,
+            $title,
+            $body,
+            ['application_id' => $application->id],
+            $url,
         );
     }
 
@@ -131,10 +196,14 @@ class CandidateNotificationService
 
         $fingerprint = CandidateNotificationEvent::ProfileIncomplete->value.':user='.$user->id;
         $url = route('account.profile.edit', absolute: false);
-        $title = 'Complete your Hire Resume information';
-        $body = 'Completing your profile and Hire Resume fields helps screening compare your record against job requirements. It does not guarantee shortlisting.';
+        $title = 'Complete Your Personal & Professional Information';
+        $body = 'Complete your personal profile and professional details to improve your chances of being shortlisted for suitable job opportunities. Accurate, complete information helps recruiters assess your qualifications and experience more effectively.';
 
         try {
+            if (! $this->canDeliverProductNotifications($user)) {
+                return;
+            }
+
             if ($user->notifications()->where('data->fingerprint', $fingerprint)->exists()) {
                 return;
             }
@@ -199,6 +268,7 @@ class CandidateNotificationService
         string $title,
         string $body,
         array $context,
+        ?string $url = null,
     ): void {
         $user = $this->candidateRecipient($application);
         if ($user === null) {
@@ -206,12 +276,16 @@ class CandidateNotificationService
         }
 
         $fingerprint = $event->value.':'.collect($context)->sortKeys()->map(fn ($value, $key) => $key.'='.$value)->implode('|');
-        $url = route('account.applications.index', absolute: false);
+        $url ??= route('account.applications.index', absolute: false);
 
         DB::afterCommit(function () use ($user, $event, $title, $body, $url, $context, $fingerprint) {
             try {
                 $fresh = $user->fresh();
                 if (! $fresh instanceof User || ! $fresh->isCandidate()) {
+                    return;
+                }
+
+                if (! $this->canDeliverProductNotifications($fresh)) {
                     return;
                 }
 
@@ -234,6 +308,32 @@ class CandidateNotificationService
                 ]);
             }
         });
+    }
+
+    private function templates(): MessageTemplateService
+    {
+        return $this->messageTemplates ?? app(MessageTemplateService::class);
+    }
+
+    private function preferenceService(): CommunicationPreferenceService
+    {
+        return $this->preferences ?? app(CommunicationPreferenceService::class);
+    }
+
+    private function canDeliverProductNotifications(User $user): bool
+    {
+        return $this->preferenceService()->canSendRecruitmentInApp($user);
+    }
+
+    private function inAppBody(
+        string $templateKey,
+        Application $application,
+        string $fallback,
+        ?ApplicationInterview $interview = null,
+    ): string {
+        $rendered = $this->templates()->renderForApplication($templateKey, $application, $interview, null, $fallback);
+
+        return (string) ($rendered['body'] ?? $fallback);
     }
 
     private function candidateRecipient(Application $application): ?User

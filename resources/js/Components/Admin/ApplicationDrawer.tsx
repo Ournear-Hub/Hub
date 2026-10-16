@@ -20,9 +20,16 @@ import type {
     RejectionReasonOption,
     ScorecardTemplateOption,
     ScreeningMatchFactor,
+    ScreeningStageRow,
     StaffUserOption,
 } from '@/types/applications';
 import FollowUpTaskForm from '@/Components/Admin/FollowUpTaskForm';
+import MatchComparisonTable from '@/Components/organisms/MatchComparisonTable';
+import type { MatchComparisonTableRow } from '@/Components/organisms/MatchComparisonTable';
+import ScreeningStagesTable from '@/Components/organisms/ScreeningStagesTable';
+import type { ScreeningStagesTableRow } from '@/Components/organisms/ScreeningStagesTable';
+import ApplicationTimeline from '@/Components/organisms/ApplicationTimeline';
+import type { ApplicationTimelineEvent } from '@/Components/organisms/ApplicationTimeline';
 
 type Props = {
     selected: AdminApplication;
@@ -81,51 +88,43 @@ function sourceLabel(source?: string | null): string {
     return 'Not recorded';
 }
 
-function CandidateVsJobDesk({
-    rows,
-    snapshotNote,
-}: {
-    rows: Array<JobComparisonRow | ScreeningMatchFactor>;
-    snapshotNote: string;
-}) {
-    return (
-        <div className="overflow-x-auto rounded-lg border border-line">
-            <table className="min-w-full text-left text-sm">
-                <thead className="bg-surface text-muted">
-                    <tr>
-                        <th className="px-3 py-2 font-medium">Factor</th>
-                        <th className="px-3 py-2 font-medium">Job recorded value</th>
-                        <th className="px-3 py-2 font-medium">Candidate / application</th>
-                        <th className="px-3 py-2 font-medium">State</th>
-                        <th className="px-3 py-2 font-medium">Match information</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows.map((row) => (
-                        <tr key={row.key} className="border-t border-line align-top">
-                            <th className="px-3 py-2 font-medium text-ink">
-                                {row.label}
-                                <p className="mt-1 text-xs font-normal text-muted">{sourceLabel(row.source)}</p>
-                            </th>
-                            <td className="px-3 py-2 text-ink">{recordedValue(row.job_value)}</td>
-                            <td className="px-3 py-2 text-ink">{recordedValue(row.candidate_value)}</td>
-                            <td className="px-3 py-2">
-                                <StatusBadge status={factorStateLabel(row)} />
-                            </td>
-                            <td className="px-3 py-2 text-muted">
-                                {row.state === 'compared'
-                                    ? row.matched
-                                        ? 'Recorded values match.'
-                                        : 'Recorded values do not match.'
-                                    : row.note}
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            <p className="border-t border-line px-3 py-2 text-xs text-muted">{snapshotNote}</p>
-        </div>
-    );
+function mapScreeningStageRow(stage: ScreeningStageRow): ScreeningStagesTableRow {
+    return {
+        id: stage.key,
+        stageLabel: stage.label,
+        statusLabel: stage.status,
+        occurredAt: stage.occurred_at ?? 'Not recorded yet',
+        performedBy: stage.performed_by ?? 'Not recorded yet',
+        remarks: stage.remarks ?? 'Not recorded yet',
+        evidence: stage.evidence ?? 'Not recorded yet',
+    };
+}
+
+function mapAdminActivityTimelineEvents(
+    activities: NonNullable<AdminApplication['activities']>,
+): ApplicationTimelineEvent[] {
+    return activities.map((activity) => ({
+        key: String(activity.id),
+        label: activityTitle(activity),
+        at: [activity.actor_name ?? 'System', activity.created_at ?? ''].filter(Boolean).join(' · '),
+    }));
+}
+
+function mapMatchComparisonRow(row: JobComparisonRow | ScreeningMatchFactor): MatchComparisonTableRow {
+    return {
+        id: row.key,
+        factorLabel: row.label,
+        sourceHint: sourceLabel(row.source),
+        jobValue: recordedValue(row.job_value),
+        candidateValue: recordedValue(row.candidate_value),
+        stateLabel: factorStateLabel(row),
+        detailText:
+            row.state === 'compared'
+                ? row.matched
+                    ? 'Recorded values match.'
+                    : 'Recorded values do not match.'
+                : row.note,
+    };
 }
 
 function DetailRows({ rows }: { rows: Array<[string, string]> }) {
@@ -541,8 +540,11 @@ export default function ApplicationDrawer({
                                 'Match % compares recorded fields only; does not determine suitability; human decision remains final.'}
                         </p>
                         <div className="mt-3">
-                            <CandidateVsJobDesk
-                                rows={selected.job_comparison?.rows ?? selected.match?.factors ?? []}
+                            <MatchComparisonTable
+                                aria-label="Candidate versus job comparison"
+                                rows={(selected.job_comparison?.rows ?? selected.match?.factors ?? []).map(
+                                    mapMatchComparisonRow,
+                                )}
                                 snapshotNote={
                                     selected.job_comparison?.snapshot_note ??
                                     'Location, experience, and qualification use the application snapshot. Other professional fields use the current candidate profile when an account exists.'
@@ -615,33 +617,11 @@ export default function ApplicationDrawer({
 
                     <section>
                         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">Screening stages</h3>
-                        <div className="mt-2 overflow-x-auto">
-                            <table className="min-w-full text-left text-sm">
-                                <thead className="text-muted">
-                                    <tr>
-                                        <th className="px-2 py-2 font-medium">Stage</th>
-                                        <th className="px-2 py-2 font-medium">Status</th>
-                                        <th className="px-2 py-2 font-medium">Date/time</th>
-                                        <th className="px-2 py-2 font-medium">Performed by</th>
-                                        <th className="px-2 py-2 font-medium">Remarks</th>
-                                        <th className="px-2 py-2 font-medium">Evidence</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(selected.screening_stages ?? []).map((stage) => (
-                                        <tr key={stage.key} className="border-t border-line">
-                                            <td className="px-2 py-2 text-ink">{stage.label}</td>
-                                            <td className="px-2 py-2">
-                                                <StatusBadge status={stage.status} />
-                                            </td>
-                                            <td className="px-2 py-2 text-muted">{stage.occurred_at ?? 'Not recorded yet'}</td>
-                                            <td className="px-2 py-2 text-muted">{stage.performed_by ?? 'Not recorded yet'}</td>
-                                            <td className="px-2 py-2 text-muted">{stage.remarks ?? 'Not recorded yet'}</td>
-                                            <td className="px-2 py-2 text-muted">{stage.evidence ?? 'Not recorded yet'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div className="mt-2">
+                            <ScreeningStagesTable
+                                aria-label="Screening stages"
+                                rows={(selected.screening_stages ?? []).map(mapScreeningStageRow)}
+                            />
                         </div>
                     </section>
 
@@ -794,13 +774,11 @@ export default function ApplicationDrawer({
 
             {tab === 'timeline' ? (
                 <div className="mt-4">
-                    <Timeline
-                        items={(selected.activities ?? []).map((activity) => ({
-                            id: activity.id,
-                            title: activityTitle(activity),
-                            meta: `${activity.actor_name ?? 'System'} · ${activity.created_at ?? ''}`,
-                        }))}
+                    <ApplicationTimeline
+                        events={mapAdminActivityTimelineEvents(selected.activities ?? [])}
+                        title="Recruitment activity"
                         empty="No recruitment activity yet."
+                        aria-label="Recruitment activity"
                     />
                 </div>
             ) : null}

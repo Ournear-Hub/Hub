@@ -2,11 +2,39 @@ import type { SiteContent, SeoProps, PageSeoProps, AnalyticsProps } from '@/type
 import type { PublicSocialLink } from '@/types/media';
 import type { CmsPage } from '@/types/cms';
 import type { AdminAlertItem } from '@/types/communication';
+import type { NavSection } from '@/types/layout';
+
+export type HeaderEmployerIdentity = {
+    name: string;
+    logo_url: string | null;
+    href: string;
+    industry?: string | null;
+    location?: string | null;
+    company_website?: string | null;
+    ournear_verified?: boolean;
+    profile_completion?: number | null;
+};
+
+export type PortalNavigationChip = {
+    href: string;
+    label: string;
+    icon: string;
+};
+
+export type PortalNavigation = {
+    candidate: PortalNavigationChip;
+    company: PortalNavigationChip & {
+        has_company_profile: boolean;
+        logo_url: string | null;
+    };
+};
 
 export type AuthUser = {
     id: number;
     name: string;
     display_name?: string;
+    employer_identity?: HeaderEmployerIdentity | null;
+    portal_navigation?: PortalNavigation | null;
     email: string;
     username?: string | null;
     business_id?: string | null;
@@ -29,6 +57,17 @@ export type FlashProps = {
     error: string | null;
     warning?: string | null;
     status: string | null;
+    masterDataImportPreview?: {
+        token: string;
+        summary: Record<string, number>;
+        rows: Array<{
+            row: number;
+            action: string;
+            intent?: string;
+            errors?: string[];
+        }>;
+    } | null;
+    masterDataImportOutcome?: Record<string, unknown> | null;
     registered_email?: string | null;
     freelancer_confirmation?: {
         business_id: string;
@@ -57,6 +96,10 @@ export type FlashProps = {
     whatsapp_otp_retry_after?: number | null;
 };
 
+export type EmailVerificationReminderProps = {
+    email: string;
+} | null;
+
 export type SharedPageProps = {
     auth: {
         user: AuthUser | null;
@@ -64,31 +107,71 @@ export type SharedPageProps = {
         account?: AuthUser | null;
     };
     flash: FlashProps;
+    emailVerificationReminder?: EmailVerificationReminderProps;
     adminAlerts?: {
         unread: number;
         recent: AdminAlertItem[];
     } | null;
     accountAlerts?: {
         unread: number;
+        recent?: Array<{
+            id: string;
+            title: string;
+            body?: string | null;
+            url?: string | null;
+            is_unread: boolean;
+        }>;
     } | null;
     candidateNav?: Array<{
         href: string;
         label: string;
         group?: string;
+        icon?: string;
+        logo_url?: string | null;
+        nav_kind?: 'company';
     }> | null;
+    candidateSidebarProfile?: {
+        name: string;
+        username: string | null;
+        photo_url: string | null;
+        designation: string | null;
+        professional_headline: string | null;
+        location: string | null;
+        organization: string | null;
+    } | null;
     employerNav?: Array<{
         href: string;
         label: string;
         group?: string;
+        icon?: string;
     }> | null;
+    headerAccountNav?: Array<{
+        href: string;
+        label: string;
+        group?: string;
+        icon?: string;
+    }> | null;
+    companyHeaderNav?: Array<{
+        href: string;
+        label: string;
+        group?: string;
+        icon?: string;
+    }> | null;
+    adminNav?: NavSection[] | null;
     errors?: Record<string, string>;
     publicContent?: SiteContent;
     socialLinks?: PublicSocialLink[];
     seo?: SeoProps;
     pageSeo?: PageSeoProps | null;
     analytics?: AnalyticsProps;
+    sharing?: {
+        public_base_url: string;
+    };
     cms?: CmsPage;
     turnstileSiteKey?: string | null;
+    ui?: {
+        mobile_profile_view_only?: boolean;
+    };
     branding?: {
         website_name: string;
         brand_mark?: string;
@@ -96,6 +179,11 @@ export type SharedPageProps = {
         wordmark_url?: string | null;
         icon_url: string | null;
         favicon_url: string | null;
+        hire_wordmark_url?: string | null;
+        auth_symbol_url?: string | null;
+        auth_wordmark_url?: string | null;
+        auth_splash_video_url?: string | null;
+        auth_splash_poster_url?: string | null;
     };
 };
 

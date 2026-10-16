@@ -140,7 +140,7 @@ class AccountSavedJobTest extends TestCase
                 ->where('savedJobs.data.0.project', 'South Works')
                 ->where('savedJobs.data.0.location', 'Manchester')
                 ->where('savedJobs.data.0.employment_type', 'Contract')
-                ->where('savedJobs.data.0.status', 'open')
+                ->where('savedJobs.data.0.status_label', 'Open')
                 ->where('savedJobs.data.0.can_view', true)
                 ->missing('savedJobs.data.0.user_id')
                 ->missing('savedJobs.data.0.job_id')
@@ -175,7 +175,7 @@ class AccountSavedJobTest extends TestCase
                     return $byTitle['Later Closed Role']['status_label'] === 'Closed'
                         && $byTitle['Later Closed Role']['can_view'] === false
                         && $byTitle['Later Closed Role']['slug'] === $closed->slug
-                        && $byTitle['Open Saved Role']['status'] === 'open';
+                        && $byTitle['Open Saved Role']['status_label'] === 'Open';
                 }));
 
         $this->actingAs($candidate)

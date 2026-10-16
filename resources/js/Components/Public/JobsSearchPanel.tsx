@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from 'react';
 import FormField, { selectControlClass } from '@/Components/Public/FormField';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 
 export type JobsFilterValues = {
     keyword: string;
@@ -32,6 +32,8 @@ type Props = {
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
     extraActions?: ReactNode;
     showExperienceInPrimary?: boolean;
+    /** Workspace: keyword, location, industry, job type, experience, company only (sort lives on the list). */
+    variant?: 'full' | 'workspace';
 };
 
 function PrimaryFilters({ filters, options }: { filters: JobsFilterValues; options: Options }) {
@@ -153,9 +155,79 @@ function SecondaryFilters({ filters, options }: { filters: JobsFilterValues; opt
     );
 }
 
-export default function JobsSearchPanel({ filters, options, onSubmit, extraActions, showExperienceInPrimary = false }: Props) {
+function WorkspaceFilters({ filters, options }: { filters: JobsFilterValues; options: Options }) {
     return (
-        <form onSubmit={onSubmit} className="rounded-xl border border-line bg-white p-4 shadow-sm">
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="min-w-0">
+                <label htmlFor="job-industry" className="mb-1 block text-sm font-medium text-ink">
+                    Industry
+                </label>
+                <select id="job-industry" name="industry" defaultValue={filters.industry} className={selectControlClass}>
+                    <option value="">All industries</option>
+                    {options.industries.map((value) => (
+                        <option key={value} value={value}>
+                            {value}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            <div className="min-w-0">
+                <label htmlFor="job-type" className="mb-1 block text-sm font-medium text-ink">
+                    Job type
+                </label>
+                <select id="job-type" name="employment_type" defaultValue={filters.employment_type} className={selectControlClass}>
+                    <option value="">All types</option>
+                    {options.employment_types.map((value) => (
+                        <option key={value} value={value}>
+                            {value}
+                        </option>
+                    ))}
+                </select>
+            </div>
+            {options.experiences.length > 0 ? (
+                <div className="min-w-0">
+                    <label htmlFor="job-experience" className="mb-1 block text-sm font-medium text-ink">
+                        Experience
+                    </label>
+                    <select id="job-experience" name="experience" defaultValue={filters.experience} className={selectControlClass}>
+                        <option value="">All experience</option>
+                        {options.experiences.map((value) => (
+                            <option key={value} value={value}>
+                                {value}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            ) : null}
+            <div className="min-w-0">
+                <label htmlFor="job-company" className="mb-1 block text-sm font-medium text-ink">
+                    Company
+                </label>
+                <select id="job-company" name="company" defaultValue={filters.company} className={selectControlClass}>
+                    <option value="">All companies</option>
+                    {(options.companies ?? []).map((value) => (
+                        <option key={value} value={value}>
+                            {value}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+}
+
+export default function JobsSearchPanel({
+    filters,
+    options,
+    onSubmit,
+    extraActions,
+    showExperienceInPrimary = false,
+    variant = 'full',
+}: Props) {
+    const isWorkspace = variant === 'workspace';
+
+    return (
+        <form onSubmit={onSubmit} className="shrink-0 rounded-xl border border-line bg-white p-3 shadow-sm sm:p-4">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_11rem_auto]">
                 <FormField id="job-keywords" name="keyword" label="Search jobs" placeholder="Job title or keyword" defaultValue={filters.keyword} />
                 <div className="min-w-0">
@@ -172,37 +244,45 @@ export default function JobsSearchPanel({ filters, options, onSubmit, extraActio
                     </select>
                 </div>
                 <div className="flex items-end gap-2">
-                    <Button type="submit" variant="secondary" className="w-full md:w-auto">
+                    <Button surface="public" type="submit" variant="secondary" className="w-full md:w-auto">
                         Search
                     </Button>
                     {extraActions}
                 </div>
             </div>
-            {showExperienceInPrimary ? (
-                <div className="mt-3 max-w-xs">
-                    <label htmlFor="job-experience-primary" className="mb-1 block text-sm font-medium text-ink">
-                        Experience
-                    </label>
-                    <select id="job-experience-primary" name="experience" defaultValue={filters.experience} className={selectControlClass}>
-                        <option value="">All experience</option>
-                        {options.experiences.map((value) => (
-                            <option key={value} value={value}>
-                                {value}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-            ) : null}
-            <PrimaryFilters filters={filters} options={options} />
-            <details className="group mt-3 lg:open">
-                <summary className="cursor-pointer text-sm font-semibold text-brand marker:content-none lg:hidden [&::-webkit-details-marker]:hidden">
-                    More filters
-                </summary>
-                <div className="mt-3">
-                    <p className="mb-2 hidden text-xs font-semibold uppercase tracking-wide text-muted lg:block">More filters</p>
-                    <SecondaryFilters filters={filters} options={options} />
-                </div>
-            </details>
+            {isWorkspace ? (
+                <WorkspaceFilters filters={filters} options={options} />
+            ) : (
+                <>
+                    {showExperienceInPrimary ? (
+                        <div className="mt-3 max-w-xs">
+                            <label htmlFor="job-experience-primary" className="mb-1 block text-sm font-medium text-ink">
+                                Experience
+                            </label>
+                            <select
+                                id="job-experience-primary"
+                                name="experience"
+                                defaultValue={filters.experience}
+                                className={selectControlClass}
+                            >
+                                <option value="">All experience</option>
+                                {options.experiences.map((value) => (
+                                    <option key={value} value={value}>
+                                        {value}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null}
+                    <PrimaryFilters filters={filters} options={options} />
+                    <div className="mt-3">
+                        <p className="mb-2 text-sm font-semibold text-brand lg:text-xs lg:font-semibold lg:uppercase lg:tracking-wide lg:text-muted">
+                            More filters
+                        </p>
+                        <SecondaryFilters filters={filters} options={options} />
+                    </div>
+                </>
+            )}
         </form>
     );
 }

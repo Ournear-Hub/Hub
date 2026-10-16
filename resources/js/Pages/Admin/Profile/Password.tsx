@@ -1,4 +1,5 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
+import BackNavLink from '@/Components/molecules/BackNavLink';
 import type { FormEvent } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import AdminAuthLayout from '@/Layouts/AdminAuthLayout';
@@ -87,9 +88,7 @@ export default function AdminProfilePassword({ must_change = false }: Props) {
                     <h1 className="text-2xl font-semibold tracking-tight text-ink">Change password</h1>
                     <p className="mt-1 text-sm text-muted">Admin profile security. Website Settings are unchanged.</p>
                 </div>
-                <Link href="/admin/profile">
-                    <Button variant="secondary">Back to profile</Button>
-                </Link>
+                <BackNavLink href="/admin/profile" label="Back to profile" />
             </div>
             <div className="max-w-md rounded-xl border border-line bg-white p-5">
                 <PasswordForm mustChange={false} />

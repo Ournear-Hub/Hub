@@ -1,9 +1,12 @@
-import { Link } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import AccountLayout from '@/Layouts/AccountLayout';
 import EmployerStaffingSearch from '@/Components/Account/Staffing/EmployerStaffingSearch';
 import StaffingRequestCard, { type StaffingRequest } from '@/Components/Account/Staffing/StaffingRequestCard';
-import Button from '@/Components/Public/Button';
-import Card from '@/Components/UI/Card';
+import StaffingRequirementsForm, {
+    type StaffingFormDefaults,
+} from '@/Components/Account/Staffing/StaffingRequirementsForm';
+import Button from '@/Components/atoms/Button';
+import Card from '@/Components/atoms/Card';
 import Pagination from '@/Components/Pagination';
 import type { Paginator } from '@/types/jobs';
 
@@ -27,8 +30,17 @@ type Props = {
         status: string;
     };
     status_options: Array<{ value: string; label: string }>;
-    request_href: string;
-    support_href: string;
+    staffing_form: {
+        industries: string[];
+        workforce_types: string[];
+        defaults: StaffingFormDefaults;
+    };
+    staffing_access: {
+        status: string;
+        label: string;
+        can_submit_requirement: boolean;
+        can_request_access: boolean;
+    };
 };
 
 function detailHref(base: string | undefined, filters: Props['filters']): string | undefined {
@@ -53,8 +65,8 @@ export default function Enquiries({
     enquiries,
     filters,
     status_options,
-    request_href,
-    support_href,
+    staffing_form,
+    staffing_access,
 }: Props) {
     const empty = enquiries.data.length === 0;
     const hasFilters = Boolean(filters.q || filters.status);
@@ -62,58 +74,67 @@ export default function Enquiries({
     const noMatches = empty && !noRequests;
 
     return (
-        <AccountLayout
-            title="Staffing Services"
-            description="Request and manage manpower support from OurNear."
-            breadcrumbs={[
-                { label: 'Dashboard', href: '/account' },
-                { label: 'Hiring', href: '/account/hiring' },
-                { label: 'Staffing Services' },
-            ]}
-        >
+        <AccountLayout title="Staffing" hideShellHeader>
             <div className="mx-auto max-w-3xl space-y-4 lg:max-w-none">
-                <header className="rounded-xl border border-line bg-white p-4 sm:p-5">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted">Staffing Services</p>
-                    <h1 className="mt-1 text-xl font-semibold text-ink sm:text-2xl">{company.name}</h1>
-                    {company.business_id ? <p className="mt-1 text-sm text-muted">{company.business_id}</p> : null}
-                    <p className="mt-3 text-sm text-muted">
-                        Request and track manpower and workforce support from OurNear. This workspace is separate from Direct
-                        Hiring / ATS, Recruitment Partnership, and job posting on OurNear Jobs.
+                <div>
+                    <h1 className="text-xl font-semibold text-ink sm:text-2xl">Staffing</h1>
+                    <p className="mt-1 text-sm text-muted">
+                        {company.name}
+                        {company.business_id ? ` · ${company.business_id}` : ''}
                     </p>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                        <Button href={request_href} variant="primary" className="min-h-11 w-full sm:w-auto">
-                            Request staffing support
+                </div>
+
+                <Card padding="standard">
+                    <p className="text-sm font-semibold text-ink">Staffing module access</p>
+                    <p className="mt-1 text-sm text-muted">Status: {staffing_access.label}</p>
+                    {staffing_access.can_request_access ? (
+                        <Button
+                            surface="public"
+                            type="button"
+                            variant="primary"
+                            className="mt-3"
+                            onClick={() => router.post('/account/company/staffing-access/request')}
+                        >
+                            Request Staffing access
                         </Button>
-                        <Button href={support_href} variant="secondary" className="min-h-11 w-full sm:w-auto">
-                            Contact staffing support
-                        </Button>
-                        <Link href="/account/hiring" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline">
-                            Hiring Command Center
-                        </Link>
-                    </div>
-                </header>
+                    ) : null}
+                    {!staffing_access.can_submit_requirement ? (
+                        <p className="mt-2 text-sm text-muted">
+                            Staffing requirements can be submitted after admin approves Staffing access. This is separate
+                            from company verification and from Hiring job posting.
+                        </p>
+                    ) : null}
+                </Card>
+
+                {staffing_access.can_submit_requirement ? (
+                    <StaffingRequirementsForm
+                        industries={staffing_form.industries}
+                        workforce_types={staffing_form.workforce_types}
+                        defaults={staffing_form.defaults}
+                    />
+                ) : null}
 
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Total requests</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.total_requests}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Active</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.active_requests}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Completed</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.completed_requests}</p>
                     </Card>
-                    <Card density="compact" as="article">
+                    <Card padding="compact" as="article">
                         <p className="text-xs text-muted">Closed</p>
                         <p className="mt-1 text-2xl font-semibold text-ink">{summary.closed_requests}</p>
                     </Card>
                 </div>
 
                 {recent_requests.length > 0 && !hasFilters ? (
-                    <Card as="section" density="compact">
+                    <Card as="section" padding="compact">
                         <h2 className="text-base font-semibold text-ink">Recent staffing requests</h2>
                         <div className="mt-3 space-y-3">
                             {recent_requests.map((request) => (
@@ -124,12 +145,11 @@ export default function Enquiries({
                 ) : null}
 
                 {noRequests ? (
-                    <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
-                        <p className="text-sm text-muted">No staffing requests linked to this account yet.</p>
-                        <p className="mt-2 text-sm text-muted">Submit a workforce enquiry to start a staffing request with OurNear.</p>
-                        <Button href={request_href} variant="secondary" className="mt-4 min-h-11">
-                            Request staffing support
-                        </Button>
+                    <div className="rounded-xl border border-dashed border-line bg-white p-6 text-center">
+                        <p className="text-sm text-muted">
+                            No staffing requests on file yet. Submit the form above and your requests will appear here
+                            after OurNear processes them.
+                        </p>
                     </div>
                 ) : (
                     <>
@@ -138,7 +158,7 @@ export default function Enquiries({
                         {noMatches ? (
                             <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
                                 <p className="text-sm text-muted">No staffing requests match these filters.</p>
-                                <Button href="/account/enquiries" variant="secondary" className="mt-4 min-h-11">
+                                <Button surface="public" href="/account/enquiries" variant="secondary" className="mt-4 min-h-11">
                                     Clear filters
                                 </Button>
                             </div>

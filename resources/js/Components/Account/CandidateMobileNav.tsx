@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import AccountNavItemIcon from '@/Components/Account/AccountNavItemIcon';
 import IconButton from '@/Components/UI/IconButton';
 import {
     BriefcaseIcon,
@@ -10,6 +11,7 @@ import {
     UserCircleIcon,
 } from '@/Components/UI/icons';
 import { focusRing } from '@/design-system/classNames';
+import { matchAccountNavHref } from '@/lib/accountNavMatch';
 import type { SharedPageProps } from '@/types/page';
 
 const MOBILE_NAV_ID = 'candidate-mobile-more';
@@ -57,13 +59,26 @@ function tabClass(active: boolean): string {
 
 export default function CandidateMobileNav() {
     const { url, props } = usePage<SharedPageProps>();
-    const path = url.split('?')[0] ?? url;
+    const path = url.split('#')[0]?.split('?')[0] ?? url;
+    const [locationHash, setLocationHash] = useState('');
     const [moreOpen, setMoreOpen] = useState(false);
     const candidateItems = props.candidateNav ?? [];
     const moreActive = !tabs.some((tab) => tab.match(path));
 
     useEffect(() => {
         setMoreOpen(false);
+    }, [url]);
+
+    useEffect(() => {
+        const syncHash = () => setLocationHash(window.location.hash);
+        syncHash();
+        window.addEventListener('hashchange', syncHash);
+        window.addEventListener('popstate', syncHash);
+
+        return () => {
+            window.removeEventListener('hashchange', syncHash);
+            window.removeEventListener('popstate', syncHash);
+        };
     }, [url]);
 
     useEffect(() => {
@@ -142,11 +157,7 @@ export default function CandidateMobileNav() {
                             {candidateItems.map((item, index) => {
                                 const group = item.group;
                                 const previous = candidateItems[index - 1]?.group;
-                                const itemPath = item.href.split('#')[0] ?? item.href;
-                                const active =
-                                    item.href.includes('#')
-                                        ? url.includes(item.href.split('#')[1] ?? '')
-                                        : path === itemPath || path.startsWith(`${itemPath}/`);
+                                const active = matchAccountNavHref(item.href, path, locationHash);
 
                                 return (
                                     <div key={`${item.href}-${item.label}`}>
@@ -155,10 +166,11 @@ export default function CandidateMobileNav() {
                                         ) : null}
                                         <Link
                                             href={item.href}
-                                            className={`block min-h-11 rounded-md px-3 py-2.5 text-sm font-medium ${active ? 'bg-brand/10 text-brand' : 'text-ink hover:bg-surface'}`}
+                                            className={`flex min-h-11 items-center gap-2.5 rounded-md px-3 py-2.5 text-sm font-medium ${active ? 'bg-brand/10 text-brand' : 'text-ink hover:bg-surface'}`}
                                             onClick={() => setMoreOpen(false)}
                                         >
-                                            {item.label}
+                                            <AccountNavItemIcon icon={item.icon} active={active} variant="sheet" />
+                                            <span className="min-w-0 truncate">{item.label}</span>
                                         </Link>
                                     </div>
                                 );

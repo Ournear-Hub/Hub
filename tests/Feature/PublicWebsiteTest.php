@@ -30,9 +30,12 @@ class PublicWebsiteTest extends TestCase
 
     public function test_published_job_detail_loads(): void
     {
-        $employer = $this->makeEmployer(['photo_path' => 'users/company-logo.png']);
-        $employer->employerProfile()->update(['company_name' => 'Northstar Engineering']);
-        Storage::disk('public')->put('users/company-logo.png', 'image');
+        $employer = $this->makeEmployer();
+        $employer->employerProfile()->update([
+            'company_name' => 'Northstar Engineering',
+            'logo_path' => 'employers/company-logo.png',
+        ]);
+        Storage::disk('public')->put('employers/company-logo.png', 'image');
 
         $job = Job::factory()->create([
             'title' => 'Quantity Surveyor',
@@ -52,7 +55,7 @@ class PublicWebsiteTest extends TestCase
                 ->where('job.title', 'Quantity Surveyor')
                 ->where('job.slug', $job->slug)
                 ->where('job.company_name', 'Northstar Engineering')
-                ->where('job.company_logo_url', '/storage/users/company-logo.png')
+                ->where('job.company_logo_url', fn ($url) => is_string($url) && str_contains($url, '/employers/'.$employer->employerProfile->id.'/logo'))
                 ->where('job.salary', '₹8–10 LPA')
                 ->where('job.experience', '3-5 years')
                 ->where('job.employment_type', 'Full-time')
@@ -64,8 +67,8 @@ class PublicWebsiteTest extends TestCase
         $detailSource = file_get_contents(resource_path('js/Components/Public/JobDetail.tsx'));
         $this->assertIsString($cardSource);
         $this->assertIsString($detailSource);
-        $this->assertStringContainsString('company_logo_url', $cardSource);
-        $this->assertStringContainsString('Salary / CTC', $cardSource);
+        $this->assertStringNotContainsString('company_logo_url', $cardSource);
+        $this->assertStringContainsString('job.salary', $cardSource);
         $this->assertStringContainsString('Benefits / What we offer', $detailSource);
         $this->assertStringContainsString('Back to jobs', $detailSource);
         $showSource = file_get_contents(resource_path('js/Pages/Jobs/Show.tsx'));
@@ -102,5 +105,26 @@ class PublicWebsiteTest extends TestCase
         $this->get(route('contact'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Contact'));
+    }
+
+    public function test_public_contact_enquiry_submission_is_disabled(): void
+    {
+        $this->post(route('contact.store'), [
+            'full_name' => 'Contact QA User',
+            'mobile_number' => '9900112233',
+            'email' => 'contact.qa@example.test',
+            'interested_in' => 'General enquiry',
+            'message' => 'Need help with my candidate account.',
+        ])->assertNotFound();
+    }
+
+    public function test_contact_enquiry_validation_errors_do_not_report_success(): void
+    {
+        $this->post(route('contact.store'), [
+            'full_name' => '',
+            'mobile_number' => '',
+            'interested_in' => '',
+            'message' => '',
+        ])->assertNotFound();
     }
 }

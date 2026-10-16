@@ -3,6 +3,34 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+/**
+ * PDO MySQL driver options for this PHP build (PHP 8.4 removed PDO::MYSQL_ATTR_CONNECT_TIMEOUT).
+ * On mysqlnd, Pdo\Mysql::ATTR_TIMEOUT is the connection attempt timeout in seconds when no dedicated connect constant exists.
+ */
+$ournearMysqlPdoOptions = static function (): array {
+    if (! extension_loaded('pdo_mysql')) {
+        return [];
+    }
+
+    $options = [];
+
+    $sslCa = env('MYSQL_ATTR_SSL_CA');
+    if ($sslCa !== null) {
+        $options[PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA] = $sslCa;
+    }
+
+    $connectTimeout = (int) env('DB_CONNECT_TIMEOUT', 5);
+    if (defined('PDO::MYSQL_ATTR_CONNECT_TIMEOUT')) {
+        $options[constant('PDO::MYSQL_ATTR_CONNECT_TIMEOUT')] = $connectTimeout;
+    } elseif (defined('Pdo\Mysql::ATTR_CONNECT_TIMEOUT')) {
+        $options[Mysql::ATTR_CONNECT_TIMEOUT] = $connectTimeout;
+    } elseif (class_exists(Mysql::class)) {
+        $options[Mysql::ATTR_TIMEOUT] = $connectTimeout;
+    }
+
+    return array_filter($options, static fn ($value) => $value !== null);
+};
+
 return [
 
     /*
@@ -59,9 +87,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
-            'options' => extension_loaded('pdo_mysql') ? array_filter([
-                (PHP_VERSION_ID >= 80500 ? Mysql::ATTR_SSL_CA : PDO::MYSQL_ATTR_SSL_CA) => env('MYSQL_ATTR_SSL_CA'),
-            ], fn ($value) => $value !== null) : [],
+            'options' => $ournearMysqlPdoOptions(),
         ],
 
         'mariadb' => [

@@ -1,0 +1,1 @@
+import{j as e}from"./app-2VvbXxLL.js";import{B as r}from"./classNames-BAHVgBTk.js";const n={none:"rounded-xl border border-line bg-white",compact:r.compact,standard:r.standard,feature:r.feature};function m({padding:a="standard",className:t="",as:s="div",children:o}){const d=`${n[a]} ${t}`.trim();return e.jsx(s,{className:d,children:o})}export{m as C};

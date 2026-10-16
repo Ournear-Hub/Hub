@@ -5,7 +5,7 @@ import EmployerTalentPoolPipeline from '@/Components/Account/Recruiter/EmployerT
 import RecruiterCandidateSummary, {
     type RecruiterCandidateSummaryData,
 } from '@/Components/Account/Recruiter/RecruiterCandidateSummary';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import Pagination from '@/Components/Pagination';
 import type { PipelineStageSummary } from '@/Components/Account/Recruiter/EmployerApplicantPipeline';
 import type { Paginator } from '@/types/jobs';
@@ -40,14 +40,7 @@ export default function HiringTalentPoolIndex({ company_name, applications, pipe
     };
 
     return (
-        <AccountLayout
-            title="Talent Pool"
-            description="Candidates from your job applications — not the public talent directory."
-            breadcrumbs={[
-                { label: 'Hiring', href: '/account/hiring' },
-                { label: 'Talent Pool' },
-            ]}
-        >
+        <AccountLayout title="Talent Pool" hideShellHeader>
             <section className="mb-4 rounded-xl border border-line bg-white p-4 sm:p-5">
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted">Talent Pool</p>
                 <h1 className="mt-1 text-xl font-semibold text-ink">{company_name}</h1>
@@ -80,25 +73,28 @@ export default function HiringTalentPoolIndex({ company_name, applications, pipe
                         className="mt-1 w-full rounded-md border border-line px-3 py-2.5 text-sm"
                     />
                 </label>
-                <Button type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
+                <Button surface="public" type="submit" variant="secondary" className="min-h-11 w-full sm:w-auto">
                     Search
                 </Button>
             </form>
 
             {noCandidates ? (
                 <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
-                    <p className="text-sm font-semibold text-ink">No candidates in your talent pool yet</p>
-                    <p className="mt-2 text-sm text-muted">Candidates appear here when they apply to your jobs.</p>
-                    <Button href="/account/jobs/create" variant="primary" className="mt-4 min-h-11">
-                        Create your first job
-                    </Button>
+                    <p className="text-sm font-semibold text-ink">No candidates in your job talent pool yet</p>
+                    <p className="mt-2 text-sm text-muted">
+                        Applicants from your published jobs appear here. For OurNear-assigned manpower candidates, open{' '}
+                        <a href="/account/talent-pool" className="font-semibold text-brand hover:underline">
+                            Assigned Candidates
+                        </a>{' '}
+                        after admin allocation.
+                    </p>
                 </div>
             ) : null}
 
             {noMatches ? (
                 <div className="rounded-xl border border-dashed border-line bg-white p-8 text-center">
                     <p className="text-sm text-muted">No candidates match these filters.</p>
-                    <Button href="/account/hiring/candidates" variant="secondary" className="mt-4 min-h-11">
+                    <Button surface="public" href="/account/hiring/candidates" variant="secondary" className="mt-4 min-h-11">
                         Clear filters
                     </Button>
                 </div>

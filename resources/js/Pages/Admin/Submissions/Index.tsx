@@ -7,9 +7,7 @@ import RecruitmentChain from '@/Components/Admin/RecruitmentChain';
 import {
     Button,
     ConfirmDialog,
-    DataTable,
     Drawer,
-    FilterBar,
     Input,
     Modal,
     SearchBar,
@@ -19,7 +17,10 @@ import {
     Textarea,
     Timeline,
 } from '@/Components/Admin/ui';
-import type { DataTableColumn } from '@/Components/Admin/ui';
+import DetailHeader from '@/Components/organisms/DetailHeader';
+import FilterBar from '@/Components/molecules/FilterBar';
+import DataTable from '@/Components/molecules/DataTable';
+import type { DataTableColumn } from '@/Components/molecules/DataTable';
 import { recorded } from '@/lib/recorded';
 import type { AdminApplication } from '@/types/applications';
 import type { AdminJob, Paginator } from '@/types/jobs';
@@ -169,15 +170,21 @@ export default function SubmissionsIndex({ submissions, selected, filters, optio
     ];
 
     return (
-        <AdminLayout title="Employer Submissions">
+        <AdminLayout
+            title="Employer Submissions"
+            breadcrumbs={[{ label: 'Admin', href: '/admin' }, { label: 'Recruitment Partnership' }]}
+        >
             <div
                 className={selected ? 'pointer-events-none' : undefined}
                 inert={selected ? true : undefined}
                 aria-hidden={selected ? true : undefined}
             >
                 <div className="mb-6">
-                    <h1 className="text-2xl font-semibold tracking-tight text-ink">Employer Submissions</h1>
-                    <p className="mt-1 text-sm text-muted">Shortlisted candidates presented to an employer for a specific job. This is not placement.</p>
+                    <DetailHeader
+                        headingLevel={2}
+                        title="Shortlisted candidates for employer review"
+                        description="Shortlisted candidates presented to an employer for a specific job. This is not placement."
+                    />
                 </div>
                 <FilterBar className="md:grid-cols-4 xl:grid-cols-6" onSubmit={filter}>
                     <SearchBar defaultValue={filters.search} placeholder="Submission, employer, job, candidate, application ID" />

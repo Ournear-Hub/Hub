@@ -1,13 +1,14 @@
 import type { FormEvent } from 'react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
-import Button from '@/Components/Public/Button';
+import Button from '@/Components/atoms/Button';
 import CtaSection from '@/Components/Public/CtaSection';
 import FormField from '@/Components/Public/FormField';
 import HoneypotField from '@/Components/Public/HoneypotField';
 import IndustryCard from '@/Components/Public/IndustryCard';
 import PageContainer from '@/Components/Public/PageContainer';
 import SectionHeading from '@/Components/Public/SectionHeading';
+import Card from '@/Components/atoms/Card';
 import ServiceCard from '@/Components/Public/ServiceCard';
 import TurnstileField from '@/Components/Public/TurnstileField';
 import { activeItems, cmsSection, type CmsPage } from '@/types/cms';
@@ -111,12 +112,16 @@ export default function ForEmployers({ content, cms, industries, workforceTypes 
                             <SectionHeading title={deliver.heading ?? ''} description={deliver.body ?? ''} />
                             <ol className="mt-8 grid gap-4 md:grid-cols-4">
                                 {activeItems(deliver).map((item, index) => (
-                                    <li key={item.id} className="rounded-xl border border-line bg-white p-6">
-                                        <p className="text-xs font-semibold uppercase tracking-wide text-accent">
-                                            Step {index + 1}
-                                        </p>
-                                        <h3 className="mt-2 text-lg font-semibold text-ink">{item.title}</h3>
-                                        {item.description ? <p className="mt-2 text-sm text-muted">{item.description}</p> : null}
+                                    <li key={item.id} className="list-none">
+                                        <Card padding="standard" className="h-full">
+                                            <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                                                Step {index + 1}
+                                            </p>
+                                            <h3 className="mt-2 text-lg font-semibold text-ink">{item.title}</h3>
+                                            {item.description ? (
+                                                <p className="mt-2 text-sm text-muted">{item.description}</p>
+                                            ) : null}
+                                        </Card>
                                     </li>
                                 ))}
                             </ol>
@@ -152,7 +157,7 @@ export default function ForEmployers({ content, cms, industries, workforceTypes 
                             </div>
                         </div>
                     ) : null}
-                    <section className="rounded-xl border border-line bg-white p-6">
+                    <Card as="section" padding="standard">
                         <h2 className="text-xl font-semibold text-ink">{getInTouch?.heading ?? 'Get In Touch'}</h2>
                         <p className="mt-2 text-sm text-muted">
                             {getInTouch?.body ??
@@ -356,11 +361,11 @@ export default function ForEmployers({ content, cms, industries, workforceTypes 
                                     )}
                                 </div>
                                 <div>
-                                    <Button type="submit">{form.processing ? 'Submitting…' : 'Submit Request'}</Button>
+                                    <Button surface="public" type="submit">{form.processing ? 'Submitting…' : 'Submit Request'}</Button>
                                 </div>
                             </form>
                         )}
-                    </section>
+                    </Card>
                 </PageContainer>
             </section>
             <CtaSection
