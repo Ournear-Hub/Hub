@@ -3,14 +3,17 @@ name: OurNear Hire - CI
 on:
   push:
     branches:
-      - main
+      - 'feature/**'
+      - develop
       - staging
-      - staging-baseline-2026-10-07
-      - release/web-mobile-2026-10-17
+      - main
+      - 'release/**'
   pull_request:
     branches:
-      - main
+      - develop
       - staging
+      - main
+      - 'release/**'
   workflow_dispatch:
 
 permissions:
@@ -21,9 +24,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  web-build:
-    name: Laravel and Frontend Build
+  web-validation:
+    name: Laravel, PHP and Frontend Validation
     runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ournear_hire_test
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ularavel -plaravel"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout repository
@@ -34,6 +53,7 @@ jobs:
         with:
           php-version: '8.4'
           tools: composer:v2
+          extensions: mbstring, pdo_mysql, gd, zip
           coverage: none
 
       - name: Set up Node.js
@@ -48,16 +68,44 @@ jobs:
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
 
-      - name: Install Laravel package dependencies
+      - name: Discover Laravel packages
         run: php artisan package:discover --ansi
         env:
           APP_ENV: testing
-          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
+          APP_KEY: base64:2fl+KTVYdl/b6BpjgNk4eUUnQ6O4ZbXz3YqK3lQvQ3E=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ournear_hire_test
+          DB_USERNAME: laravel
+          DB_PASSWORD: laravel
+          MAIL_MAILER: array
+          MAIL_FROM_ADDRESS: testing@ournear.test
+          MAIL_FROM_NAME: "OurNear Hire Test"
+
+      - name: Run Laravel and PHPUnit tests
+        run: php artisan test
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:2fl+KTVYdl/b6BpjgNk4eUUnQ6O4ZbXz3YqK3lQvQ3E=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ournear_hire_test
+          DB_USERNAME: laravel
+          DB_PASSWORD: laravel
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+          MAIL_FROM_ADDRESS: testing@ournear.test
+          MAIL_FROM_NAME: "OurNear Hire Test"
 
       - name: Install frontend dependencies
         run: npm ci
+
+      - name: Run frontend tests
+        run: npm test
 
       - name: TypeScript checks
         run: npm run typecheck
