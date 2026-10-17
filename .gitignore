@@ -44,9 +44,6 @@ Thumbs.db
 /.phpunit.result.cache
 /php-local.ini
 /tmp-extract-staffing-strings.cjs
-/all())
-/exists())
-/value('photo_path'))
 
 # Flutter local build and signing files
 /mobile/.dart_tool/
@@ -60,11 +57,9 @@ Thumbs.db
 /mobile/config/candidate_android_lan.json
 
 # Flutter generated and machine-specific files
-/mobile/.flutter-plugins-dependencies
 /mobile/**/*.iml
 /mobile/ios/Flutter/Generated.xcconfig
 /mobile/ios/Flutter/flutter_export_environment.sh
 /mobile/macos/Flutter/Generated.xcconfig
 /mobile/macos/Flutter/flutter_export_environment.sh
 /mobile/test_output.txt
-/mobile/config/candidate_android_lan.json
