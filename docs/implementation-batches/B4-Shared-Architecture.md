@@ -60,3 +60,13 @@ This batch formalizes architecture boundaries and governance. It does not author
 - Review outcome: no scope-level contradiction is currently identified from the reviewed architecture requirements.
 - Remaining gate: confirm the review evidence and obtain explicit approval before expanding into implementation.
 - Batch status: pending acceptance; not complete.
+
+### Source review findings
+
+- `docs/OURNEAR_UNIFIED_PLATFORM_ARCHITECTURE_v1.1.md` is the governing platform architecture for layers, domains, surfaces, shells, and dependency rules.
+- `docs/OURNEAR_CORPORATE_LIBRARY_SPECIFICATION_v1.0.md` governs UI-library contracts and phased library implementation. Its freeze gate does not grant blanket permission for code changes.
+- Existing V2 code behavior remains authoritative until an intentional, phased implementation changes it.
+- The frontend audit distinguishes preserved work, deferred work, candidate issues, and confirmed defects. Deferred or unverified items are not automatically defects or implementation authorization.
+- The mobile architecture records mobile work as paused and requires existing navigation, state, and test constraints to be preserved.
+- No direct scope-level contradiction was identified in the reviewed clauses. No application-code or mobile implementation is authorized by Batch 4.
+- Any later implementation requires a separately bounded scope and explicit approval.
