@@ -1,6 +1,6 @@
 # B4-Shared-Architecture
 
-Status: Documentation scope defined; implementation pending acceptance.
+Status: Accepted — documentation scope approved; application implementation remains out of scope.
 
 ## Scope
 
@@ -70,3 +70,15 @@ This batch formalizes architecture boundaries and governance. It does not author
 - The mobile architecture records mobile work as paused and requires existing navigation, state, and test constraints to be preserved.
 - No direct scope-level contradiction was identified in the reviewed clauses. No application-code or mobile implementation is authorized by Batch 4.
 - Any later implementation requires a separately bounded scope and explicit approval.
+
+### Acceptance record
+
+- Acceptance decision: Approved by the user.
+- Accepted scope: Documentation-only shared architecture governance.
+- Accepted evidence: Existing scope definition and source review findings recorded above.
+- Governing contracts: Architecture v1.1 and Corporate Library Specification v1.0.
+- Implementation authorization: No application-code implementation authorized by this acceptance.
+- Protected boundaries: Laravel remains the authoritative backend; React and Flutter remain separate UI implementations; existing V2 behavior and phased migration requirements are preserved.
+- Exclusions: API authentication, domain migrations, new application features, dependency changes, environment and production settings, generated build output, and deployment.
+- Unresolved scope-level contradictions: None identified in the existing review evidence. This does not imply that all future architecture decisions are resolved.
+- Outcome: Batch 4 documentation scope accepted. Any implementation work requires a separately bounded scope and explicit approval.
