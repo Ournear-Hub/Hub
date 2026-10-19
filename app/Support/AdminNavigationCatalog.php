@@ -96,6 +96,7 @@ class AdminNavigationCatalog
                 'items' => [
                     ['label' => 'Website Content', 'href' => '/admin/website-content', 'permission' => 'website.manage'],
                     ['label' => 'Media & Social', 'href' => '/admin/media-social', 'permission' => 'website.manage'],
+                    ['label' => 'Page Images', 'href' => '/admin/page-images', 'permission' => 'website.manage'],
                     [
                         'label' => 'Notifications & templates',
                         'href' => '/admin/notifications',

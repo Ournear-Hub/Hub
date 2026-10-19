@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DevelopmentProgrammeApplication;
 use App\Models\EmployerProfile;
 use App\Models\Job;
 use App\Models\Location;
+use App\Models\User;
+use App\Services\PublicPageImageService;
 use App\Services\ShowcaseContentService;
 use App\Services\WebsiteContentService;
 use App\Support\PublicContent;
@@ -112,6 +115,27 @@ class PublicPlatformController extends Controller
             'cms' => $cms->publicPage('talent-pool'),
             'industries' => PublicContent::industries(),
             'talentPoolShowcaseCompanies' => $showcase->publicCompaniesFor('talent_pool'),
+        ]);
+    }
+
+    public function developmentProgramme(Request $request, PublicPageImageService $images): Response
+    {
+        $user = $request->user();
+        $application = null;
+        if ($user instanceof User && $user->isCandidate()) {
+            $application = DevelopmentProgrammeApplication::query()
+                ->where('user_id', $user->id)
+                ->first()
+                ?->toAccountArray();
+        }
+
+        return Inertia::render('Platform/DevelopmentProgramme', [
+            'content' => PublicContent::common(),
+            'application' => $application,
+            'images' => $images->activeForPage('development-programme'),
+            'apply_href' => $user instanceof User
+                ? route('account.development-programme.show')
+                : null,
         ]);
     }
 

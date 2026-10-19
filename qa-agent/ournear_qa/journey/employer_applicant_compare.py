@@ -92,7 +92,7 @@ def run_employer_applicant_compare(
 
     nav = NavigationHelper(page, base_url)
     nav.goto_path(f"/account/jobs/{job_slug}/applicants")
-    expect(page.get_by_text("Applicants for", exact=False)).to_be_visible(timeout=30_000)
+    expect(page.get_by_role("heading", name=re.compile(r"Applicants", re.I))).to_be_visible(timeout=30_000)
     report.steps.append("E4-02-applicants-list")
 
     compare_boxes = page.locator('input[type="checkbox"][data-compare-candidate-name]')

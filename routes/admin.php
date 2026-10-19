@@ -359,6 +359,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::patch('website-content/contact-enquiries/{contactEnquiry}/status', [WebsiteContentController::class, 'updateContactStatus'])->name('website-content.contact-enquiries.status');
         Route::post('website-content/contact-enquiries/{contactEnquiry}/notes', [WebsiteContentController::class, 'storeContactNote'])->name('website-content.contact-enquiries.notes');
         Route::post('website-content/contact-enquiries/{contactEnquiry}/lead', [WebsiteContentController::class, 'createLead'])->name('website-content.contact-enquiries.lead');
+        Route::get('page-images', [\App\Http\Controllers\Admin\PublicPageImageController::class, 'index'])->name('page-images.index');
+        Route::get('page-images/create', [\App\Http\Controllers\Admin\PublicPageImageController::class, 'create'])->name('page-images.create');
+        Route::post('page-images', [\App\Http\Controllers\Admin\PublicPageImageController::class, 'store'])->name('page-images.store');
+        Route::get('page-images/{pageImage}/edit', [\App\Http\Controllers\Admin\PublicPageImageController::class, 'edit'])->name('page-images.edit');
+        Route::put('page-images/{pageImage}', [\App\Http\Controllers\Admin\PublicPageImageController::class, 'update'])->name('page-images.update');
         Route::get('media-social', [MediaSocialController::class, 'index'])->name('media-social.index');
         Route::post('media-social/media', [MediaSocialController::class, 'store'])->name('media-social.media.store');
         Route::delete('media-social/media/{media}', [MediaSocialController::class, 'destroy'])->name('media-social.media.destroy');

@@ -41,6 +41,7 @@ class PublicSeoService
             'contact' => $this->forCmsPage('Contact Us', '/contact', 'contact'),
             'privacy-policy' => $this->forCmsPage('Privacy Policy', '/privacy-policy', 'privacy-policy'),
             'terms' => $this->forCmsPage('Terms & Conditions', '/terms-and-conditions', 'terms-and-conditions'),
+            'development-programme' => $this->forDevelopmentProgramme(),
             default => null,
         };
     }
@@ -74,6 +75,21 @@ class PublicSeoService
     /**
      * @return array<string, mixed>
      */
+    public function forDevelopmentProgramme(): array
+    {
+        $site = $this->settings->publicSeo();
+
+        return $this->pack(
+            title: 'OurNear Development Programme | Real Work Experience',
+            description: 'Explore the OurNear Development Programme. Gain practical experience in HR and recruitment, business development, digital marketing, or business operations, with professional records and first-job assistance.',
+            canonical: $this->absolute('/development-programme'),
+            robots: 'index,follow',
+            ogType: 'website',
+            ogImage: $this->ogImage(),
+            siteName: $site['site_name'],
+        );
+    }
+
     public function forJobsIndex(): array
     {
         $site = $this->settings->publicSeo();
@@ -251,6 +267,7 @@ class PublicSeoService
             ['loc' => $this->absolute('/services'), 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => $this->absolute('/for-employers'), 'changefreq' => 'monthly', 'priority' => '0.6'],
             ['loc' => $this->absolute('/contact'), 'changefreq' => 'monthly', 'priority' => '0.5'],
+            ['loc' => $this->absolute('/development-programme'), 'changefreq' => 'monthly', 'priority' => '0.7'],
             ['loc' => $this->absolute('/privacy-policy'), 'changefreq' => 'yearly', 'priority' => '0.3'],
             ['loc' => $this->absolute('/terms-and-conditions'), 'changefreq' => 'yearly', 'priority' => '0.3'],
         ];

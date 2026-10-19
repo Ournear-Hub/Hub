@@ -92,22 +92,22 @@ def _assert_no_horizontal_overflow(page: Page, step_id: str) -> None:
 
 
 def _assert_register_page(page: Page, step_id: str) -> None:
-    expect(page.get_by_role("heading", level=1, name="Create Your OurNear Unified Account")).to_be_visible(timeout=15_000)
+    expect(page.get_by_role("heading", level=1, name="Create your account")).to_be_visible(timeout=15_000)
     expect(page.get_by_role("button", name="Create account")).to_be_visible(timeout=10_000)
     main = page.locator("main")
-    expect(page.get_by_role("link", name="Login")).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("link", name="Terms & Conditions").first).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("textbox", name="Full name", exact=True)).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("textbox", name="Email address")).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("textbox", name="Password", exact=True)).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("textbox", name="Confirm password")).to_be_visible(timeout=10_000)
-    expect(page.get_by_text("Choose a unique username", exact=False)).to_be_visible(timeout=10_000)
-    expect(page.get_by_role("button", name="Create account")).to_be_disabled(timeout=10_000)
+    expect(main.get_by_role("link", name="Log in")).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("link", name="Terms & Conditions").first).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("textbox", name="Full name", exact=True)).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("textbox", name="Email")).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("textbox", name="Password", exact=True)).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("textbox", name="Confirm password")).to_be_visible(timeout=10_000)
+    expect(page.get_by_text("username is assigned automatically", exact=False)).to_be_visible(timeout=10_000)
+    expect(main.get_by_role("button", name="Create account")).to_be_disabled(timeout=10_000)
 
 
 def _assert_account_home(page: Page, step_id: str) -> None:
     expect(page.get_by_role("heading", name="Dashboard", level=1)).to_be_visible(timeout=15_000)
-    expect(page.get_by_role("heading", name="Personal Dashboard")).to_be_visible(timeout=15_000)
+    expect(page.get_by_text("Welcome back,", exact=False).first).to_be_visible(timeout=15_000)
     nav = page.get_by_role("navigation").first
     expect(nav).to_be_visible(timeout=10_000)
 

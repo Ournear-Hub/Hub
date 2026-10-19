@@ -135,7 +135,7 @@ export default function HomeHeroSlider({ slides }: Props) {
                         width="wide"
                         className="relative z-10 flex flex-1 items-end pb-12 pt-16 sm:items-center sm:pb-14 sm:pt-12 lg:pb-16"
                     >
-                        <div className="max-w-xl px-14 text-left sm:px-16 lg:px-0">
+                        <div className="max-w-xl text-left">
                             {showTitle ? (
                                 <h1 className="text-2xl font-semibold tracking-tight text-balance drop-shadow-sm sm:text-3xl lg:text-4xl lg:leading-tight">
                                     {slide.title}

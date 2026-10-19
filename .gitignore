@@ -38,33 +38,3 @@ Thumbs.db
 /public_html_Hostinger_2026-09-19/
 /ournear_app_Hostinger_2026-09-19/
 /reference-ui/
-
-# Local editor and QA artifacts
-/.cursor/
-/.phpunit.result.cache
-/php-local.ini
-/tmp-extract-staffing-strings.cjs
-/all())
-/exists())
-/value('photo_path'))
-
-# Flutter local build and signing files
-/mobile/.dart_tool/
-/mobile/build/
-/mobile/.flutter-plugins
-/mobile/.flutter-plugins-dependencies
-/mobile/android/local.properties
-/mobile/android/key.properties
-/mobile/**/*.jks
-/mobile/**/*.keystore
-/mobile/config/candidate_android_lan.json
-
-# Flutter generated and machine-specific files
-/mobile/.flutter-plugins-dependencies
-/mobile/**/*.iml
-/mobile/ios/Flutter/Generated.xcconfig
-/mobile/ios/Flutter/flutter_export_environment.sh
-/mobile/macos/Flutter/Generated.xcconfig
-/mobile/macos/Flutter/flutter_export_environment.sh
-/mobile/test_output.txt
-/mobile/config/candidate_android_lan.json

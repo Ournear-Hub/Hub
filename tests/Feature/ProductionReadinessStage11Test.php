@@ -45,9 +45,12 @@ class ProductionReadinessStage11Test extends TestCase
             $this->assertStringContainsString('APP_DEBUG=false', $example);
             $this->assertStringContainsString('Do not copy these values into Hostinger / production as-is', $example);
         } else {
-            $this->markTestSkipped(
-                'Neither .env.example nor a local .env exists in this checkout.'
-            );
+            $env = (string) file_get_contents(base_path('.env'));
+
+            $this->assertStringContainsString('LOCAL', $env);
+            $this->assertStringContainsString('APP_ENV=local', $env);
+            $this->assertStringContainsString('ournear_hire_local', $env);
+            $this->assertStringContainsString('MAIL_MAILER=log', $env);
         }
 
         $this->assertCount(34, PermissionName::cases());

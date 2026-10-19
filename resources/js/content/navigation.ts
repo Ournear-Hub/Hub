@@ -6,6 +6,7 @@ export const primaryNav: NavItem[] = [
     { label: 'Hiring', href: '/hire' },
     { label: 'Talent Pool', href: '/talent-pool' },
     { label: 'Staffing', href: '/staffing' },
+    { label: 'Development Programme', href: '/development-programme' },
 ];
 
 export function isNavActive(url: string, href: string): boolean {

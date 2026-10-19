@@ -34,7 +34,7 @@ CURRENT-STATE → [24-HIRING-COMMAND-CENTER.md](24-HIRING-COMMAND-CENTER.md) →
 
 CURRENT-STATE → [25-HIRE-IDENTITY-AND-RESUME-IMPORT.md](25-HIRE-IDENTITY-AND-RESUME-IMPORT.md) → [09-RESUME-DOCUMENTS-FILES.md](09-RESUME-DOCUMENTS-FILES.md). Keep `person_number` immutable; keep `business_id`.
 
-## Public platform pages (Companies / Hire / Talent Pool / Staffing)
+## Public platform pages (Companies / Hire / Talent Pool / Staffing / Development Programme)
 
 CURRENT-STATE → [22-PUBLIC-WEBSITE-CMS.md](22-PUBLIC-WEBSITE-CMS.md). Do not confuse `/hire` with `/admin/hiring`.
 

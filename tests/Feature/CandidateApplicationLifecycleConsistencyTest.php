@@ -8,7 +8,6 @@ use App\Models\Application;
 use App\Models\Job;
 use App\Support\EmployerVisibleCandidate;
 use Inertia\Testing\AssertableInertia as Assert;
-use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -33,7 +32,9 @@ class CandidateApplicationLifecycleConsistencyTest extends TestCase
         ];
     }
 
-    #[DataProvider('trackedStatusesProvider')]
+    /**
+     * @dataProvider trackedStatusesProvider
+     */
     public function test_employer_and_candidate_share_the_same_status_label(ApplicationStatus $status): void
     {
         $employer = $this->makeEmployer();

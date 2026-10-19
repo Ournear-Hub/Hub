@@ -52,6 +52,14 @@ class MediaAsset extends Model
     }
 
     /**
+     * @return HasMany<PublicPageImage, $this>
+     */
+    public function pageImages(): HasMany
+    {
+        return $this->hasMany(PublicPageImage::class, 'media_id');
+    }
+
+    /**
      * @return HasMany<ShowcaseCompany, $this>
      */
     public function showcaseCompanies(): HasMany
@@ -95,6 +103,11 @@ class MediaAsset extends Model
             $labels[] = 'Content item · '.$item->title;
         }
 
+        $this->loadMissing('pageImages');
+        foreach ($this->pageImages as $image) {
+            $labels[] = $image->page_slug.' · '.$image->slot_key;
+        }
+
         if (ShowcaseSchema::isReady()) {
             foreach ($this->showcaseCompanies as $company) {
                 $labels[] = 'Showcase company · '.$company->name;
@@ -108,6 +121,7 @@ class MediaAsset extends Model
     {
         return $this->sections()->exists()
             || $this->items()->exists()
+            || $this->pageImages()->exists()
             || (ShowcaseSchema::isReady() && $this->showcaseCompanies()->exists());
     }
 

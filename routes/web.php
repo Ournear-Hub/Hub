@@ -30,6 +30,7 @@ Route::get('/companies', [PublicPlatformController::class, 'companies'])->name('
 Route::get('/hire', [PublicPlatformController::class, 'hire'])->name('hire');
 Route::get('/talent-pool', [PublicPlatformController::class, 'talentPool'])->name('talent-pool');
 Route::get('/staffing', [PublicPlatformController::class, 'staffing'])->name('staffing');
+Route::get('/development-programme', [PublicPlatformController::class, 'developmentProgramme'])->name('development-programme');
 Route::get('/companies/{employer}', [PublicProfileController::class, 'company'])
     ->whereNumber('employer')
     ->name('companies.show');

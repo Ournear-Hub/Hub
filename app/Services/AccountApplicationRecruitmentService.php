@@ -38,7 +38,7 @@ class AccountApplicationRecruitmentService
             'can_accept_offer' => $canManage && $placement !== null && $placement->canAccept(),
             'can_confirm_joining' => $canManage && $placement !== null && $placement->canConfirmJoining(),
             'can_record_joining' => $canManage && $placement !== null && $placement->canJoin(),
-            'placement_status_label' => $placement?->status->value,
+            'placement_status_label' => $placement?->status->label(),
             'rejection_reasons' => RejectionReason::query()
                 ->where('is_active', true)
                 ->orderBy('name')

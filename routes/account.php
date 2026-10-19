@@ -85,6 +85,11 @@ Route::middleware(['auth:account', 'account.member'])->prefix('account')->name('
         ->name('notifications.read');
 
     Route::get('/', [ProfileController::class, 'home'])->name('home');
+    Route::get('development-programme', [\App\Http\Controllers\Account\DevelopmentProgrammeApplicationController::class, 'show'])
+        ->name('development-programme.show');
+    Route::post('development-programme', [\App\Http\Controllers\Account\DevelopmentProgrammeApplicationController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('development-programme.store');
     Route::get('hiring', [\App\Http\Controllers\Account\HiringDashboardController::class, 'show'])->name('hiring');
     Route::post('hiring', [\App\Http\Controllers\Account\HiringDashboardController::class, 'activate'])
         ->middleware('throttle:6,1')

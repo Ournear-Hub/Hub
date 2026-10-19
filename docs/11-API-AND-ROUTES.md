@@ -9,12 +9,8 @@ Base path: `/api/v1` (prefixed by the application URL). Unless noted, endpoints 
 | Method | URI | Name | Auth | Notes |
 | --- | --- | --- | --- | --- |
 | GET | `/site/contact` | `api.v1.site.contact` | None | Public Contact Us fields from `website_settings` |
-| GET | `/site/branding` | `api.v1.site.branding` | None | Public header/footer branding from `website_settings` |
-| GET | `/jobs/filters` | `api.v1.jobs.filters` | None | Filter option lists for job search (optional bearer) |
 | GET | `/jobs` | `api.v1.jobs.index` | None | Paginated public job cards |
 | GET | `/jobs/{job}` | `api.v1.jobs.show` | None | Job slug |
-| POST | `/auth/register` | `api.v1.auth.register` | None | Candidate registration + Sanctum token (`throttle:account-register`) |
-| POST | `/auth/forgot-password` | `api.v1.auth.forgot-password` | None | Password reset link email (`throttle:account-register`) |
 | POST | `/auth/login` | `api.v1.auth.login` | None | Issues Sanctum token (`throttle:account-login`) |
 | GET | `/account` | `api.v1.account.show` | Sanctum + `api.account` | Candidate account payload (see below) |
 | POST | `/auth/logout` | `api.v1.auth.logout` | Sanctum + `api.account` | Revokes current token |
@@ -25,8 +21,6 @@ Base path: `/api/v1` (prefixed by the application URL). Unless noted, endpoints 
 | GET/POST/PATCH/DELETE | `/account/resumes` … | `api.v1.account.resumes.*` | Sanctum + candidate | Resume library + builder |
 | GET/POST/DELETE | `/account/saved-jobs` … | `api.v1.account.saved-jobs.*` | Sanctum + candidate | Saved jobs |
 | GET | `/account/applications` … | `api.v1.account.applications.*` | Sanctum + candidate | Application list/detail/resume |
-| GET | `/account/notifications` … | `api.v1.account.notifications.*` | Sanctum + candidate | In-app notifications |
-| GET/POST | `/account/messages/inbox` … | `api.v1.account.messages.*` | Sanctum + candidate | Application-scoped messaging |
 | GET/POST | `/account/verification/email` … | `api.v1.account.verification.email.*` | Sanctum + candidate | Email verification status/resend |
 | POST | `/jobs/{slug}/apply` | `api.v1.jobs.apply` | Sanctum + candidate | Submit application (`throttle:job-applications`) |
 

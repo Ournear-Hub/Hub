@@ -3,8 +3,6 @@
 namespace App\Support;
 
 use Illuminate\Http\Request;
-use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class IntendedUrl
 {
@@ -50,24 +48,13 @@ class IntendedUrl
 
         foreach ($allowedPrefixes as $prefix) {
             if ($path === $prefix || str_starts_with($path, rtrim($prefix, '/').'/')) {
-                return self::routeExists($path) ? $intended : $fallback;
+                return $intended;
             }
         }
 
         $request->session()->put($key, $intended);
 
         return $fallback;
-    }
-
-    private static function routeExists(string $path): bool
-    {
-        try {
-            app('router')->getRoutes()->match(Request::create($path, 'GET'));
-
-            return true;
-        } catch (NotFoundHttpException|MethodNotAllowedHttpException) {
-            return false;
-        }
     }
 
     private static function isAllowedDestination(string $intended): bool

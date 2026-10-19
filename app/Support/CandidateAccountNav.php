@@ -18,6 +18,7 @@ class CandidateAccountNav
             ['href' => '/account/resumes/builder', 'label' => 'Hire Resume', 'group' => 'RESUMES', 'icon' => 'edit'],
             ['href' => '/account/resumes', 'label' => 'My Resume', 'group' => 'RESUMES', 'icon' => 'file'],
             ['href' => '/account/applications', 'label' => 'My Applications', 'group' => 'ACTIVITY', 'icon' => 'clipboard'],
+            ['href' => '/account/development-programme', 'label' => 'Development Programme', 'group' => 'ACTIVITY', 'icon' => 'briefcase'],
             ['href' => '/account/saved-jobs', 'label' => 'Saved Jobs', 'group' => 'ACTIVITY', 'icon' => 'search'],
             ['href' => '/account/settings/account', 'label' => 'Settings', 'group' => 'ACCOUNT', 'icon' => 'settings'],
             ['href' => '/account/contact', 'label' => 'Contact Us', 'group' => 'ACCOUNT', 'icon' => 'message'],
