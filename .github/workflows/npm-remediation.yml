@@ -1,0 +1,44 @@
+name: Temporary NPM Security Remediation
+
+on:
+  push:
+    branches:
+      - fix/ci-inertia-pages-security
+    paths:
+      - .github/workflows/npm-remediation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/ci-inertia-pages-security
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Resolve compatible npm security fixes
+        run: npm ci && npm audit fix
+      - name: Verify npm audit
+        run: npm audit --audit-level=high
+      - name: Run frontend tests and typecheck
+        run: npm test && npm run typecheck
+      - name: Build frontend
+        run: npm run build
+      - name: Commit lockfile and manifest changes
+        shell: bash
+        run: |
+          if git diff --quiet -- package.json package-lock.json; then
+            echo "No npm dependency changes were produced."
+            exit 1
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "Fix vulnerable npm dependency versions"
+          git push origin HEAD:fix/ci-inertia-pages-security
