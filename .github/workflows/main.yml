@@ -1,93 +1,209 @@
-name: OurNear Hire - CI
+name: OurNear Hire - CI Quality Gate
 
 on:
   push:
     branches:
       - main
-      - staging
-      - staging-baseline-2026-10-07
-      - release/web-mobile-2026-10-17
+      - feature/git-environment-foundation
+      - feature/shared-architecture
+      - feature/api-authentication
+      - feature/hire-web-completion
+      - feature/mobile-integration
+      - feature/staging-deployment
+      - feature/vps-ecosystem-readiness
+      - feature/release-automation
   pull_request:
     branches:
       - main
-      - staging
+      - feature/git-environment-foundation
+      - feature/shared-architecture
+      - feature/api-authentication
+      - feature/hire-web-completion
+      - feature/mobile-integration
+      - feature/staging-deployment
+      - feature/vps-ecosystem-readiness
+      - feature/release-automation
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ournear-ci-${{ github.ref }}
+  group: ournear-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  web-build:
-    name: Laravel and Frontend Build
+  web-validation:
+    name: Laravel, PHP and Frontend Validation
     runs-on: ubuntu-latest
-
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ournear_hire_test
+          MYSQL_USER: laravel
+          MYSQL_PASSWORD: laravel
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -ularavel -plaravel"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+          extensions: mbstring, pdo_mysql, gd, zip, intl, bcmath, xml, curl
+          coverage: none
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validate Composer configuration
+        run: composer validate --no-check-publish
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+      - name: Discover Laravel packages
+        run: php artisan package:discover --ansi
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:2fl+KTVYdl/b6BpjgNk4eUUnQ6O4ZbXz3YqK3lQvQ3E=
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ournear_hire_test
+          DB_USERNAME: laravel
+          DB_PASSWORD: laravel
+          MAIL_MAILER: array
+          MAIL_FROM_ADDRESS: testing@ournear.test
+          MAIL_FROM_NAME: "OurNear Hire Test"
+      - name: Run Laravel and PHPUnit tests
+        run: php artisan test
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:2fl+KTVYdl/b6BpjgNk4eUUnQ6O4ZbXz3YqK3lQvQ3E=
+          APP_URL: http://127.0.0.1:8000
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: ournear_hire_test
+          DB_USERNAME: laravel
+          DB_PASSWORD: laravel
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+          MAIL_MAILER: array
+          MAIL_FROM_ADDRESS: testing@ournear.test
+          MAIL_FROM_NAME: "OurNear Hire Test"
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Run frontend tests
+        run: npm test
+      - name: TypeScript checks
+        run: npm run typecheck
+      - name: Build frontend
+        run: npm run build
 
+  security-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           tools: composer:v2
           coverage: none
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
-
-      - name: Validate Composer configuration
-        run: composer validate --no-check-publish
-
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+      - name: Audit Composer dependencies
+        run: composer audit --no-interaction
+      - name: Audit npm dependencies
+        run: npm ci && npm audit --audit-level=high
 
-      - name: Install Laravel package dependencies
-        run: php artisan package:discover --ansi
-        env:
-          APP_ENV: testing
-          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-          DB_CONNECTION: sqlite
-          DB_DATABASE: ':memory:'
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: TypeScript checks
-        run: npm run typecheck
-
-      - name: Build frontend
-        run: npm run build
-
-  flutter-checks:
+  mobile-validation:
     name: Flutter Mobile Validation
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: mobile
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+      - name: Detect Flutter project location
+        id: flutter-project
+        shell: bash
+        run: |
+          if [ -f pubspec.yaml ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "path=." >> "$GITHUB_OUTPUT"
+          elif [ -f mobile/pubspec.yaml ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "path=mobile" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "No pubspec.yaml found at repository root or mobile/. Flutter checks will be skipped for this branch."
+          fi
       - name: Set up Flutter
+        if: steps.flutter-project.outputs.available == 'true'
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
       - name: Get Flutter dependencies
-        run: flutter pub get
-
+        if: steps.flutter-project.outputs.available == 'true'
+        run: cd "${{ steps.flutter-project.outputs.path }}" && flutter pub get
       - name: Analyze Flutter application
-        run: flutter analyze
-
+        if: steps.flutter-project.outputs.available == 'true'
+        run: cd "${{ steps.flutter-project.outputs.path }}" && flutter analyze
       - name: Run Flutter tests
-        run: flutter test
+        if: steps.flutter-project.outputs.available == 'true'
+        run: cd "${{ steps.flutter-project.outputs.path }}" && flutter test
+      - name: Report skipped Flutter checks
+        if: steps.flutter-project.outputs.available != 'true'
+        run: echo "::notice::Flutter checks skipped because this branch does not contain a Flutter pubspec.yaml."
+
+  ci-report:
+    name: CI Result Summary
+    if: always()
+    needs:
+      - web-validation
+      - security-audit
+      - mobile-validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish workflow summary
+        env:
+          WEB_RESULT: ${{ needs.web-validation.result }}
+          SECURITY_RESULT: ${{ needs.security-audit.result }}
+          MOBILE_RESULT: ${{ needs.mobile-validation.result }}
+        shell: bash
+        run: |
+          {
+            echo "# OurNear Hire CI Quality Gate"
+            echo ""
+            echo "| Check group | Result |"
+            echo "|---|---|"
+            echo "| Laravel, PHPUnit and frontend | $WEB_RESULT |"
+            echo "| Dependency security audit | $SECURITY_RESULT |"
+            echo "| Flutter mobile | $MOBILE_RESULT |"
+            echo ""
+            echo "Open the failed job for the exact failing step and logs."
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$WEB_RESULT" != "success" ] || [ "$SECURITY_RESULT" != "success" ]; then
+            exit 1
+          fi
+          if [ "$MOBILE_RESULT" = "failure" ] || [ "$MOBILE_RESULT" = "cancelled" ]; then
+            exit 1
+          fi
