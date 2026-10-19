@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\V1;
 
+use App\Enums\AccountStatus;
 use App\Models\User;
 use App\Notifications\VerifyAccountEmailNotification;
 use Illuminate\Support\Facades\Hash;
@@ -183,6 +184,115 @@ class MobileAuthApiTest extends TestCase
         $this->assertDatabaseCount('personal_access_tokens', 0);
 
         $this->app['auth']->forgetGuards();
+
+        $this->withHeader('Authorization', 'Bearer '.$token)
+            ->getJson(route('api.v1.account.show'))
+            ->assertUnauthorized();
+    }
+
+    public function test_non_active_account_statuses_cannot_log_in(): void
+    {
+        $statuses = [
+            AccountStatus::Inactive,
+            AccountStatus::Blocked,
+            AccountStatus::Suspended,
+            AccountStatus::PendingVerification,
+            AccountStatus::Deactivated,
+        ];
+
+        foreach ($statuses as $status) {
+            $username = 'status-'.str_replace('_', '-', $status->value);
+
+            $this->makeCandidate([
+                'username' => $username,
+                'password' => Hash::make('Password1!'),
+                'account_status' => $status,
+                'is_active' => false,
+            ]);
+
+            $this->postJson(route('api.v1.auth.login'), [
+                'login' => $username,
+                'password' => 'Password1!',
+            ])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['login']);
+        }
+    }
+
+    public function test_login_token_expiry_matches_sanctum_configuration(): void
+    {
+        config(['sanctum.expiration' => 60]);
+
+        $user = $this->makeCandidate([
+            'username' => 'expiry-configured-user',
+            'password' => Hash::make('Password1!'),
+            'email_verified_at' => now(),
+        ]);
+
+        $response = $this->postJson(route('api.v1.auth.login'), [
+            'login' => 'expiry-configured-user',
+            'password' => 'Password1!',
+        ])->assertOk();
+
+        $this->assertNotNull($response->json('expires_at'));
+
+        $expiresAt = \Illuminate\Support\Carbon::parse(
+            $response->json('expires_at')
+        );
+
+        $this->assertTrue(
+            $expiresAt->between(
+                now()->addMinutes(60)->subSeconds(5),
+                now()->addMinutes(60)->addSeconds(5)
+            ),
+            'Returned token expiry should be approximately 60 minutes after login.'
+        );
+
+        $token = $user->tokens()->latest('id')->first();
+
+        $this->assertNotNull($token);
+        $this->assertNotNull($token->expires_at);
+        $this->assertEquals(
+            $expiresAt->timestamp,
+            $token->expires_at->timestamp
+        );
+    }
+
+    public function test_login_token_expiry_is_null_when_not_configured(): void
+    {
+        config(['sanctum.expiration' => null]);
+
+        $user = $this->makeCandidate([
+            'username' => 'expiry-unlimited-user',
+            'password' => Hash::make('Password1!'),
+            'email_verified_at' => now(),
+        ]);
+
+        $this->postJson(route('api.v1.auth.login'), [
+            'login' => 'expiry-unlimited-user',
+            'password' => 'Password1!',
+        ])
+            ->assertOk()
+            ->assertJsonPath('expires_at', null);
+
+        $token = $user->tokens()->latest('id')->first();
+
+        $this->assertNotNull($token);
+        $this->assertNull($token->expires_at);
+    }
+
+    public function test_expired_bearer_token_cannot_access_account(): void
+    {
+        $user = $this->makeCandidate([
+            'username' => 'expired-token-user',
+            'email_verified_at' => now(),
+        ]);
+
+        $token = $user->createToken(
+            'expired-test',
+            ['account:mobile'],
+            now()->subMinute()
+        )->plainTextToken;
 
         $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson(route('api.v1.account.show'))
