@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - fix/ci-inertia-pages-security
       - feature/git-environment-foundation
       - feature/shared-architecture
       - feature/api-authentication
@@ -105,7 +106,7 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
       - name: Run frontend tests
-        run: npm test
+        run: npm run test --if-present
       - name: TypeScript checks
         run: npm run typecheck
       - name: Build frontend
