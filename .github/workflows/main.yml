@@ -66,6 +66,10 @@ jobs:
           MAIL_MAILER: array
           MAIL_FROM_ADDRESS: testing@ournear.test
           MAIL_FROM_NAME: "OurNear Hire Test"
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Build frontend assets for Laravel tests
+        run: npm run build
       - name: Run Laravel and PHPUnit tests
         run: php artisan test
         env:
@@ -80,14 +84,10 @@ jobs:
           MAIL_MAILER: array
           MAIL_FROM_ADDRESS: testing@ournear.test
           MAIL_FROM_NAME: "OurNear Hire Test"
-      - name: Install frontend dependencies
-        run: npm ci
       - name: Run frontend tests
         run: npm run test --if-present
       - name: TypeScript checks
         run: npm run typecheck
-      - name: Build frontend
-        run: npm run build
 
   security-audit:
     name: Dependency Security Audit
