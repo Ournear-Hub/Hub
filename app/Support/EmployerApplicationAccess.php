@@ -9,16 +9,9 @@ class EmployerApplicationAccess
 {
     public static function managesApplication(User $employer, Application $application): bool
     {
-        if (! $employer->isEmployer()) {
-            return false;
-        }
-
         $application->loadMissing('job');
+        $employer->loadMissing('employerProfile');
         $profileId = $employer->employerProfile?->id;
-        if ($profileId === null) {
-            $employer->loadMissing('employerProfile');
-            $profileId = $employer->employerProfile?->id;
-        }
 
         return $application->job !== null
             && $profileId !== null

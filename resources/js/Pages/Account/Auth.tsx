@@ -23,10 +23,11 @@ const fieldGroupClass = 'space-y-[1.125rem]';
 const primaryButtonClass = 'min-h-[48px] rounded-lg';
 
 export default function Auth({ tab: initialTab = 'login', registeredEmail = null }: AuthProps) {
-    const { flash } = usePage<SharedPageProps>().props;
+    const { flash, errors } = usePage<SharedPageProps>().props;
     const tab: AuthTab = initialTab === 'signup' ? 'signup' : 'login';
     const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
     const statusMessage = flash.status ?? null;
+const verificationError = errors?.email ?? null;
 
     const loginForm = useForm({
         login: registeredEmail ?? '',
@@ -95,6 +96,15 @@ export default function Auth({ tab: initialTab = 'login', registeredEmail = null
                     {statusMessage}
                 </p>
             ) : null}
+{tab === 'login' && verificationError ? (
+    <p
+        className="mb-4 rounded-lg border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger"
+        role="alert"
+        aria-live="assertive"
+    >
+        {verificationError}
+    </p>
+) : null}
 
             {tab === 'login' ? (
                 <>

@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ApplicationStatus;
 use App\Enums\JobPublishingStatus;
+use App\Models\Application;
 use App\Models\EmploymentType;
 use App\Models\ExperienceRange;
 use App\Models\Job;
@@ -143,6 +145,42 @@ class EmployerUnverifiedTrialPublishTest extends TestCase
         $this->assertSame(JobPublishingStatus::Draft, $job->fresh()->publishing_status);
     }
 
+    public function test_trial_job_without_expiry_is_not_publicly_visible(): void
+    {
+        $employer = $this->makeEmployer([
+            'email_verified_at' => null,
+            'mobile_verified_at' => null,
+        ]);
+
+        $this->actingAs($employer)
+            ->post(route('account.hiring'), [
+                'company_name' => 'Missing Expiry Co',
+                'company_phone' => '+919876543214',
+                'company_email' => 'hr@missing-expiry.example',
+                'industry_id' => JobTitle::query()->with('category.industry')->where('is_active', true)->firstOrFail()->category->industry_id,
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($employer)
+            ->post(route('account.employer.jobs.store'), $this->jobPayload(['title' => 'Trial Missing Expiry']))
+            ->assertRedirect(route('account.employer.jobs.index'));
+
+        $job = Job::query()->where('title', 'Trial Missing Expiry')->firstOrFail();
+        $this->assertSame('trial', $job->posting_tier);
+        $job->forceFill(['trial_expires_at' => null])->save();
+        $job->refresh();
+
+        $this->assertFalse($job->isPubliclyVisible());
+        $this->assertFalse(Job::query()->publiclyVisible()->whereKey($job->id)->exists());
+        $this->get(route('jobs.show', $job))->assertNotFound();
+
+        Artisan::call('jobs:expire-trials');
+
+        $job->refresh();
+        $this->assertSame(JobPublishingStatus::Draft, $job->publishing_status);
+        $this->assertFalse($job->active);
+    }
+
     public function test_verified_employer_can_publish_multiple_jobs(): void
     {
         $employer = $this->makeEmployer([
@@ -167,5 +205,130 @@ class EmployerUnverifiedTrialPublishTest extends TestCase
             ->assertRedirect(route('account.employer.jobs.index'));
 
         $this->assertSame(2, Job::query()->where('employer_id', $profile->id)->count());
+    }
+
+    public function test_candidate_who_activated_a_company_can_shortlist_their_own_applicant(): void
+    {
+        $owner = $this->makeCandidate([
+            'email_verified_at' => now(),
+        ]);
+        $this->actingAs($owner)
+            ->post(route('account.hiring'), [
+                'company_name' => 'Capability Co',
+                'company_phone' => '+919876543215',
+                'company_email' => 'hr@capability.example',
+                'industry_id' => JobTitle::query()->with('category.industry')->where('is_active', true)->firstOrFail()->category->industry_id,
+            ])
+            ->assertRedirect();
+
+        $owner->refresh();
+        $this->assertTrue($owner->isCandidate());
+        $profile = $owner->employerProfile;
+        $this->assertNotNull($profile);
+
+        $job = Job::factory()->create([
+            'employer_id' => $profile->id,
+            'publishing_status' => JobPublishingStatus::Published,
+            'active' => true,
+        ]);
+        $applicant = $this->makeCandidate();
+        $application = Application::factory()->create([
+            'job_id' => $job->id,
+            'user_id' => $applicant->id,
+            'email' => $applicant->email,
+            'status' => ApplicationStatus::New,
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.shortlist', [$job, $application]))
+            ->assertRedirect();
+
+        $this->assertSame(ApplicationStatus::Shortlisted, $application->fresh()->status);
+
+        $this->actingAs($applicant)
+            ->post(route('account.employer.jobs.application.shortlist', [$job, $application]))
+            ->assertForbidden();
+    }
+
+    public function test_company_owner_can_complete_offer_and_joining_after_opening_a_placement(): void
+    {
+        $owner = $this->makeCandidate([
+            'email_verified_at' => now(),
+        ]);
+        $this->actingAs($owner)
+            ->post(route('account.hiring'), [
+                'company_name' => 'Placement Co',
+                'company_phone' => '+919876543216',
+                'company_email' => 'hr@placement.example',
+                'industry_id' => JobTitle::query()->with('category.industry')->where('is_active', true)->firstOrFail()->category->industry_id,
+            ])
+            ->assertRedirect();
+
+        $owner = $owner->fresh();
+        $profile = $owner->employerProfile;
+        $this->assertNotNull($profile);
+        $job = Job::factory()->create([
+            'employer_id' => $profile->id,
+            'publishing_status' => JobPublishingStatus::Published,
+            'active' => true,
+        ]);
+        $applicant = $this->makeCandidate();
+        $application = Application::factory()->create([
+            'job_id' => $job->id,
+            'user_id' => $applicant->id,
+            'email' => $applicant->email,
+            'status' => ApplicationStatus::New,
+        ]);
+
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.shortlist', [$job, $application]))
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.select', [$job, $application]))
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.placement', [$job, $application]))
+            ->assertRedirect();
+
+        $this->actingAs($owner)
+            ->get(route('account.employer.jobs.application', [$job, $application]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('recruitment.placement_status_label', 'Open')
+                ->where('recruitment.can_offer', true));
+
+        $this->actingAs($applicant)
+            ->post(route('account.employer.jobs.application.offer', [$job, $application]), [
+                'offered_at' => now()->toDateString(),
+            ])
+            ->assertForbidden();
+
+        $this->actingAs($owner)
+            ->from(route('account.employer.jobs.application', [$job, $application]))
+            ->post(route('account.employer.jobs.application.offer', [$job, $application]), [])
+            ->assertSessionHasErrors('offered_at');
+
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.offer', [$job, $application]), [
+                'offered_at' => now()->toDateString(),
+                'salary' => '45000',
+            ])
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.accept-offer', [$job, $application]))
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.confirm-joining', [$job, $application]), [
+                'expected_joining_date' => now()->addWeek()->toDateString(),
+            ])
+            ->assertRedirect();
+        $this->actingAs($owner)
+            ->post(route('account.employer.jobs.application.join', [$job, $application]), [
+                'actual_joining_date' => now()->toDateString(),
+            ])
+            ->assertRedirect();
+
+        $this->assertSame(ApplicationStatus::Placed, $application->fresh()->status);
+        $this->assertSame('Joined', $application->fresh()->placements()->latest('id')->first()?->status->value);
     }
 }

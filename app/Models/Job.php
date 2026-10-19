@@ -243,8 +243,10 @@ class Job extends Model
             ])
             ->where(function (Builder $trial) {
                 $trial->where('posting_tier', '!=', 'trial')
-                    ->orWhereNull('trial_expires_at')
-                    ->orWhere('trial_expires_at', '>=', now());
+                    ->orWhere(function (Builder $activeTrial) {
+                        $activeTrial->whereNotNull('trial_expires_at')
+                            ->where('trial_expires_at', '>', now());
+                    });
             })
             ->where(function (Builder $closing) {
                 $closing->whereNull('closing_date')
@@ -267,7 +269,8 @@ class Job extends Model
             return false;
         }
 
-        if ($this->posting_tier === 'trial' && $this->trial_expires_at?->isPast()) {
+        if ($this->posting_tier === 'trial'
+            && ($this->trial_expires_at === null || ! $this->trial_expires_at->isFuture())) {
             return false;
         }
 

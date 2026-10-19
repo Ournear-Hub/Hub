@@ -37,6 +37,18 @@ class GuestJobApplyIntendedUrlTest extends TestCase
         ])->assertRedirect($applyPath);
     }
 
+    public function test_login_ignores_intended_path_with_no_route(): void
+    {
+        $candidate = $this->makeCandidate(['password' => 'Password1!']);
+
+        $this->withSession([
+            'auth.intended.account' => '/account/development-programme?programme=business-operations',
+        ])->post(route('login.store'), [
+            'login' => $candidate->email,
+            'password' => 'Password1!',
+        ])->assertRedirect(route('account.home'));
+    }
+
     public function test_login_rejects_unsafe_external_intended_url(): void
     {
         $candidate = $this->makeCandidate(['password' => 'Password1!']);
