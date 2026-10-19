@@ -40,6 +40,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Create empty local environment file for CI
+        run: touch .env
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
